@@ -90,9 +90,8 @@ export async function generatePDF({
   designOptions,
   customColor 
 }: PDFGeneratorOptions) {
-  // Find the resume preview element in the DOM
-  // Try to find the one with renderAllPages first (hidden PDF preview), otherwise use any
-  let resumeElement = document.querySelector('[data-resume-preview] [data-pdf-content]')?.closest('[data-resume-preview]') as HTMLElement;
+  // Find the dedicated hidden export preview first, then fall back to any visible preview
+  let resumeElement = document.querySelector('[data-resume-export-preview] [data-resume-preview]') as HTMLElement;
   
   if (!resumeElement) {
     // Fallback to any resume preview element
@@ -132,7 +131,7 @@ export async function generatePDF({
   clonedElement.style.height = 'auto'; // Let it grow to full content height
   
   // Ensure content container is visible and shows all content
-  const contentContainer = clonedElement.querySelector('.flex-1.overflow-auto') as HTMLElement;
+  const contentContainer = clonedElement.querySelector('[data-resume-content]') as HTMLElement;
   if (contentContainer) {
     contentContainer.style.overflow = 'visible';
     contentContainer.style.display = 'block';
@@ -169,12 +168,9 @@ export async function generatePDF({
   }
   
   // Remove any interactive elements, buttons, pagination, etc.
-  clonedElement.querySelectorAll('button, input, select, [data-pagination], [data-score]').forEach(el => {
+  clonedElement.querySelectorAll('button, input, select, [data-pagination], [data-score], [data-preview-header], [data-preview-footer], [data-page-break-indicator]').forEach(el => {
     el.remove();
   });
-  
-  // Remove footer with pagination if it exists
-  clonedElement.querySelectorAll('.bg-gray-50').forEach(el => el.remove());
   
   tempContainer.appendChild(clonedElement);
 

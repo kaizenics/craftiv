@@ -40,7 +40,7 @@ import {
   DesignOptions,
   defaultDesignOptions,
 } from "@/components/resume/resume-preview";
-import { TemplatePreviewRenderer } from "@/components/resume/template-preview-renderer";
+import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { ResumeData } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
@@ -84,27 +84,6 @@ const templateColors = [
   "#000",
   "#f472b6",
 ];
-
-// Sample data for template previews
-const samplePreviewData = {
-  name: "John Doe",
-  title: "Software Engineer",
-  email: "john@example.com",
-  phone: "+1 234 567 8900",
-  location: "New York, NY",
-  summary:
-    "Experienced software engineer with a passion for building scalable applications.",
-  experience: [
-    { title: "Senior Developer", company: "Tech Corp", date: "2020-2024" },
-    { title: "Developer", company: "StartUp Inc", date: "2018-2020" },
-  ],
-  education: {
-    degree: "BS Computer Science",
-    school: "University",
-    date: "2018",
-  },
-  skills: ["JavaScript", "React", "Node.js", "TypeScript", "Python"],
-};
 
 export default function FinalResumePage() {
   const router = useRouter();
@@ -530,14 +509,13 @@ export default function FinalResumePage() {
                     >
                       {/* Template Preview */}
                       <div className="absolute inset-0 text-left">
-                        <TemplatePreviewRenderer
-                          layout={t.layout}
+                        <TemplateLivePreview
+                          templateId={t.id}
                           color={
                             resumeData.templateId === t.id
                               ? selectedColor
                               : t.primaryColor
                           }
-                          sampleData={samplePreviewData}
                         />
                       </div>
                       {resumeData.templateId === t.id && (

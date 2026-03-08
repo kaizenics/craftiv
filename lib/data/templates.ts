@@ -1,4 +1,4 @@
-import { TemplateLayout } from '../types/resume';
+import { ResumeData, TemplateLayout } from '../types/resume';
 
 export interface TemplateData {
   id: string;
@@ -76,6 +76,89 @@ export const sampleResumeData = {
   ],
   hobbies: ["Photography", "Hiking", "Reading Science Fiction", "Playing Guitar", "Cooking"]
 };
+
+export function createSampleResumeForTemplate(templateId: string, withPhoto = false): ResumeData {
+  const nameParts = sampleResumeData.name.split(' ');
+  const firstName = nameParts[0] || 'John';
+  const lastName = nameParts.slice(1).join(' ') || 'Smith';
+
+  return {
+    templateId,
+    contact: {
+      firstName,
+      lastName,
+      desiredJobTitle: sampleResumeData.title,
+      phone: sampleResumeData.phone,
+      email: sampleResumeData.email,
+      photoUrl: withPhoto ? '/sample.png' : '',
+    },
+    experiences: sampleResumeData.experience.map((exp, index) => ({
+      id: `sample-exp-${index + 1}`,
+      jobTitle: exp.title,
+      employer: exp.company,
+      location: exp.location || '',
+      startDate: exp.date.split(' - ')[0] || exp.date,
+      endDate: exp.date.split(' - ')[1] || '',
+      isCurrentJob: exp.date.toLowerCase().includes('present'),
+      description: exp.description || '',
+    })),
+    educations: [
+      {
+        id: 'sample-edu-1',
+        schoolName: sampleResumeData.education.school,
+        location: sampleResumeData.education.location || '',
+        degree: sampleResumeData.education.degree,
+        startDate: sampleResumeData.education.date.split(' - ')[0] || sampleResumeData.education.date,
+        endDate: sampleResumeData.education.date.split(' - ')[1] || '',
+        description: sampleResumeData.education.description || '',
+      },
+    ],
+    skills: sampleResumeData.skills.map((skill, index) => ({
+      id: `sample-skill-${index + 1}`,
+      name: skill,
+      level: 'Advanced',
+      showLevel: false,
+    })),
+    summary: sampleResumeData.summary,
+    finalize: {
+      languages: (sampleResumeData.languages || []).map((lang, index) => ({
+        id: `sample-lang-${index + 1}`,
+        name: lang.name,
+        proficiency: lang.proficiency as ResumeData['finalize']['languages'][number]['proficiency'],
+      })),
+      certifications: (sampleResumeData.certifications || []).map((cert, index) => ({
+        id: `sample-cert-${index + 1}`,
+        name: cert.name,
+        issuer: cert.issuer,
+        date: cert.date,
+      })),
+      awards: (sampleResumeData.awards || []).map((award, index) => ({
+        id: `sample-award-${index + 1}`,
+        title: award.title,
+        issuer: award.issuer,
+        date: award.date,
+      })),
+      websites: (sampleResumeData.websites || []).map((website, index) => ({
+        id: `sample-site-${index + 1}`,
+        label: website.label,
+        url: website.url,
+      })),
+      references: (sampleResumeData.references || []).map((ref, index) => ({
+        id: `sample-ref-${index + 1}`,
+        name: ref.name,
+        position: ref.position,
+        company: ref.company,
+        email: ref.email,
+        phone: ref.phone,
+      })),
+      hobbies: (sampleResumeData.hobbies || []).map((hobby, index) => ({
+        id: `sample-hobby-${index + 1}`,
+        name: hobby,
+      })),
+      customSections: [],
+    },
+  };
+}
 
 // Template category definitions
 export const templateCategories = [

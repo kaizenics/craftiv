@@ -8,8 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
-import { templates, sampleResumeData } from "@/lib/data/templates";
-import { TemplatePreviewRenderer } from "@/components/resume/template-preview-renderer";
+import { templates } from "@/lib/data/templates";
+import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { trpc } from "@/trpc/client";
 import { authClient } from "@/lib/auth-client";
 
@@ -22,9 +22,6 @@ const categories = [
   { id: "ats", name: "ATS Friendly", icon: Shield },
   { id: "creative", name: "Creative", icon: Image },
 ];
-
-// Use centralized sample data
-const sampleData = sampleResumeData;
 
 function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: typeof templates[0]; onUseTemplate: (templateId: string) => void; showPhoto: boolean }) {
 
@@ -39,10 +36,9 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
       <div className="relative aspect-3/4 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:border-zinc-300">
         {/* Resume Preview with Sample Content */}
         <div className="absolute inset-0">
-          <TemplatePreviewRenderer 
-            layout={template.layout}
+          <TemplateLivePreview
+            templateId={template.id}
             color={template.primaryColor}
-            sampleData={sampleData}
             showPhoto={showPhoto}
           />
         </div>

@@ -69,7 +69,8 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
           data,
           template,
           fileName,
-          designOptions
+          designOptions,
+          customColor
         });
       }
       setDownloadComplete(true);
@@ -88,25 +89,26 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
 
   // Pre-render the resume when dialog opens for faster PDF generation
   useEffect(() => {
-    if (isOpen && format === 'pdf') {
+    if (isOpen) {
       // Small delay to ensure dialog is fully rendered first
       setTimeout(() => {
-        const previewElement = document.querySelector('[data-resume-preview]');
+        const previewElement = document.querySelector('[data-resume-export-preview] [data-resume-preview]');
         if (previewElement) {
           // Force a layout recalculation to ensure everything is ready
           void previewElement.getBoundingClientRect();
         }
       }, 50);
     }
-  }, [isOpen, format]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Hidden resume preview for PDF generation - pre-rendered with all pages */}
-      {isOpen && format === 'pdf' && (
+      {/* Hidden resume preview for export generation - pre-rendered with all pages */}
+      {isOpen && (
         <div 
+          data-resume-export-preview
           style={{ 
             position: 'fixed', 
             left: '-10000px', 
@@ -122,6 +124,8 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
             designOptions={designOptions}
             customColor={customColor}
             showScore={false}
+            showFooter={false}
+            plain
             renderAllPages={true}
           />
         </div>

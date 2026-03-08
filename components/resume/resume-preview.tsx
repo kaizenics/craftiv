@@ -25,16 +25,6 @@ export const defaultDesignOptions: DesignOptions = {
   lineSpacing: 1.5,
 };
 
-interface ResumePreviewProps {
-  data: ResumeData;
-  className?: string;
-  designOptions?: DesignOptions;
-  customColor?: string;
-  showScore?: boolean;
-  currentPage?: number;
-  onPageChange?: (page: number) => void;
-}
-
 // Helper component for section headers based on layout
 interface SectionHeaderProps {
   title: string;
@@ -125,6 +115,8 @@ interface ResumePreviewProps {
   designOptions?: DesignOptions;
   customColor?: string;
   showScore?: boolean;
+  showFooter?: boolean;
+  plain?: boolean;
   showPhoto?: boolean;
   currentPage?: number;
   onPageChange?: (page: number) => void;
@@ -137,6 +129,8 @@ export function ResumePreview({
   designOptions = defaultDesignOptions,
   customColor,
   showScore = true,
+  showFooter,
+  plain = false,
   showPhoto = false,
   currentPage: controlledPage,
   onPageChange,
@@ -171,6 +165,8 @@ export function ResumePreview({
   // The actual split will happen naturally at 297mm boundaries
   const totalPages = hasSecondPageContent ? 2 : 1;
   const layout = template.layout || 'classic';
+  const shouldShowFooter = showFooter ?? !renderAllPages;
+  const shouldShowScore = showScore && !renderAllPages;
 
   // Render the appropriate layout
   const renderResumeContent = () => {
@@ -1111,7 +1107,12 @@ export function ResumePreview({
   return (
     <div 
       data-resume-preview 
-      className={cn('bg-white shadow-xl rounded-lg overflow-hidden flex flex-col', className)} 
+      data-render-all-pages={renderAllPages ? 'true' : 'false'}
+      className={cn(
+        'bg-white overflow-hidden flex flex-col',
+        plain ? 'rounded-none shadow-none' : 'shadow-xl rounded-lg',
+        className
+      )} 
       style={{ 
         fontFamily: designOptions.fontFamily,
         // Set A4 width for preview (210mm)
@@ -1123,8 +1124,8 @@ export function ResumePreview({
       }}
     >
       {/* Resume Score Header */}
-      {showScore && (
-        <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b">
+      {shouldShowScore && (
+        <div data-preview-header className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b">
           <div className="flex items-center gap-2">
             <div className="bg-cyan-500 text-white text-xs font-bold px-2 py-1 rounded">
               {calculateScore(data)}%
@@ -1136,6 +1137,7 @@ export function ResumePreview({
 
       {/* Resume Content */}
       <div 
+        data-resume-content
         className={cn('flex-1', renderAllPages ? 'overflow-visible' : 'overflow-hidden')}
         style={{
           // For preview mode: clip to A4 height per page, for PDF: let it flow
@@ -1238,6 +1240,7 @@ export function ResumePreview({
           <>
             {/* Page 1 break line */}
             <div 
+              data-page-break-indicator
               className="absolute left-0 right-0 h-0.5 bg-gray-400 pointer-events-none"
               style={{ 
                 top: '297mm',
@@ -1248,6 +1251,7 @@ export function ResumePreview({
             />
             {/* Page 2 break line (if content extends beyond 2 pages) */}
             <div 
+              data-page-break-indicator
               className="absolute left-0 right-0 h-0.5 bg-gray-400 pointer-events-none"
               style={{ 
                 top: '594mm',
@@ -1261,40 +1265,42 @@ export function ResumePreview({
       </div>
 
       {/* Footer with Pagination */}
-      <div className="bg-gray-50 px-6 py-3 flex items-center justify-between border-t text-sm text-gray-500">
-        <div className="flex items-center gap-1">
-          <Check className="h-4 w-4 text-green-500" />
-          <span>Saved</span>
+      {shouldShowFooter && (
+        <div data-preview-footer className="bg-gray-50 px-6 py-3 flex items-center justify-between border-t text-sm text-gray-500">
+          <div className="flex items-center gap-1">
+            <Check className="h-4 w-4 text-green-500" />
+            <span>Saved</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-medium text-xs">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage(2)}
+                  disabled={currentPage === 2}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {totalPages === 1 && <span className="text-xs">1 / 1</span>}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {totalPages > 1 && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="h-7 w-7 p-0"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="font-medium text-xs">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentPage(2)}
-                disabled={currentPage === 2}
-                className="h-7 w-7 p-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-          {totalPages === 1 && <span className="text-xs">1 / 1</span>}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
