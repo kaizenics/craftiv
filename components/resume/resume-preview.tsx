@@ -3,7 +3,7 @@
 import { ResumeData, TemplateLayout } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
@@ -24,6 +24,11 @@ export const defaultDesignOptions: DesignOptions = {
   paragraphSpacing: 8,
   lineSpacing: 1.5,
 };
+
+const A4_PAGE_HEIGHT_MM = 297;
+const A4_PAGE_WIDTH_MM = 210;
+const SIDEBAR_WIDTH_MM = 70;
+const MM_TO_PX = 96 / 25.4;
 
 // Helper component for section headers based on layout
 interface SectionHeaderProps {
@@ -138,6 +143,8 @@ export function ResumePreview({
 }: ResumePreviewProps) {
   const template = resumeTemplates.find((t) => t.id === data.templateId) || resumeTemplates[0];
   const [internalPage, setInternalPage] = useState(1);
+  const [measuredTotalPages, setMeasuredTotalPages] = useState(1);
+  const pdfContentRef = useRef<HTMLDivElement>(null);
   
   // Use custom color if provided, otherwise use template's primary color
   const activeColor = customColor || template.primaryColor;
@@ -151,25 +158,71 @@ export function ResumePreview({
       setInternalPage(page);
     }
   };
-  
-  // Calculate if we need multiple pages based on content
-  // Note: Actual page count will be determined by content height, but we estimate
-  const hasSecondPageContent = 
-    data.finalize.references.length > 0 ||
-    data.finalize.hobbies.length > 0 ||
-    data.finalize.awards.length > 0 ||
-    data.finalize.customSections.length > 0;
-  
-  // Estimate total pages - content will naturally flow and fill pages
-  // We'll show at least 1 page, and 2 if there's additional content
-  // The actual split will happen naturally at 297mm boundaries
-  const totalPages = hasSecondPageContent ? 2 : 1;
+
+  useEffect(() => {
+    const contentEl = pdfContentRef.current;
+    if (!contentEl) return;
+
+    let rafId: number | null = null;
+
+    const measurePages = () => {
+      const pageHeightPx = A4_PAGE_HEIGHT_MM * MM_TO_PX;
+      const contentHeightPx = contentEl.scrollHeight;
+      const nextPages = Math.max(1, Math.ceil(contentHeightPx / pageHeightPx));
+      setMeasuredTotalPages((prev) => (prev === nextPages ? prev : nextPages));
+    };
+
+    const scheduleMeasure = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(measurePages);
+    };
+
+    scheduleMeasure();
+
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(contentEl);
+    window.addEventListener('resize', scheduleMeasure);
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      observer.disconnect();
+      window.removeEventListener('resize', scheduleMeasure);
+    };
+  }, [data, designOptions, renderAllPages]);
+
+  const totalPages = measuredTotalPages;
+  const visiblePage = renderAllPages ? 1 : Math.min(currentPage, totalPages);
   const layout = template.layout || 'classic';
+  const templateId = template.id;
+  const isSidebarLayout = layout === 'sidebar' && templateId === 'astral';
   const shouldShowFooter = showFooter ?? !renderAllPages;
   const shouldShowScore = showScore && !renderAllPages;
 
   // Render the appropriate layout
   const renderResumeContent = () => {
+    switch (templateId) {
+      case 'orbit':
+        return renderOrbitLayout();
+      case 'stellar':
+        return renderStellarLayout();
+      case 'aurora':
+        return renderAuroraLayout();
+      case 'zenith':
+        return renderZenithLayout();
+      case 'pulse':
+        return renderPulseLayout();
+      case 'classic':
+        return renderClassicTemplateLayout();
+      case 'metro':
+        return renderMetroLayout();
+      case 'bold':
+        return renderBoldTemplateLayout();
+    }
+
     switch (layout) {
       case 'harvard':
         return renderHarvardLayout();
@@ -441,13 +494,18 @@ export function ResumePreview({
       className="flex items-stretch"
       style={{ 
         fontSize: `${designOptions.fontSize}px`,
-        lineHeight: designOptions.lineSpacing,
-        minHeight: '297mm',
-        background: `linear-gradient(to right, ${activeColor} 0%, ${activeColor} 33.333%, #ffffff 33.333%, #ffffff 100%)`
+        lineHeight: designOptions.lineSpacing
       }}
     >
       {/* Left Sidebar */}
-      <div className="w-1/3 self-stretch p-6 text-white">
+      <div
+        className="self-stretch p-6 text-white"
+        style={{
+          width: `${SIDEBAR_WIDTH_MM}mm`,
+          flex: `0 0 ${SIDEBAR_WIDTH_MM}mm`,
+          maxWidth: `${SIDEBAR_WIDTH_MM}mm`,
+        }}
+      >
         {/* Profile Avatar */}
         {showPhoto && data.contact.photoUrl ? (
           <div className="w-20 h-20 mx-auto rounded-full overflow-hidden bg-white/30 mb-4">
@@ -508,7 +566,14 @@ export function ResumePreview({
       </div>
 
       {/* Right Content */}
-      <div className="flex-1 p-6 bg-white">
+      <div
+        className="p-6"
+        style={{
+          width: `${A4_PAGE_WIDTH_MM - SIDEBAR_WIDTH_MM}mm`,
+          flex: `0 0 ${A4_PAGE_WIDTH_MM - SIDEBAR_WIDTH_MM}mm`,
+          maxWidth: `${A4_PAGE_WIDTH_MM - SIDEBAR_WIDTH_MM}mm`,
+        }}
+      >
         {/* Summary */}
         {data.summary && (
           <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
@@ -990,6 +1055,862 @@ export function ResumePreview({
     </div>
   );
 
+  const renderOrbitLayout = () => (
+    <div
+      className="bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="p-6 pb-4" style={{ borderBottom: `2px solid ${activeColor}` }}>
+        <div className="flex items-start gap-4">
+          <div className="flex items-center gap-3">
+            {showPhoto && data.contact.photoUrl && (
+              <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-zinc-200 shrink-0">
+                <Image src={data.contact.photoUrl} alt="Profile" width={64} height={64} className="object-cover w-full h-full" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-3xl font-bold text-zinc-900">
+                {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+              </h1>
+              {data.contact.desiredJobTitle && (
+                <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>
+              )}
+              <div className="flex flex-wrap gap-3 mt-2 text-sm text-zinc-500">
+                {data.contact.email && <span>{data.contact.email}</span>}
+                {data.contact.phone && <span>{data.contact.phone}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5 gap-6 p-6">
+        <div className="col-span-3 space-y-4">
+          {data.summary && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Profile" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600">{data.summary}</p>
+            </div>
+          )}
+
+          {data.experiences.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Experience Orbit" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id} className="relative pl-5 border-l-2" style={{ borderColor: `${activeColor}55` }}>
+                    <span
+                      className="absolute -left-[5px] top-1 h-2 w-2 rounded-full"
+                      style={{ backgroundColor: activeColor }}
+                    />
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p className="text-zinc-600">{exp.employer || 'Company'}</p>
+                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm text-right">
+                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                      </p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.educations.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Education" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                        <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
+                        {edu.location && <p className="text-zinc-500 text-sm">{edu.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    </div>
+                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="col-span-2 space-y-4">
+          {data.skills.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Skills" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div className="flex flex-wrap gap-1">
+                {data.skills.map((skill) => (
+                  <span
+                    key={skill.id}
+                    className="px-2 py-1 rounded text-sm"
+                    style={{ backgroundColor: `${activeColor}12`, color: activeColor }}
+                  >
+                    {skill.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderAdditionalSections('bold')}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStellarLayout = () => (
+    <div
+      className="bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="px-8 pt-8 pb-5 border-b" style={{ borderColor: `${activeColor}35` }}>
+        <div className="mt-2 flex items-center gap-3">
+          {showPhoto && data.contact.photoUrl && (
+            <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-zinc-200 shrink-0">
+              <Image src={data.contact.photoUrl} alt="Profile" width={64} height={64} className="object-cover w-full h-full" />
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-zinc-900">
+              {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+            </h1>
+            {data.contact.desiredJobTitle && <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>}
+            <div className="flex flex-wrap gap-3 mt-2 text-sm text-zinc-500">
+              {data.contact.email && <span>{data.contact.email}</span>}
+              {data.contact.phone && <span>{data.contact.phone}</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5">
+        <aside className="col-span-2 p-6 border-r bg-zinc-50/80" style={{ borderColor: `${activeColor}25` }}>
+          {data.summary && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="About" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600">{data.summary}</p>
+            </div>
+          )}
+
+          {data.skills.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Top Skills" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div className="space-y-1">
+                {data.skills.map((skill) => (
+                  <p key={skill.id} className="text-zinc-700">
+                    {skill.name}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        <section className="col-span-3 p-6">
+          {data.experiences.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Experience" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p className="text-zinc-600">{exp.employer || 'Company'}</p>
+                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm">
+                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                      </p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.educations.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Education" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id}>
+                    <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                    <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
+                    <p className="text-zinc-500 text-sm">
+                      {edu.startDate || 'Start'} - {edu.endDate || 'End'}
+                    </p>
+                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderAdditionalSections('classic')}
+        </section>
+      </div>
+    </div>
+  );
+
+  const renderAuroraLayout = () => (
+    <div
+      className="bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div
+        className="p-6 pb-5"
+        style={{
+          backgroundColor: `${activeColor}12`,
+          borderBottom: `1px solid ${activeColor}40`
+        }}
+      >
+        <div className="flex items-center gap-4">
+          {showPhoto && data.contact.photoUrl && (
+            <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-zinc-200 shrink-0">
+              <Image src={data.contact.photoUrl} alt="Profile" width={64} height={64} className="object-cover w-full h-full" />
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-zinc-900">
+              {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+            </h1>
+            {data.contact.desiredJobTitle && <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>}
+            <div className="flex flex-wrap gap-3 mt-2 text-sm text-zinc-500">
+              {data.contact.email && <span>{data.contact.email}</span>}
+              {data.contact.phone && <span>{data.contact.phone}</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5">
+        <div className="col-span-3 p-6">
+          {data.summary && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Profile" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600">{data.summary}</p>
+            </div>
+          )}
+
+          {data.experiences.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Experience" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p className="text-zinc-600">{exp.employer || 'Company'}</p>
+                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm">
+                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                      </p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.educations.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Education" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id}>
+                    <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                    <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
+                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderFinalizeTailSections('sidebar')}
+        </div>
+
+        <aside className="col-span-2 p-6 space-y-4" style={{ backgroundColor: `${activeColor}10` }}>
+          <div>
+            <p className="font-bold uppercase tracking-wide text-sm mb-2" style={{ color: activeColor }}>
+              Contact
+            </p>
+            <div className="space-y-1 text-zinc-700">
+              {data.contact.email && <p>{data.contact.email}</p>}
+              {data.contact.phone && <p>{data.contact.phone}</p>}
+            </div>
+          </div>
+
+          {data.skills.length > 0 && (
+            <div>
+              <p className="font-bold uppercase tracking-wide text-sm mb-2" style={{ color: activeColor }}>
+                Skills
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {data.skills.map((skill) => (
+                  <span key={skill.id} className="px-2 py-1 rounded text-sm bg-white/70 text-zinc-700">
+                    {skill.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.finalize.languages.length > 0 && (
+            <div>
+              <p className="font-bold uppercase tracking-wide text-sm mb-2" style={{ color: activeColor }}>
+                Languages
+              </p>
+              <div className="space-y-1 text-zinc-700">
+                {data.finalize.languages.map((lang) => (
+                  <p key={lang.id}>
+                    {lang.name} - {lang.proficiency}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.finalize.certifications.length > 0 && (
+            <div>
+              <p className="font-bold uppercase tracking-wide text-sm mb-2" style={{ color: activeColor }}>
+                Certifications
+              </p>
+              <div className="space-y-1 text-zinc-700">
+                {data.finalize.certifications.map((cert) => (
+                  <p key={cert.id}>
+                    {cert.name} - {cert.issuer}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.finalize.websites.length > 0 && (
+            <div>
+              <p className="font-bold uppercase tracking-wide text-sm mb-2" style={{ color: activeColor }}>
+                Links
+              </p>
+              <div className="space-y-1">
+                {data.finalize.websites.map((site) => (
+                  <p key={site.id} className="text-zinc-700 break-words">
+                    {site.label}: {site.url}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+
+  const renderZenithLayout = () => (
+    <div
+      className="p-8 bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="text-center border-y py-4" style={{ borderColor: `${activeColor}50`, marginBottom: `${designOptions.sectionSpacing}px` }}>
+        {showPhoto && data.contact.photoUrl && (
+          <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border-2 border-zinc-200 mb-3">
+            <Image src={data.contact.photoUrl} alt="Profile" width={80} height={80} className="object-cover w-full h-full" />
+          </div>
+        )}
+        <h1 className="text-3xl font-bold" style={{ color: activeColor }}>
+          {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+        </h1>
+        {data.contact.desiredJobTitle && (
+          <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>
+        )}
+        <div className="flex flex-wrap justify-center gap-3 mt-2 text-sm text-zinc-500">
+          {data.contact.email && <span>{data.contact.email}</span>}
+          {data.contact.phone && <span>{data.contact.phone}</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+        <div className="rounded border p-3 text-center" style={{ borderColor: `${activeColor}55` }}>
+          <p className="text-xs uppercase text-zinc-500">Experience</p>
+          <p className="text-xl font-bold" style={{ color: activeColor }}>{Math.max(1, data.experiences.length)}</p>
+          <p className="text-xs text-zinc-500">Roles</p>
+        </div>
+        <div className="rounded border p-3 text-center" style={{ borderColor: `${activeColor}55` }}>
+          <p className="text-xs uppercase text-zinc-500">Skills</p>
+          <p className="text-xl font-bold" style={{ color: activeColor }}>{Math.max(1, data.skills.length)}</p>
+          <p className="text-xs text-zinc-500">Competencies</p>
+        </div>
+        <div className="rounded border p-3 text-center" style={{ borderColor: `${activeColor}55` }}>
+          <p className="text-xs uppercase text-zinc-500">Education</p>
+          <p className="text-xl font-bold" style={{ color: activeColor }}>{Math.max(1, data.educations.length)}</p>
+          <p className="text-xs text-zinc-500">Institutions</p>
+        </div>
+      </div>
+
+      {data.summary && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Executive Summary" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <p className="text-zinc-600 italic border-l-4 pl-4" style={{ borderColor: activeColor }}>
+            {data.summary}
+          </p>
+        </div>
+      )}
+
+      {data.experiences.length > 0 && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Professional Experience" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+            {data.experiences.map((exp) => (
+              <div key={exp.id}>
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <p className="font-bold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                    <p className="text-zinc-700">{exp.employer || 'Company'}</p>
+                    {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                  </div>
+                  <p className="text-zinc-500 text-sm">
+                    {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                  </p>
+                </div>
+                {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.educations.length > 0 && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Education" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+            {data.educations.map((edu) => (
+              <div key={edu.id}>
+                <p className="font-semibold text-zinc-900">{edu.schoolName || 'School'}</p>
+                <p style={{ color: activeColor }}>{edu.degree || 'Degree'}</p>
+                <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.skills.length > 0 && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Core Competencies" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <div className="grid grid-cols-2 gap-2">
+            {data.skills.map((skill) => (
+              <div key={skill.id} className="rounded border px-3 py-1 text-center" style={{ borderColor: `${activeColor}50`, color: activeColor }}>
+                {skill.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {renderAdditionalSections('executive')}
+    </div>
+  );
+
+  const renderPulseLayout = () => (
+    <div
+      className="bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="p-6 text-white" style={{ backgroundColor: activeColor }}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold">
+              {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+            </h1>
+            {data.contact.desiredJobTitle && (
+              <p className="mt-1 text-white/85">{data.contact.desiredJobTitle}</p>
+            )}
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/80">Pulse</span>
+        </div>
+        <div className="flex flex-wrap gap-3 mt-3 text-sm text-white/80">
+          {data.contact.email && <span>{data.contact.email}</span>}
+          {data.contact.phone && <span>{data.contact.phone}</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5 gap-6 p-6">
+        <div className="col-span-3">
+          {data.summary && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Summary" layout="modern" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600">{data.summary}</p>
+            </div>
+          )}
+
+          {data.experiences.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Experience" layout="modern" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id} className="rounded border p-3" style={{ borderColor: `${activeColor}25` }}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p className="text-zinc-600">{exp.employer || 'Company'}</p>
+                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm">
+                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                      </p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-2 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="col-span-2 space-y-4">
+          {data.educations.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Education" layout="modern" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id}>
+                    <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                    <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
+                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.skills.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Skills" layout="modern" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div className="flex flex-wrap gap-1">
+                {data.skills.map((skill) => (
+                  <span
+                    key={skill.id}
+                    className="px-2 py-1 rounded text-sm"
+                    style={{ backgroundColor: `${activeColor}12`, color: activeColor }}
+                  >
+                    {skill.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderAdditionalSections('modern')}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderClassicTemplateLayout = () => (
+    <div
+      className="p-8 bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="border-b-2 border-zinc-900 pb-3" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+        <div className="flex items-center gap-3">
+          {showPhoto && data.contact.photoUrl && (
+            <div className="w-16 h-16 rounded-full overflow-hidden border border-zinc-300 shrink-0">
+              <Image src={data.contact.photoUrl} alt="Profile" width={64} height={64} className="object-cover w-full h-full" />
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900">
+              {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+            </h1>
+            {data.contact.desiredJobTitle && (
+              <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3 mt-2 text-sm text-zinc-500">
+          {data.contact.email && <span>{data.contact.email}</span>}
+          {data.contact.phone && <span>{data.contact.phone}</span>}
+        </div>
+      </div>
+
+      {data.summary && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Summary" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <p className="text-zinc-700">{data.summary}</p>
+        </div>
+      )}
+
+      {data.experiences.length > 0 && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Experience" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+            {data.experiences.map((exp) => (
+              <div key={exp.id}>
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                    <p className="text-zinc-700">{exp.employer || 'Company'}{exp.location ? `, ${exp.location}` : ''}</p>
+                  </div>
+                  <p className="text-zinc-500 text-sm">
+                    {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                  </p>
+                </div>
+                {exp.description && <p className="text-zinc-700 mt-1 whitespace-pre-line">{exp.description}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.educations.length > 0 && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Education" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+            {data.educations.map((edu) => (
+              <div key={edu.id} className="flex justify-between items-start gap-3">
+                <div>
+                  <p className="font-semibold text-zinc-900">{edu.schoolName || 'School'}</p>
+                  <p className="text-zinc-700">{edu.degree || 'Degree'}</p>
+                </div>
+                <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.skills.length > 0 && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Skills" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <p className="text-zinc-700">{data.skills.map((skill) => skill.name).join(', ')}</p>
+        </div>
+      )}
+
+      {renderAdditionalSections('harvard')}
+    </div>
+  );
+
+  const renderMetroLayout = () => (
+    <div
+      className="bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="grid grid-cols-6">
+        <aside className="col-span-2 p-6 text-white" style={{ backgroundColor: activeColor }}>
+          {showPhoto && data.contact.photoUrl && (
+            <div className="w-20 h-20 rounded-md overflow-hidden bg-white/20 mb-4">
+              <Image src={data.contact.photoUrl} alt="Profile" width={80} height={80} className="object-cover w-full h-full" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold leading-tight">
+            {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+          </h1>
+          {data.contact.desiredJobTitle && <p className="text-white/80 mt-2">{data.contact.desiredJobTitle}</p>}
+
+          <div className="mt-5 space-y-1 text-sm text-white/85">
+            {data.contact.email && <p>{data.contact.email}</p>}
+            {data.contact.phone && <p>{data.contact.phone}</p>}
+          </div>
+
+          {data.skills.length > 0 && (
+            <div className="mt-6">
+              <p className="font-bold uppercase tracking-wide text-sm border-b border-white/30 pb-1 mb-2">
+                Skills
+              </p>
+              <div className="space-y-1">
+                {data.skills.map((skill) => (
+                  <p key={skill.id} className="text-white/90">
+                    {skill.name}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        <section className="col-span-4 p-6">
+          {data.summary && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Summary" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600">{data.summary}</p>
+            </div>
+          )}
+
+          {data.experiences.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Experience" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id} className="border-l-2 pl-4" style={{ borderColor: `${activeColor}55` }}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p className="text-zinc-600">{exp.employer || 'Company'}</p>
+                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm">
+                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                      </p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.educations.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Education" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id}>
+                    <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                    <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
+                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderAdditionalSections('minimal')}
+        </section>
+      </div>
+    </div>
+  );
+
+  const renderBoldTemplateLayout = () => (
+    <div
+      className="bg-white"
+      style={{
+        fontSize: `${designOptions.fontSize}px`,
+        lineHeight: designOptions.lineSpacing
+      }}
+    >
+      <div className="grid grid-cols-5">
+        <aside className="col-span-2 p-6 text-white" style={{ backgroundColor: '#111827' }}>
+          <p className="text-xs uppercase tracking-[0.25em]" style={{ color: activeColor }}>Bold</p>
+          <h1 className="text-3xl font-bold mt-2 leading-tight">
+            {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
+          </h1>
+          {data.contact.desiredJobTitle && (
+            <p className="text-white/80 mt-2">{data.contact.desiredJobTitle}</p>
+          )}
+
+          <div className="mt-4 space-y-1 text-white/85">
+            {data.contact.email && <p>{data.contact.email}</p>}
+            {data.contact.phone && <p>{data.contact.phone}</p>}
+          </div>
+
+          {data.skills.length > 0 && (
+            <div className="mt-6">
+              <p className="font-bold uppercase tracking-wide text-sm border-b border-white/30 pb-1 mb-2">
+                Skills
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {data.skills.map((skill) => (
+                  <span
+                    key={skill.id}
+                    className="px-2 py-1 rounded text-sm"
+                    style={{ backgroundColor: `${activeColor}30`, color: '#ffffff' }}
+                  >
+                    {skill.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        <main className="col-span-3 p-6">
+          {data.summary && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Profile" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600">{data.summary}</p>
+            </div>
+          )}
+
+          {data.experiences.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Experience" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id} className="rounded border p-3" style={{ borderColor: `${activeColor}35` }}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p style={{ color: activeColor }}>{exp.employer || 'Company'}</p>
+                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                      </div>
+                      <p className="text-zinc-500 text-sm">
+                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                      </p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.educations.length > 0 && (
+            <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Education" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id} className="rounded border p-3" style={{ borderColor: `${activeColor}35` }}>
+                    <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                    <p style={{ color: activeColor }}>{edu.schoolName || 'School'}</p>
+                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderAdditionalSections('bold')}
+        </main>
+      </div>
+    </div>
+  );
+
   // Helper function to render additional sections (languages, certifications, etc.)
   const renderAdditionalSections = (layoutType: TemplateLayout) => (
     <>
@@ -1145,45 +2066,34 @@ export function ResumePreview({
         {/* For preview, we'll clip and transform to show the appropriate page portion */}
         <div 
           data-pdf-content
+          ref={pdfContentRef}
           style={{
             // For preview mode: use transform to scroll to the correct page
-            transform: !renderAllPages ? `translateY(-${(currentPage - 1) * 297}mm)` : 'none',
+            transform: !renderAllPages ? `translateY(-${(visiblePage - 1) * A4_PAGE_HEIGHT_MM}mm)` : 'none',
             transition: !renderAllPages ? 'transform 0.3s ease' : 'none',
             height: renderAllPages ? 'auto' : 'auto',
-            minHeight: renderAllPages ? 'auto' : `${Math.ceil((hasSecondPageContent ? 2 : 1)) * 297}mm`,
+            minHeight: `${Math.max(1, totalPages) * A4_PAGE_HEIGHT_MM}mm`,
             position: renderAllPages ? 'relative' : 'relative',
-            width: '100%'
+            width: '100%',
+            background: isSidebarLayout
+              ? `linear-gradient(to right, ${activeColor} 0mm, ${activeColor} ${SIDEBAR_WIDTH_MM}mm, #ffffff ${SIDEBAR_WIDTH_MM}mm, #ffffff ${A4_PAGE_WIDTH_MM}mm)`
+              : undefined
           }}
         >
           {renderResumeContent()}
         </div>
         
         {/* Page break indicators for preview mode */}
-        {!renderAllPages && (
-          <>
-            {/* Page 1 break line */}
-            <div 
-              data-page-break-indicator
-              className="absolute left-0 right-0 h-0.5 bg-gray-400 pointer-events-none"
-              style={{ 
-                top: '297mm',
-                zIndex: 10,
-                boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
-                display: currentPage === 1 ? 'block' : 'none'
-              }}
-            />
-            {/* Page 2 break line (if content extends beyond 2 pages) */}
-            <div 
-              data-page-break-indicator
-              className="absolute left-0 right-0 h-0.5 bg-gray-400 pointer-events-none"
-              style={{ 
-                top: '594mm',
-                zIndex: 10,
-                boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
-                display: currentPage === 2 ? 'block' : 'none'
-              }}
-            />
-          </>
+        {!renderAllPages && totalPages > 1 && visiblePage < totalPages && (
+          <div 
+            data-page-break-indicator
+            className="absolute left-0 right-0 h-0.5 bg-gray-400 pointer-events-none"
+            style={{ 
+              top: `${visiblePage * A4_PAGE_HEIGHT_MM}mm`,
+              zIndex: 10,
+              boxShadow: '0 -2px 4px rgba(0,0,0,0.1)'
+            }}
+          />
         )}
       </div>
 
@@ -1200,20 +2110,20 @@ export function ResumePreview({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(1, visiblePage - 1))}
+                  disabled={visiblePage === 1}
                   className="h-7 w-7 p-0"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="font-medium text-xs">
-                  {currentPage} / {totalPages}
+                  {visiblePage} / {totalPages}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentPage(2)}
-                  disabled={currentPage === 2}
+                  onClick={() => setCurrentPage(Math.min(totalPages, visiblePage + 1))}
+                  disabled={visiblePage >= totalPages}
                   className="h-7 w-7 p-0"
                 >
                   <ChevronRight className="h-4 w-4" />

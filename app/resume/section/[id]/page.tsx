@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/sheet";
 import { StepIndicator } from "@/components/resume/step-indicator";
 import { ResumePreview } from "@/components/resume/resume-preview";
-import { DownloadDialog } from "@/components/resume/download-dialog";
 import {
   ContactsForm,
   ExperienceForm,
@@ -31,7 +30,7 @@ import {
   createEmptyResumeData,
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
-import { ArrowLeft, ArrowRight, Download, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function ResumeSectionDynamicPage() {
   const router = useRouter();
@@ -42,7 +41,6 @@ export default function ResumeSectionDynamicPage() {
   const [completedSteps, setCompletedSteps] = useState<ResumeStep[]>([]);
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
   const [showPreview, setShowPreview] = useState(true);
-  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [showPhoto, setShowPhoto] = useState(false);
@@ -136,6 +134,11 @@ export default function ResumeSectionDynamicPage() {
     setCurrentStep(step);
   };
 
+  const handleShowPhotoChange = (value: boolean) => {
+    setShowPhoto(value);
+    localStorage.setItem("showPhoto", JSON.stringify(value));
+  };
+
   const handleDataUpdate = (updates: Partial<ResumeData>) => {
     const newData = { ...resumeData, ...updates };
     setResumeData(newData);
@@ -157,6 +160,7 @@ export default function ResumeSectionDynamicPage() {
           <ContactsForm
             data={resumeData.contact}
             showPhoto={showPhoto}
+            onShowPhotoChange={handleShowPhotoChange}
             onChange={(contact) => handleDataUpdate({ contact })}
           />
         );
@@ -237,15 +241,6 @@ export default function ResumeSectionDynamicPage() {
                 <span className="ml-2">Show Preview</span>
               </>
             )}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowDownloadDialog(true)}
-            className="hidden sm:flex"
-          >
-            <Download className="h-4 w-4" />
-            <span className="ml-2">Download</span>
           </Button>
         </div>
       </header>
@@ -342,13 +337,6 @@ export default function ResumeSectionDynamicPage() {
           </SheetContent>
         </Sheet>
       </div>
-
-      {/* Download Dialog */}
-      <DownloadDialog
-        data={resumeData}
-        isOpen={showDownloadDialog}
-        onClose={() => setShowDownloadDialog(false)}
-      />
     </div>
   );
 }

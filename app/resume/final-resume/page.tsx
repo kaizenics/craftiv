@@ -100,6 +100,7 @@ export default function FinalResumePage() {
   const [selectedColor, setSelectedColor] = useState<string>("#1e3a5f");
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
+  const [showPhoto, setShowPhoto] = useState(false);
 
   // Get auth session
   const { data: session } = authClient.useSession();
@@ -112,6 +113,7 @@ export default function FinalResumePage() {
     const savedData = localStorage.getItem("resumeData");
     const templateId = localStorage.getItem("selectedTemplateId");
     const resumeId = localStorage.getItem("currentResumeId");
+    const savedShowPhoto = localStorage.getItem("showPhoto");
 
     if (!savedData || !templateId) {
       router.push("/resume/templates");
@@ -121,6 +123,14 @@ export default function FinalResumePage() {
     // Set resume ID if exists
     if (resumeId) {
       setCurrentResumeId(resumeId);
+    }
+
+    if (savedShowPhoto) {
+      try {
+        setShowPhoto(JSON.parse(savedShowPhoto));
+      } catch {
+        setShowPhoto(false);
+      }
     }
 
     try {
@@ -795,6 +805,7 @@ export default function FinalResumePage() {
               data={resumeData}
               designOptions={designOptions}
               customColor={selectedColor}
+              showPhoto={showPhoto}
               showScore={false}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
@@ -824,6 +835,7 @@ export default function FinalResumePage() {
                 data={resumeData}
                 designOptions={designOptions}
                 customColor={selectedColor}
+                showPhoto={showPhoto}
                 showScore={false}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
@@ -859,6 +871,7 @@ export default function FinalResumePage() {
         designOptions={designOptions}
         customFileName={resumeName}
         customColor={selectedColor}
+        showPhoto={showPhoto}
         onDownloadComplete={handleDownloadComplete}
       />
     </div>

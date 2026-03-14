@@ -9,8 +9,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { templates, sampleResumeData } from "@/lib/data/templates";
-import { TemplatePreviewRenderer } from "@/components/resume/template-preview-renderer";
+import { templates } from "@/lib/data/templates";
+import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 
 const features = [
   {
@@ -35,18 +35,15 @@ const features = [
   },
 ];
 
-const sampleData = sampleResumeData;
-
 function ResumeTemplateCard({ template }: { template: typeof templates[0] }) {
   return (
     <div className="group cursor-pointer">
       <div className="relative aspect-3/4 rounded-xl border border-zinc-200 shadow-lg overflow-hidden transition-all duration-300 group-hover:shadow-2xl group-hover:scale-[1.02] bg-white">
         {/* Resume Template Preview */}
         <div className="absolute inset-0">
-          <TemplatePreviewRenderer 
-            layout={template.layout}
+          <TemplateLivePreview
+            templateId={template.id}
             color={template.primaryColor}
-            sampleData={sampleData}
           />
         </div>
         

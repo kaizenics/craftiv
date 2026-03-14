@@ -186,6 +186,11 @@ export default function ResumeSectionPage() {
     setCurrentStep(step);
   };
 
+  const handleShowPhotoChange = (value: boolean) => {
+    setShowPhoto(value);
+    localStorage.setItem("showPhoto", JSON.stringify(value));
+  };
+
   const renderCurrentForm = () => {
     switch (currentStep) {
       case "contacts":
@@ -194,6 +199,7 @@ export default function ResumeSectionPage() {
             data={resumeData.contact}
             onChange={(contact) => setResumeData({ ...resumeData, contact })}
             showPhoto={showPhoto}
+            onShowPhotoChange={handleShowPhotoChange}
           />
         );
       case "experience":

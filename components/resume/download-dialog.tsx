@@ -30,12 +30,13 @@ interface DownloadDialogProps {
   designOptions?: DesignOptions;
   customFileName?: string;
   customColor?: string;
+  showPhoto?: boolean;
   onDownloadComplete?: () => void;
 }
 
 type DownloadFormat = 'pdf' | 'docx';
 
-export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultDesignOptions, customFileName, customColor, onDownloadComplete }: DownloadDialogProps) {
+export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultDesignOptions, customFileName, customColor, showPhoto = false, onDownloadComplete }: DownloadDialogProps) {
   const router = useRouter();
   const [format, setFormat] = useState<DownloadFormat>('pdf');
   const [isDownloading, setIsDownloading] = useState(false);
@@ -123,6 +124,7 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
             data={data}
             designOptions={designOptions}
             customColor={customColor}
+            showPhoto={showPhoto}
             showScore={false}
             showFooter={false}
             plain

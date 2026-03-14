@@ -5,6 +5,7 @@ import { ContactInfo } from "@/lib/types/resume";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Upload, X } from "lucide-react";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
@@ -22,12 +23,14 @@ interface ContactsFormProps {
   data: ContactInfo;
   onChange: (data: ContactInfo) => void;
   showPhoto?: boolean;
+  onShowPhotoChange?: (showPhoto: boolean) => void;
 }
 
 export function ContactsForm({
   data,
   onChange,
   showPhoto = false,
+  onShowPhotoChange,
 }: ContactsFormProps) {
   const [uploadError, setUploadError] = useState("");
   const [showCropDialog, setShowCropDialog] = useState(false);
@@ -165,6 +168,19 @@ export function ContactsForm({
           Let employers know how to reach you. This information will appear at
           the top of your resume.
         </p>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">Show Profile Photo</p>
+          <p className="text-xs text-muted-foreground">
+            Turn this on to upload and display a photo in your resume.
+          </p>
+        </div>
+        <Switch
+          checked={showPhoto}
+          onCheckedChange={(checked) => onShowPhotoChange?.(checked)}
+        />
       </div>
 
       {showPhoto && (
