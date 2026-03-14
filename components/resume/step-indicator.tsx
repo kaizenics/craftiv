@@ -15,8 +15,18 @@ export function StepIndicator({ currentStep, completedSteps, onStepClick }: Step
 
   return (
     <div className="w-full">
-      {/* Desktop view */}
-      <div className="hidden md:flex items-center justify-between relative">
+      {/* Shared stepper layout (desktop + mobile) */}
+      <div className="mb-3 md:hidden flex items-center justify-between gap-2">
+        <span className="text-sm font-medium whitespace-nowrap">
+          Step {currentIndex + 1} of {RESUME_STEPS.length}
+        </span>
+        <span className="max-w-[45%] truncate text-right text-sm text-muted-foreground">
+          {RESUME_STEPS[currentIndex].label}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto pb-1">
+        <div className="relative flex min-w-[620px] items-center justify-between">
         {/* Progress line */}
         <div className="absolute top-4 left-0 right-0 h-0.5 bg-border">
           <div
@@ -69,47 +79,6 @@ export function StepIndicator({ currentStep, completedSteps, onStepClick }: Step
             </button>
           );
         })}
-      </div>
-
-      {/* Mobile view */}
-      <div className="md:hidden">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">
-            Step {currentIndex + 1} of {RESUME_STEPS.length}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {RESUME_STEPS[currentIndex].label}
-          </span>
-        </div>
-        <div className="h-2 bg-border rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{
-              width: `${((currentIndex + 1) / RESUME_STEPS.length) * 100}%`,
-            }}
-          />
-        </div>
-        <div className="flex justify-between mt-2">
-          {RESUME_STEPS.map((step, index) => (
-            <button
-              key={step.id}
-              onClick={() => onStepClick(step.id)}
-              className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs',
-                index === currentIndex
-                  ? 'bg-primary text-primary-foreground'
-                  : index < currentIndex || completedSteps.includes(step.id)
-                  ? 'bg-primary/20 text-primary'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {completedSteps.includes(step.id) ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                index + 1
-              )}
-            </button>
-          ))}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { MonthPicker } from './month-picker';
 
 interface ExperienceFormProps {
   data: Experience[];
@@ -146,11 +147,10 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Input
-                placeholder="MM/YYYY"
+              <MonthPicker
                 value={experience.startDate}
-                onChange={(e) =>
-                  updateExperience(experience.id, 'startDate', e.target.value)
+                onChange={(value) =>
+                  updateExperience(experience.id, 'startDate', value)
                 }
               />
             </div>
@@ -168,11 +168,10 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
                   <span className="text-sm text-muted-foreground">Current job</span>
                 </div>
               </div>
-              <Input
-                placeholder="MM/YYYY"
+              <MonthPicker
                 value={experience.endDate}
-                onChange={(e) =>
-                  updateExperience(experience.id, 'endDate', e.target.value)
+                onChange={(value) =>
+                  updateExperience(experience.id, 'endDate', value)
                 }
                 disabled={experience.isCurrentJob}
               />

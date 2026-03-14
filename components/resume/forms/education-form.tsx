@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { MonthPicker } from './month-picker';
 
 interface EducationFormProps {
   data: Education[];
@@ -144,22 +145,20 @@ export function EducationForm({ data, onChange }: EducationFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Input
-                placeholder="MM/YYYY"
+              <MonthPicker
                 value={education.startDate}
-                onChange={(e) =>
-                  updateEducation(education.id, 'startDate', e.target.value)
+                onChange={(value) =>
+                  updateEducation(education.id, 'startDate', value)
                 }
               />
             </div>
 
             <div className="space-y-2">
               <Label>End Date (or Expected)</Label>
-              <Input
-                placeholder="MM/YYYY"
+              <MonthPicker
                 value={education.endDate}
-                onChange={(e) =>
-                  updateEducation(education.id, 'endDate', e.target.value)
+                onChange={(value) =>
+                  updateEducation(education.id, 'endDate', value)
                 }
               />
             </div>
