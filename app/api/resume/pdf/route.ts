@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return new NextResponse(pdf, {
+    const pdfBytes = new Uint8Array(pdf);
+
+    return new NextResponse(pdfBytes, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -67,4 +69,5 @@ export async function POST(request: NextRequest) {
     }
   }
 }
+
 
