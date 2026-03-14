@@ -25,7 +25,7 @@ export function Hero() {
             >
               Professional resumes.{" "}
               <span className="text-zinc-900 dark:text-white">
-                Completely free.
+                Built to get interviews.
               </span>
             </motion.h1>
 
@@ -36,9 +36,9 @@ export function Hero() {
               transition={{ delay: 0.4 }}
               className="mt-4 sm:mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-zinc-600 dark:text-zinc-400"
             >
-              Build professional resumes that get you noticed by hiring
-              managers. Simple, powerful tools to accelerate your career
-              success.
+              Create standout, ATS-friendly resumes in minutes with tools
+              designed to highlight your strengths and help you land more
+              interview calls.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -71,7 +71,7 @@ export function Hero() {
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                 <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                  No Credit Card
+                  Easy to Customize
                 </span>
               </div>
               <div className="flex items-center gap-2">
