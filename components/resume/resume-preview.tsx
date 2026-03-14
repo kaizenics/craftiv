@@ -1,6 +1,6 @@
 'use client';
 
-import { ResumeData, ResumeTemplate, TemplateLayout } from '@/lib/types/resume';
+import { ResumeData, TemplateLayout } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -428,6 +428,8 @@ export function ResumePreview({
               </div>
             </div>
           )}
+
+          {renderFinalizeTailSections('modern')}
         </div>
       </div>
     </div>
@@ -436,14 +438,16 @@ export function ResumePreview({
   // Sidebar Layout - Left sidebar with contact/skills, right content
   const renderSidebarLayout = () => (
     <div
-      className="flex min-h-150"
+      className="flex items-stretch"
       style={{ 
         fontSize: `${designOptions.fontSize}px`,
-        lineHeight: designOptions.lineSpacing
+        lineHeight: designOptions.lineSpacing,
+        minHeight: '297mm',
+        background: `linear-gradient(to right, ${activeColor} 0%, ${activeColor} 33.333%, #ffffff 33.333%, #ffffff 100%)`
       }}
     >
       {/* Left Sidebar */}
-      <div className="w-1/3 p-6 text-white" style={{ backgroundColor: activeColor }}>
+      <div className="w-1/3 self-stretch p-6 text-white">
         {/* Profile Avatar */}
         {showPhoto && data.contact.photoUrl ? (
           <div className="w-20 h-20 mx-auto rounded-full overflow-hidden bg-white/30 mb-4">
@@ -1030,26 +1034,18 @@ export function ResumePreview({
           </div>
         </div>
       )}
+
+      {renderFinalizeTailSections(layoutType)}
     </>
   );
 
-  // Render page 2 content (additional sections)
-  // When renderAllPages is true (PDF export), we render without min-height for continuous flow
-  const renderPage2Content = () => (
-    <div
-      className={cn('p-8', !renderAllPages && 'min-h-150')}
-      style={{ 
-        borderTop: layout === 'classic' && !renderAllPages ? `4px solid ${activeColor}` : undefined,
-        backgroundColor: layout === 'sidebar' ? undefined : 'white',
-        fontSize: `${designOptions.fontSize}px`,
-        lineHeight: designOptions.lineSpacing
-      }}
-    >
-
+  // Helper function to render awards, references, hobbies, and custom sections
+  const renderFinalizeTailSections = (layoutType: TemplateLayout) => (
+    <>
       {/* Awards & Honors */}
       {data.finalize.awards.length > 0 && (
         <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Awards & Honors" layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <SectionHeader title="Awards & Honors" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {data.finalize.awards.map((award) => (
               <p key={award.id}>
@@ -1063,7 +1059,7 @@ export function ResumePreview({
       {/* References */}
       {data.finalize.references.length > 0 && (
         <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="References" layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <SectionHeader title="References" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
             {data.finalize.references.map((ref) => (
               <div key={ref.id}>
@@ -1083,7 +1079,7 @@ export function ResumePreview({
       {/* Hobbies & Interests */}
       {data.finalize.hobbies.length > 0 && (
         <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Hobbies & Interests" layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <SectionHeader title="Hobbies & Interests" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
           <div className="flex flex-wrap gap-2">
             {data.finalize.hobbies.map((hobby) => (
               <span key={hobby.id} className="bg-gray-100 px-2 py-1 rounded">
@@ -1097,13 +1093,12 @@ export function ResumePreview({
       {/* Custom Sections */}
       {data.finalize.customSections.map((section) => (
         <div key={section.id} style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title={section.sectionName} layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <SectionHeader title={section.sectionName} layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
           <p className="text-gray-600">{section.description}</p>
         </div>
       ))}
-    </div>
+    </>
   );
-
   return (
     <div 
       data-resume-preview 
@@ -1161,78 +1156,6 @@ export function ResumePreview({
           }}
         >
           {renderResumeContent()}
-          {/* Always render additional sections if they exist - let natural page break handle splitting */}
-          {(data.finalize.awards.length > 0 || 
-            data.finalize.references.length > 0 || 
-            data.finalize.hobbies.length > 0 || 
-            data.finalize.customSections.length > 0) && (
-            <div 
-              className="px-8 pb-8"
-              style={{ 
-                backgroundColor: 'white',
-                fontSize: `${designOptions.fontSize}px`,
-                lineHeight: designOptions.lineSpacing,
-                marginTop: 0, // Ensure no gap between main content and additional sections
-                paddingTop: 0 // No top padding since it flows directly after main content
-              }}
-            >
-              {/* Awards & Honors */}
-              {data.finalize.awards.length > 0 && (
-                <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-                  <SectionHeader title="Awards & Honors" layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {data.finalize.awards.map((award) => (
-                      <p key={award.id}>
-                        {award.title} – {award.issuer} ({award.date})
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* References */}
-              {data.finalize.references.length > 0 && (
-                <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-                  <SectionHeader title="References" layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-                    {data.finalize.references.map((ref) => (
-                      <div key={ref.id}>
-                        <p className="font-semibold">{ref.name}</p>
-                        <p className="text-gray-600">
-                          {ref.position}{ref.company ? `, ${ref.company}` : ''}
-                        </p>
-                        <p className="text-gray-500">
-                          {ref.email} {ref.phone && `| ${ref.phone}`}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Hobbies & Interests */}
-              {data.finalize.hobbies.length > 0 && (
-                <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-                  <SectionHeader title="Hobbies & Interests" layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
-                  <div className="flex flex-wrap gap-2">
-                    {data.finalize.hobbies.map((hobby) => (
-                      <span key={hobby.id} className="bg-gray-100 px-2 py-1 rounded">
-                        {hobby.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Custom Sections */}
-              {data.finalize.customSections.map((section) => (
-                <div key={section.id} style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-                  <SectionHeader title={section.sectionName} layout={layout} color={activeColor} spacing={designOptions.paragraphSpacing} />
-                  <p className="text-gray-600">{section.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
         
         {/* Page break indicators for preview mode */}
@@ -1350,3 +1273,4 @@ function calculateScore(data: ResumeData): number {
 
   return Math.min(score, maxScore);
 }
+
