@@ -44,6 +44,7 @@ import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { ResumeData } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
+import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
 import {
   LayoutTemplate,
   Layers,
@@ -102,10 +103,7 @@ export default function FinalResumePage() {
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const [showPhoto, setShowPhoto] = useState(false);
 
-  // Get auth session
   const { data: session } = authClient.useSession();
-  
-  // Add tRPC mutation
   const updateResume = trpc.resume.update.useMutation();
 
   useEffect(() => {
@@ -349,6 +347,11 @@ export default function FinalResumePage() {
   const handleSignInRedirect = () => {
     setShowAuthAlert(false);
     router.push("/sign-in");
+  };
+
+  const handleResumeDataChange = (updated: ResumeData) => {
+    setResumeData(updated);
+    localStorage.setItem("resumeData", JSON.stringify(updated));
   };
 
   const sidebarTabs: {
@@ -597,7 +600,7 @@ export default function FinalResumePage() {
                   <Label>Font Family</Label>
                   <Select
                     value={designOptions.fontFamily}
-                    onValueChange={(value) =>
+                    onValueChange={(value: any) =>
                       setDesignOptions({ ...designOptions, fontFamily: value })
                     }
                   >
@@ -756,19 +759,11 @@ export default function FinalResumePage() {
 
             {/* Spell Check Tab */}
             {activeTab === "spellcheck" && (
-              <div className="space-y-4">
-                <h2 className="font-display text-xl sm:text-2xl font-bold">Spell Check</h2>
-                <div className="border-b pb-4" />
-                <div className="text-center py-8">
-                  <SpellCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Spell check feature coming soon!
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    We'll help you catch typos and grammatical errors.
-                  </p>
-                </div>
-              </div>
+              <SpellCheckPanel
+                resumeId={currentResumeId}
+                resumeData={resumeData}
+                onResumeDataChange={handleResumeDataChange}
+              />
             )}
           </div>
         </div>

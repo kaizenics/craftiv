@@ -1,15 +1,9 @@
-/**
- * Custom tRPC Hooks
- * Convenient wrappers for common tRPC operations
- */
-
 "use client";
 
 import { trpc } from "./client";
 
-/**
- * Hook for managing resumes with common operations
- */
+// ── Resume list operations ──────────────────────────────────────────────────
+
 export function useResumes() {
   const utils = trpc.useUtils();
 
@@ -50,15 +44,14 @@ export function useResumes() {
   };
 }
 
-/**
- * Hook for fetching a single resume
- */
+// ── Single resume ───────────────────────────────────────────────────────────
+
 export function useResume(id: string | null) {
   const utils = trpc.useUtils();
 
   const query = trpc.resume.getById.useQuery(
     { id: id! },
-    { enabled: !!id }
+    { enabled: !!id },
   );
 
   const update = trpc.resume.update.useMutation({
@@ -77,9 +70,8 @@ export function useResume(id: string | null) {
   };
 }
 
-/**
- * Hook for user data and stats
- */
+// ── Current user ────────────────────────────────────────────────────────────
+
 export function useCurrentUser() {
   const user = trpc.user.me.useQuery();
   const stats = trpc.user.stats.useQuery();
@@ -92,22 +84,36 @@ export function useCurrentUser() {
   };
 }
 
-/**
- * Hook for optimistic resume updates
- * Updates the UI immediately while the request is in flight
- */
+// ── AI resume improvement ───────────────────────────────────────────────────
+
+export function useResumeAI(resumeId: string) {
+  const improveSection = trpc.ai.improveSection.useMutation();
+  const improveFullResume = trpc.ai.improveFullResume.useMutation();
+
+  return {
+    improveSection: (
+      section: "summary" | "experience" | "education",
+      content: string,
+      targetRole?: string,
+    ) =>
+      improveSection.mutateAsync({ resumeId, section, content, targetRole }),
+    improveFullResume: (targetRole?: string) =>
+      improveFullResume.mutateAsync({ resumeId, targetRole }),
+    isImproving: improveSection.isPending || improveFullResume.isPending,
+    error: improveSection.error || improveFullResume.error,
+  };
+}
+
+// ── Optimistic resume update ────────────────────────────────────────────────
+
 export function useOptimisticResumeUpdate(resumeId: string) {
   const utils = trpc.useUtils();
 
   return trpc.resume.update.useMutation({
     onMutate: async (newData) => {
-      // Cancel outgoing refetches
       await utils.resume.getById.cancel({ id: resumeId });
-
-      // Snapshot the previous value
       const previousResume = utils.resume.getById.getData({ id: resumeId });
 
-      // Optimistically update to the new value
       if (previousResume) {
         utils.resume.getById.setData({ id: resumeId }, {
           ...previousResume,
@@ -117,17 +123,12 @@ export function useOptimisticResumeUpdate(resumeId: string) {
 
       return { previousResume };
     },
-    onError: (err, newData, context) => {
-      // Rollback on error
+    onError: (_err, _newData, context) => {
       if (context?.previousResume) {
-        utils.resume.getById.setData(
-          { id: resumeId },
-          context.previousResume
-        );
+        utils.resume.getById.setData({ id: resumeId }, context.previousResume);
       }
     },
     onSettled: () => {
-      // Refetch after success or error
       utils.resume.getById.invalidate({ id: resumeId });
       utils.resume.list.invalidate();
     },
