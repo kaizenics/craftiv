@@ -21,6 +21,11 @@ export const metadata: Metadata = {
   title: "BoostCV",
   description:
     "Create ATS-optimized, professionally designed resumes that land interviews. No credit card, no hidden fees—just free, forever.",
+  icons: {
+    icon: "/boostcv.png",
+    shortcut: "/boostcv.png",
+    apple: "/boostcv.png",
+  },
 };
 
 export default function RootLayout({
