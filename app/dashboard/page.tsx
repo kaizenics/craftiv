@@ -113,6 +113,7 @@ export default function Dashboard() {
                 title={resume.title}
                 updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
                 template={resume.templateId}
+                data={resume.data}
               />
             ))}
           </div>
