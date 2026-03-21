@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
+  ScanSearch,
   Settings,
   LogOut,
   Menu,
@@ -25,6 +26,11 @@ const sidebarItems = [
     name: "Documents",
     href: "/dashboard/documents",
     icon: FileText,
+  },
+  {
+    name: "ATS Checker",
+    href: "/dashboard/ats-checker",
+    icon: ScanSearch,
   },
   {
     name: "Settings",

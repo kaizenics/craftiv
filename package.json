@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "prepare": "husky"
+    "prepare": "husky",
+    "deploy": "curl -X POST https://api.vercel.com/v1/integrations/deploy/prj_ZNPwkKxqCTXsjwb2Z7y2hDHCwxBo/J7J92EOBNd"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
