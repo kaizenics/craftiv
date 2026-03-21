@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
-import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -78,71 +78,71 @@ export default function ResumeTemplatesPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [showPhoto, setShowPhoto] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [fromUpload, setFromUpload] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
   
   const createResume = trpc.resume.create.useMutation();
+  const updateResume = trpc.resume.update.useMutation();
 
-  const handleUseTemplate = async (templateId: string) => {
+  useEffect(() => {
+    if (searchParams.get("from") === "upload") {
+      const uploadedData = localStorage.getItem("uploadedResumeData");
+      if (uploadedData) {
+        setFromUpload(true);
+      }
+    }
+  }, [searchParams]);
+
+  const createAndNavigate = async (templateId: string) => {
     setIsCreating(true);
-    
+
     try {
-      // Check if user is authenticated
       if (!session?.user) {
-        // Store template selection for after sign-in
         localStorage.setItem('selectedTemplateId', templateId);
         localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
-        router.push('/sign-in?redirect=/resume/templates');
+        const redirect = fromUpload ? '/resume/templates?from=upload' : '/resume/templates';
+        router.push(`/sign-in?redirect=${encodeURIComponent(redirect)}`);
         return;
       }
 
-      // Create a new draft resume in the database
       const result = await createResume.mutateAsync({
         title: `Resume_${Date.now()}`,
-        templateId: templateId,
+        templateId,
       });
 
-      // Store resume info in localStorage
       localStorage.setItem('currentResumeId', result.id);
       localStorage.setItem('selectedTemplateId', templateId);
       localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
-      
-      // Navigate to the resume section page with the ID
-      router.push(`/resume/section/${result.id}`);
-    } catch (error) {
-      console.error('Failed to create resume:', error);
-      setIsCreating(false);
-    }
-  };
 
-  const handleChooseLater = async () => {
-    setIsCreating(true);
-    
-    try {
-      // Check if user is authenticated
-      if (!session?.user) {
-        localStorage.setItem('selectedTemplateId', 'celestial');
-        localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
-        router.push('/sign-in?redirect=/resume/templates');
-        return;
+      const uploadedRaw = localStorage.getItem("uploadedResumeData");
+      if (fromUpload && uploadedRaw) {
+        try {
+          const uploadedData = JSON.parse(uploadedRaw);
+          const resumeData = { ...uploadedData, templateId };
+
+          await updateResume.mutateAsync({
+            id: result.id,
+            data: resumeData,
+          });
+
+          localStorage.setItem("resumeData", JSON.stringify(resumeData));
+          localStorage.removeItem("uploadedResumeData");
+        } catch (e) {
+          console.error("Failed to apply uploaded resume data:", e);
+        }
       }
 
-      // Create a new draft resume with default template
-      const result = await createResume.mutateAsync({
-        title: `Resume_${Date.now()}`,
-        templateId: 'celestial',
-      });
-
-      localStorage.setItem('currentResumeId', result.id);
-      localStorage.setItem('selectedTemplateId', 'celestial');
-      localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
-      
       router.push(`/resume/section/${result.id}`);
     } catch (error) {
       console.error('Failed to create resume:', error);
       setIsCreating(false);
     }
   };
+
+  const handleUseTemplate = (templateId: string) => createAndNavigate(templateId);
+  const handleChooseLater = () => createAndNavigate('celestial');
 
   const filteredTemplates = templates.filter((template) =>
     template.category.includes(activeCategory)
@@ -160,28 +160,42 @@ export default function ResumeTemplatesPage() {
         </div>
       )}
       
+      {/* Upload success banner */}
+      {fromUpload && (
+        <div className="border-b border-emerald-200 bg-emerald-50 py-3">
+          <div className="mx-auto flex max-w-4xl items-center justify-center gap-2 px-4">
+            <Upload className="h-4 w-4 text-emerald-600" />
+            <p className="text-sm font-medium text-emerald-800">
+              Your resume was scanned successfully! Choose a template below — all your details will be pre-filled.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stepper */}
       <div className="border-b border-zinc-100 bg-white py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-4">
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white">
-              1
+              {fromUpload ? "✓" : "1"}
             </span>
-            <span className="text-sm font-medium text-zinc-900">Choose template</span>
+            <span className="text-sm font-medium text-zinc-900">{fromUpload ? "Resume uploaded" : "Choose template"}</span>
           </div>
           <div className="h-px w-8 bg-zinc-200" />
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-xs font-medium text-zinc-500">
+            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${fromUpload ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-500"}`}>
               2
             </span>
-            <span className="text-sm text-zinc-500">Enter your details</span>
+            <span className={`text-sm ${fromUpload ? "font-medium text-zinc-900" : "text-zinc-500"}`}>
+              {fromUpload ? "Choose template" : "Enter your details"}
+            </span>
           </div>
           <div className="h-px w-8 bg-zinc-200" />
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-xs font-medium text-zinc-500">
               3
             </span>
-            <span className="text-sm text-zinc-500">Download resume</span>
+            <span className="text-sm text-zinc-500">{fromUpload ? "Edit & download" : "Download resume"}</span>
           </div>
         </div>
       </div>
