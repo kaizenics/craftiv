@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload } from "lucide-react";
@@ -74,7 +74,7 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
   );
 }
 
-export default function ResumeTemplatesPage() {
+function ResumeTemplatesPageContent() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [showPhoto, setShowPhoto] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -289,3 +289,16 @@ export default function ResumeTemplatesPage() {
   );
 }
 
+export default function ResumeTemplatesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-white">
+          <Spinner className="h-8 w-8 text-zinc-400" />
+        </div>
+      }
+    >
+      <ResumeTemplatesPageContent />
+    </Suspense>
+  );
+}
