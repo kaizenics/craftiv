@@ -53,9 +53,9 @@ export function Hero() {
                   Create New Resume
                 </button>
               </Link>
-              <Link href="/resume/templates">
+              <Link href="/resume/upload">
                 <button className="inline-flex items-center justify-center rounded-xl border-2 border-zinc-200 bg-white px-6 py-3 sm:px-8 sm:py-4 text-sm sm:text-base font-semibold text-zinc-900 transition-all duration-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-900">
-                  Improve My Resume
+                  Upload My Resume
                 </button>
               </Link>
             </motion.div>
