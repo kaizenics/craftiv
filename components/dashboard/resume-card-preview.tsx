@@ -46,7 +46,8 @@ export function ResumeCardPreview({ templateId, data }: ResumeCardPreviewProps) 
     const updateScale = () => {
       const { width, height } = container.getBoundingClientRect();
       if (!width || !height) return;
-      setScale(Math.max(0.05, Math.min(width / A4_WIDTH_PX, height / A4_HEIGHT_PX)));
+      const fitScale = Math.min(width / A4_WIDTH_PX, height / A4_HEIGHT_PX);
+      setScale(Math.max(0.05, fitScale * 0.98));
     };
 
     updateScale();
@@ -56,26 +57,32 @@ export function ResumeCardPreview({ templateId, data }: ResumeCardPreviewProps) 
   }, []);
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-hidden bg-white">
+    <div ref={containerRef} className="flex h-full w-full items-start justify-center overflow-hidden bg-white">
       <div
-        className="origin-top"
+        className="relative overflow-hidden"
         style={{
-          position: 'relative',
-          left: '50%',
-          pointerEvents: 'none',
-          width: `${A4_WIDTH_PX}px`,
-          height: `${A4_HEIGHT_PX}px`,
-          transform: `translateX(-50%) scale(${scale})`,
+          pointerEvents: "none",
+          width: `${A4_WIDTH_PX * scale}px`,
+          height: `${A4_HEIGHT_PX * scale}px`,
         }}
       >
-        <ResumePreview
-          data={resumeData}
-          customColor={color}
-          showPhoto={false}
-          showScore={false}
-          showFooter={false}
-          plain
-        />
+        <div
+          style={{
+            width: `${A4_WIDTH_PX}px`,
+            height: `${A4_HEIGHT_PX}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <ResumePreview
+            data={resumeData}
+            customColor={color}
+            showPhoto={false}
+            showScore={false}
+            showFooter={false}
+            plain
+          />
+        </div>
       </div>
     </div>
   );

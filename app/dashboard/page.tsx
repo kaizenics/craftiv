@@ -1,12 +1,17 @@
 
 "use client";
 
-import { FileText, Download, Eye, Clock, Plus } from "lucide-react";
+import { ArrowRight, CircleDashed } from "lucide-react";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCard } from "@/components/dashboard/resume-card";
-import { StatsCard } from "@/components/dashboard/stats-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { TipsCard } from "@/components/dashboard/tips-card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,7 +19,34 @@ import Image from "next/image";
 export default function Dashboard() {
   // Replace mock data with real tRPC query
   const { data: resumes = [], isLoading } = trpc.resume.list.useQuery();
-  const { data: stats } = trpc.user.stats.useQuery();
+
+  const checklistItems = [
+    {
+      title: "Build your resume",
+      detail: "Choose a template and add your details.",
+      href: "/resume/templates",
+    },
+    {
+      title: "Make it ATS-friendly",
+      detail: "Use clear words and format so hiring systems can read it well.",
+      href: "/resume/upload",
+    },
+    {
+      title: "Check and improve",
+      detail: "Fix weak lines and make your resume stronger.",
+      href: "/resume/templates",
+    },
+    {
+      title: "Write a cover letter",
+      detail: "Create a simple cover letter that matches the job.",
+      href: "/resume/templates",
+    },
+    {
+      title: "Track your job applications",
+      detail: "Keep your job list in one place and apply faster.",
+      href: "/dashboard/documents",
+    },
+  ];
   
   const hasResumes = resumes.length > 0;
   
@@ -54,31 +86,38 @@ export default function Dashboard() {
 
       {/* Stats - Only show if user has resumes */}
       {hasResumes && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            title="Total Resumes"
-            value={stats?.totalResumes ?? resumes.length}
-            description="Documents created"
-            icon={FileText}
-          />
-          <StatsCard
-            title="Completed"
-            value={stats?.completedResumes ?? 0}
-            description="Ready to use"
-            icon={Download}
-          />
-          <StatsCard
-            title="Drafts"
-            value={stats?.draftResumes ?? 0}
-            description="In progress"
-            icon={Clock}
-          />
-          <StatsCard
-            title="Last Activity"
-            value={resumes[0] ? new Date(resumes[0].updatedAt).toLocaleDateString() : "N/A"}
-            description="Recent update"
-            icon={Eye}
-          />
+        <div className="w-full">
+        
+
+          <div className="w-full rounded-xl bg-card">
+            <Accordion type="single" collapsible className="space-y-3">
+              {checklistItems.map((item, index) => (
+                <AccordionItem
+                  key={item.title}
+                  value={`item-${index}`}
+                  className="overflow-hidden rounded-xl border border-border bg-background last:border-b"
+                >
+                  <AccordionTrigger className="px-4 py-3 text-base font-normal text-foreground hover:no-underline [&>svg]:text-muted-foreground">
+                    <span className="flex items-center gap-3 leading-none">
+                      <CircleDashed className="h-5 w-5 text-amber-500" />
+                      <span>{item.title}</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pt-0 pb-4">
+                    <Link
+                      href={item.href}
+                      className="flex items-center justify-between rounded-lg  bg-amber-50 px-4 py-3 transition-colors"
+                    >
+                      <p className="text-sm text-slate-700">{item.detail}</p>
+                      <span className="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-300 text-amber-800">
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </Link>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </div>
       )}
 

@@ -89,7 +89,7 @@ export function ResumeCard({ id, title, updatedAt, template, data }: ResumeCardP
         onClick={handleCardClick}
       >
         {/* Preview Thumbnail */}
-        <div className="mb-4 aspect-3/4 overflow-hidden rounded-lg border border-zinc-100 bg-white">
+        <div className="mb-4 w-full aspect-[calc(1*1+1)/3] overflow-hidden rounded-lg border border-zinc-100 bg-white">
           <ResumeCardPreview templateId={template} data={data} />
         </div>
 

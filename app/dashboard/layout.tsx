@@ -15,7 +15,7 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-background">
       <DashboardSidebar />
       <main className="transition-all duration-300 lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <div className="p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 sm:py-8 lg:py-14">
           {children}
         </div>
       </main>
