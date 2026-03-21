@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, MoreVertical, Download, Trash2, Edit, Copy, Pencil } from "lucide-react";
+import { MoreVertical, Trash2, Edit, Copy, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,15 +16,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
+import { ResumeCardPreview } from "./resume-card-preview";
+import type { ResumeDataJSON } from "@/db/schema";
 
 interface ResumeCardProps {
   id: string;
   title: string;
   updatedAt: string;
   template: string;
+  data?: ResumeDataJSON | null;
 }
 
-export function ResumeCard({ id, title, updatedAt, template }: ResumeCardProps) {
+export function ResumeCard({ id, title, updatedAt, template, data }: ResumeCardProps) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -86,8 +89,8 @@ export function ResumeCard({ id, title, updatedAt, template }: ResumeCardProps) 
         onClick={handleCardClick}
       >
         {/* Preview Thumbnail */}
-        <div className="mb-4 flex h-40 items-center justify-center rounded-lg bg-muted/50">
-          <FileText className="h-12 w-12 text-muted-foreground/50" />
+        <div className="mb-4 aspect-3/4 overflow-hidden rounded-lg border border-zinc-100 bg-white">
+          <ResumeCardPreview templateId={template} data={data} />
         </div>
 
         {/* Content */}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileText, Search, Filter, Grid, List, Plus, SortAsc, Check } from "lucide-react";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCard } from "@/components/dashboard/resume-card";
+import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -214,14 +215,15 @@ export default function DocumentsPage() {
                     title={resume.title}
                     updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
                     template={resume.templateId}
+                    data={resume.data}
                   />
                 ) : (
                   <div
                     key={resume.id}
                     className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/10"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-                      <FileText className="h-6 w-6 text-muted-foreground" />
+                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded border border-zinc-100 bg-white">
+                      <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">
