@@ -54,7 +54,7 @@ export default function CoverLettersPage() {
           <div className="mt-2 space-y-3">
             {/* Generate from resume */}
             <Link
-              href="/dashboard/documents/cover-letters/generate"
+              href="/cover-letter/generate"
               className="group relative flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/10"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white">
@@ -75,7 +75,7 @@ export default function CoverLettersPage() {
 
             {/* Write from scratch */}
             <Link
-              href="/dashboard/documents/cover-letters/write"
+              href="/cover-letter/write"
               className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/10"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted/30 text-foreground">
