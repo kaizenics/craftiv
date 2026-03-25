@@ -14,6 +14,9 @@ import {
   buildImproveFullResumePrompt,
   buildSpellCheckPrompt,
   buildSuggestionPrompt,
+  buildKeywordBoosterPrompt,
+  buildAchievementBuilderPrompt,
+  buildCoverLetterPrompt,
 } from "@/lib/ai";
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
@@ -67,6 +70,24 @@ const generateSuggestionInput = z.object({
   field: z.string(),
   currentContent: z.string(),
   issueType: z.string(),
+});
+
+const keywordBoosterInput = z.object({
+  resumeId: z.string(),
+  jobDescription: z.string().min(1).max(5000),
+});
+
+const achievementBuilderInput = z.object({
+  resumeId: z.string(),
+  experienceIndex: z.number().int().min(0),
+  targetRole: z.string().optional(),
+});
+
+const coverLetterInput = z.object({
+  resumeId: z.string(),
+  jobDescription: z.string().min(1).max(5000),
+  companyName: z.string().max(200).default(""),
+  tone: z.enum(["professional", "confident", "enthusiastic"]).default("professional"),
 });
 
 // ── Router ──────────────────────────────────────────────────────────────────
@@ -184,5 +205,106 @@ export const aiRouter = createTRPCRouter({
 
       console.log(`[AI] generateSuggestion done — model: ${model}`);
       return { suggestion };
+    }),
+
+  keywordBooster: protectedProcedure
+    .input(keywordBoosterInput)
+    .mutation(async ({ ctx, input }) => {
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      const data = getResumeData(resume);
+
+      const textFields = extractResumeTextFields(data);
+      const resumeText = formatFieldsForPrompt(textFields);
+
+      const prompt = buildKeywordBoosterPrompt(resumeText, input.jobDescription);
+
+      console.log(`[AI] keywordBooster — resumeId: ${input.resumeId}`);
+
+      const { content, model } = await callWithFallback({
+        messages: [{ role: "user", content: prompt }],
+        maxTokens: 3000,
+        temperature: 0.4,
+      });
+
+      const parsed = extractJsonArray(content);
+      if (!parsed) {
+        console.log("[AI] keywordBooster — no valid JSON array in response");
+        return { keywords: [] };
+      }
+
+      const keywords = parsed
+        .filter((item: any) => item.keyword && item.importance && item.section && item.suggestion)
+        .map((item: any) => ({
+          keyword: item.keyword,
+          importance: item.importance,
+          section: item.section,
+          suggestion: item.suggestion,
+        }));
+
+      console.log(`[AI] keywordBooster done — ${keywords.length} keyword(s) via ${model}`);
+      return { keywords };
+    }),
+
+  achievementBuilder: protectedProcedure
+    .input(achievementBuilderInput)
+    .mutation(async ({ ctx, input }) => {
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      const data = getResumeData(resume) as any;
+
+      const experiences = data.experiences ?? [];
+      if (input.experienceIndex >= experiences.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Experience not found." });
+      }
+
+      const exp = experiences[input.experienceIndex];
+      if (!exp.description?.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Experience has no description to improve." });
+      }
+
+      const prompt = buildAchievementBuilderPrompt(
+        exp.jobTitle || "",
+        exp.employer || "",
+        exp.description,
+        input.targetRole,
+      );
+
+      console.log(`[AI] achievementBuilder — experience: ${exp.jobTitle} at ${exp.employer}`);
+
+      const { content: bullets, model } = await callWithFallback({
+        messages: [{ role: "user", content: prompt }],
+        maxTokens: 1500,
+        temperature: 0.7,
+      });
+
+      console.log(`[AI] achievementBuilder done — model: ${model}`);
+      return { bullets };
+    }),
+
+  coverLetter: protectedProcedure
+    .input(coverLetterInput)
+    .mutation(async ({ ctx, input }) => {
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      const data = getResumeData(resume);
+
+      const textFields = extractResumeTextFields(data);
+      const resumeText = formatFieldsForPrompt(textFields);
+
+      const prompt = buildCoverLetterPrompt(
+        resumeText,
+        input.jobDescription,
+        input.companyName,
+        input.tone,
+      );
+
+      console.log(`[AI] coverLetter — resumeId: ${input.resumeId}, tone: ${input.tone}`);
+
+      const { content: letter, model } = await callWithFallback({
+        messages: [{ role: "user", content: prompt }],
+        maxTokens: 2000,
+        temperature: 0.7,
+      });
+
+      console.log(`[AI] coverLetter done — model: ${model}`);
+      return { letter };
     }),
 });

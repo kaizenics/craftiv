@@ -189,6 +189,86 @@ Return ONLY the replacement text. No explanation, no markdown, no quotes, no bul
 Keep it concise and professional.`;
 }
 
+// ── Keyword Booster ─────────────────────────────────────────────────────────
+
+export function buildKeywordBoosterPrompt(
+  resumeText: string,
+  jobDescription: string,
+): string {
+  return `You are an expert ATS keyword analyst. Compare the resume below against the job description and identify missing keywords the candidate should add.
+
+For each missing keyword, return a JSON object with:
+- "keyword": the exact keyword or phrase missing
+- "importance": "high", "medium", or "low"
+- "section": which resume section to place it in ("summary", "experience", "skills", or "education")
+- "suggestion": a brief sentence showing how to naturally incorporate this keyword
+
+Return a JSON array of objects. If no keywords are missing, return [].
+Return ONLY the JSON array. No markdown, no explanation, no code fences.
+
+--- RESUME ---
+${resumeText}
+
+--- JOB DESCRIPTION ---
+${jobDescription}`;
+}
+
+// ── Achievement Builder ─────────────────────────────────────────────────────
+
+export function buildAchievementBuilderPrompt(
+  jobTitle: string,
+  employer: string,
+  description: string,
+  targetRole?: string,
+): string {
+  const roleHint = targetRole ? `The candidate is targeting a role as: ${targetRole}.` : "";
+  return `You are a professional resume writer specializing in accomplishment-based bullet points. ${roleHint}
+
+The candidate worked as "${jobTitle}" at "${employer}". Their current description is:
+"${description}"
+
+Transform this into 3-5 powerful accomplishment bullet points. Each bullet should:
+- Start with a strong action verb (e.g. Spearheaded, Delivered, Optimized, Architected)
+- Include a quantified metric or a placeholder like [X%], [X+], [$Xk] where the candidate can fill in real numbers
+- Show business impact, not just responsibility
+
+Return ONLY the bullet points, one per line, each starting with "- ". No explanation, no markdown headers, no numbering.`;
+}
+
+// ── Cover Letter ────────────────────────────────────────────────────────────
+
+export function buildCoverLetterPrompt(
+  resumeText: string,
+  jobDescription: string,
+  companyName: string,
+  tone: "professional" | "confident" | "enthusiastic",
+): string {
+  const toneGuide = {
+    professional: "Maintain a polished, formal tone throughout.",
+    confident: "Use a confident, direct tone that emphasizes proven expertise and leadership.",
+    enthusiastic: "Write with genuine enthusiasm and passion for the role and company.",
+  };
+
+  return `You are a professional cover letter writer. Write a compelling cover letter based on the resume and job description below.
+
+Guidelines:
+- ${toneGuide[tone]}
+- Address it to "Hiring Manager" at "${companyName || "the company"}"
+- Open with a strong hook that connects the candidate to the role
+- Highlight 2-3 relevant achievements from the resume that match the job requirements
+- Close with a confident call to action
+- Keep it to 3-4 paragraphs, under 350 words
+- Do NOT include the date, address block, or "Sincerely" signature — just the letter body
+
+Return ONLY the cover letter text. No markdown, no explanation, no quotes.
+
+--- RESUME ---
+${resumeText}
+
+--- JOB DESCRIPTION ---
+${jobDescription}`;
+}
+
 // ── Resume text extraction ──────────────────────────────────────────────────
 
 export interface ResumeTextField {
