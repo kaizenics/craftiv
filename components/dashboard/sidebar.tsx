@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   FileText,
   ScanSearch,
+  Sparkles,
   Settings,
   LogOut,
   Menu,
@@ -31,6 +32,11 @@ const sidebarItems = [
     name: "ATS Checker",
     href: "/dashboard/ats-checker",
     icon: ScanSearch,
+  },
+  {
+    name: "AI Resume Assistant",
+    href: "/dashboard/ai-assistant",
+    icon: Sparkles,
   },
   {
     name: "Settings",
