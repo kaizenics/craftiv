@@ -30,7 +30,7 @@ export function EmployerForm({ data, onChange }: EmployerFormProps) {
           placeholder="Jane Smith"
         />
         <p className="text-xs text-muted-foreground">
-          Leave blank to use &quot;Dear Hiring Manager&quot;
+          Optional: include this if you want it shown in the recipient block.
         </p>
       </div>
 

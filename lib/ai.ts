@@ -318,3 +318,58 @@ export function extractResumeTextFields(data: any): ResumeTextField[] {
 export function formatFieldsForPrompt(fields: ResumeTextField[]): string {
   return fields.map((f) => `[${f.field}]: ${f.value}`).join("\n");
 }
+
+// ── Cover Letter from Resume (no job description) ───────────────────────────
+
+export function buildCoverLetterFromResumePrompt(resumeText: string): string {
+  return `You are a professional cover letter writer. Based ONLY on the resume below, write a compelling, versatile cover letter that the candidate can use for relevant job applications.
+
+Guidelines:
+- Maintain a polished, professional tone throughout
+- Include a natural greeting and closing as part of the letter
+- Mention 2-3 standout achievements or skills from the resume with specific details
+- Keep it under 300 words total
+- Do NOT mention a specific company or job title — keep it general enough to adapt
+
+Return ONLY a JSON object with exactly this key. No markdown, no code fences, no explanation:
+{
+  "content": "the full cover letter text with paragraph breaks"
+}
+
+--- RESUME ---
+${resumeText}`;
+}
+
+// ── Cover Letter from editor context (job-title targeted) ───────────────────
+
+export function buildCoverLetterFromEditorPrompt(input: {
+  targetJobTitle: string;
+  companyName?: string;
+  hiringManagerName?: string;
+  candidateContext: string;
+  existingDraft?: string;
+}): string {
+  const company = input.companyName?.trim() || "the company";
+  const hiring = input.hiringManagerName?.trim();
+
+  return `You are a senior career writing assistant.
+
+Write a high-quality, specific cover letter draft for the role "${input.targetJobTitle}" at "${company}".
+
+Rules:
+- Professional, human, and concise tone (no fluff, no cliches, no repetitive phrases).
+- 170-260 words total.
+- 3 to 4 short paragraphs.
+- Include a greeting line. Use "${hiring ? `Dear ${hiring},` : "Dear Hiring Manager,"}".
+- Mention the target job title naturally in the opening.
+- Use concrete achievements from candidate context where available.
+- End with a strong but natural closing line.
+- Do NOT invent unrealistic claims or fake metrics.
+- Return plain text only (no markdown, no bullets, no JSON).
+
+Candidate context:
+${input.candidateContext}
+
+Existing draft (optional):
+${input.existingDraft?.trim() || "(none)"}`;
+}

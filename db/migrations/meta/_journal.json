@@ -8,6 +8,13 @@
       "when": 1767326749136,
       "tag": "0000_clever_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774475194424,
+      "tag": "0001_cover_letters",
+      "breakpoints": true
     }
   ]
 }

@@ -1,95 +1,95 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Sparkles, PenLine, ChevronRight, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { format } from "date-fns";
+import { Mail, Plus } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { trpc } from "@/trpc/client";
 
 export default function CoverLettersPage() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: letters = [], isLoading } = trpc.coverLetter.list.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="text-center">
+          <Image
+            src="/cv.gif"
+            alt="Loading"
+            width={80}
+            height={80}
+            className="mx-auto mb-4"
+            unoptimized
+          />
+          <p className="text-muted-foreground">Loading cover letters...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasLetters = letters.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground lg:text-3xl">Cover Letters</h1>
-          <p className="text-muted-foreground">Create tailored cover letters for your job applications.</p>
+          <p className="text-muted-foreground">
+            Create tailored cover letters for your job applications.
+          </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New Cover Letter
+        <Button asChild>
+          <Link href="/cover-letter/write">
+            <Plus className="h-4 w-4" />
+            New Cover Letter
+          </Link>
         </Button>
       </div>
 
-      {/* Empty state */}
-      <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/20">
-          <Mail className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h3 className="mt-4 font-semibold text-foreground">No cover letters yet</h3>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Create your first cover letter by generating one from a resume or writing from scratch.
-        </p>
-        <Button className="mt-6" onClick={() => setDialogOpen(true)}>
-          Get Started
-        </Button>
-      </div>
-
-      {/* Creation method dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md" showCloseButton>
-          <DialogHeader className="items-center">
-            <DialogTitle className="text-xl font-bold text-center">
-              How will you make your cover letter?
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="mt-2 space-y-3">
-            {/* Generate from resume */}
-            <Link
-              href="/cover-letter/generate"
-              className="group relative flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/10"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white">
-                <Sparkles className="h-6 w-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">Generate from resume</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-600">
-                    <Sparkles className="h-3 w-3" />
-                    20% faster
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">Our AI will generate your cover letter based on it.</p>
-              </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </Link>
-
-            {/* Write from scratch */}
-            <Link
-              href="/cover-letter/write"
-              className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/10"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted/30 text-foreground">
-                <PenLine className="h-6 w-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="font-semibold text-foreground">Write from scratch</span>
-                <p className="text-sm text-muted-foreground">We&apos;ll walk you through it, step by step.</p>
-              </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </Link>
+      {!hasLetters ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/20">
+            <Mail className="h-8 w-8 text-muted-foreground" />
           </div>
-        </DialogContent>
-      </Dialog>
+          <h3 className="mt-4 font-semibold text-foreground">No cover letters yet</h3>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Create your first cover letter by generating one from a resume or writing from scratch.
+          </p>
+          <Button className="mt-6" asChild>
+            <Link href="/cover-letter/write">Get Started</Link>
+          </Button>
+        </div>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {letters.map((letter) => (
+            <li
+              key={letter.id}
+              className="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/5"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/20">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>
+                  {letter.data.employer.jobTitle && (
+                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
+                      {letter.data.employer.jobTitle}
+                      {letter.data.employer.companyName
+                        ? ` · ${letter.data.employer.companyName}`
+                        : ""}
+                    </p>
+                  )}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Updated {format(new Date(letter.updatedAt), "MMM d, yyyy")}
+                  </p>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

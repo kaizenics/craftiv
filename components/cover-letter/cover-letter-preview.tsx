@@ -2,6 +2,27 @@
 
 import { CoverLetterData } from "@/lib/types/cover-letter";
 import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
+
+function escapeHtml(input: string) {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function plainTextToHtml(plain: string) {
+  return escapeHtml(plain).replaceAll(/\r?\n/g, "<br/>");
+}
+
+function normalizeBodyHtml(stored: string) {
+  const trimmed = stored?.trim() ?? "";
+  if (!trimmed) return "";
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
+  return plainTextToHtml(trimmed);
+}
 
 interface CoverLetterPreviewProps {
   data: CoverLetterData;
@@ -9,31 +30,53 @@ interface CoverLetterPreviewProps {
 }
 
 export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps) {
-  const { contact, employer, opening, body, closing, date } = data;
+  const { contact, employer, content, date } = data;
   const hasName = contact.firstName || contact.lastName;
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
+  const sanitizedContent = DOMPurify.sanitize(normalizeBodyHtml(content || ""), {
+    USE_PROFILES: { html: true },
+  });
+  const contentPlainLength = sanitizedContent
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim().length;
+  const isLongContent = contentPlainLength > 1100;
+  const isVeryLongContent = contentPlainLength > 1500;
+
+  const previewFontSize = isVeryLongContent
+    ? "clamp(9.5px, 1.15vw, 12px)"
+    : isLongContent
+      ? "clamp(10px, 1.25vw, 13px)"
+      : "clamp(10.5px, 1.4vw, 14px)";
+
+  const previewLineHeight = isVeryLongContent ? "1.45" : isLongContent ? "1.55" : "1.62";
+  const previewPadding = isVeryLongContent
+    ? "6.5% 8.5% 8% 8.5%"
+    : isLongContent
+      ? "7% 9% 8.5% 9%"
+      : "8% 10% 10% 10%";
 
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[640px] bg-white text-zinc-800 shadow-lg rounded-sm",
+        "mx-auto w-full max-w-[640px] overflow-hidden rounded-sm bg-white text-zinc-800 shadow-lg",
         className
       )}
       style={{
         aspectRatio: "210 / 297",
-        padding: "8% 10% 10% 10%",
+        padding: previewPadding,
         fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: "clamp(11px, 1.5vw, 15px)",
-        lineHeight: "1.65",
+        fontSize: previewFontSize,
+        lineHeight: previewLineHeight,
       }}
     >
       {/* Sender info */}
       {hasName && (
         <div className="mb-1">
-          <p className="text-[14pt] font-bold tracking-wide">{fullName}</p>
+          <p className="text-[12.5pt] font-bold tracking-wide">{fullName}</p>
         </div>
       )}
-      <div className="text-[9.5pt] text-zinc-500 space-y-0.5">
+      <div className="space-y-0.5 text-[9pt] text-zinc-500">
         {(contact.address || contact.city) && (
           <p>{[contact.address, contact.city].filter(Boolean).join(", ")}</p>
         )}
@@ -43,11 +86,11 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
       </div>
 
       {/* Date */}
-      {date && <p className="mt-6 text-[10pt] text-zinc-600">{date}</p>}
+      {date && <p className="mt-5 text-[9.2pt] text-zinc-600">{date}</p>}
 
       {/* Recipient info */}
       {(employer.hiringManagerName || employer.companyName || employer.companyAddress || employer.jobTitle) && (
-        <div className="mt-5 text-[10pt] space-y-0.5">
+        <div className="mt-4 space-y-0.5 text-[9.2pt]">
           {employer.hiringManagerName && <p>{employer.hiringManagerName}</p>}
           {employer.jobTitle && <p className="text-zinc-500">{employer.jobTitle}</p>}
           {employer.companyName && <p className="font-medium">{employer.companyName}</p>}
@@ -55,45 +98,25 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
         </div>
       )}
 
-      {/* Greeting */}
-      <p className="mt-8 font-medium">
-        {employer.hiringManagerName
-          ? `Dear ${employer.hiringManagerName},`
-          : "Dear Hiring Manager,"}
-      </p>
-
-      {/* Opening paragraph */}
-      {opening ? (
-        <p className="mt-4 text-justify">{opening}</p>
+      {/* Letter content (single WYSIWYG source) */}
+      {sanitizedContent ? (
+        <div
+          className={cn(
+            "mt-6 wrap-break-word text-left [word-spacing:normal] tracking-normal",
+            isVeryLongContent
+              ? "[&_p]:mb-2 [&_ul]:my-2 [&_ol]:my-2"
+              : isLongContent
+                ? "[&_p]:mb-2.5 [&_ul]:my-2.5 [&_ol]:my-2.5"
+                : "[&_p]:mb-3 [&_ul]:my-3 [&_ol]:my-3",
+            "[&_p:last-child]:mb-0 [&_li]:mb-1"
+          )}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+        />
       ) : (
-        <p className="mt-4 text-zinc-300 italic text-[10pt]">
-          Your opening paragraph will appear here...
+        <p className="mt-6 text-[9.5pt] italic text-zinc-300">
+          Your cover letter content will appear here...
         </p>
       )}
-
-      {/* Body */}
-      {body ? (
-        <div className="mt-4 text-justify whitespace-pre-wrap">{body}</div>
-      ) : (
-        <p className="mt-4 text-zinc-300 italic text-[10pt]">
-          The main body of your letter will appear here...
-        </p>
-      )}
-
-      {/* Closing */}
-      {closing ? (
-        <p className="mt-4 text-justify">{closing}</p>
-      ) : (
-        <p className="mt-4 text-zinc-300 italic text-[10pt]">
-          Your closing paragraph will appear here...
-        </p>
-      )}
-
-      {/* Sign-off */}
-      <div className="mt-8">
-        <p>Sincerely,</p>
-        {hasName && <p className="mt-4 font-medium">{fullName}</p>}
-      </div>
     </div>
   );
 }
