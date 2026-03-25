@@ -2,7 +2,7 @@
 
 import { CoverLetterData } from "@/lib/types/cover-letter";
 import { cn } from "@/lib/utils";
-import DOMPurify from "dompurify";
+import DOMPurify from "isomorphic-dompurify";
 
 function escapeHtml(input: string) {
   return input
