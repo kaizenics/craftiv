@@ -12,12 +12,22 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronDown,
+  ScrollText,
+  Mail,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
-const sidebarItems = [
+interface SidebarItem {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  children?: { name: string; href: string; icon: typeof LayoutDashboard }[];
+}
+
+const sidebarItems: SidebarItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -27,6 +37,10 @@ const sidebarItems = [
     name: "Documents",
     href: "/dashboard/documents",
     icon: FileText,
+    children: [
+      { name: "Resumes", href: "/dashboard/documents/resume", icon: ScrollText },
+      { name: "Cover Letters", href: "/dashboard/documents/cover-letters", icon: Mail },
+    ],
   },
   {
     name: "ATS Checker",
@@ -35,7 +49,7 @@ const sidebarItems = [
   },
   {
     name: "AI Resume Assistant",
-    href: "/dashboard/ai-assistant",
+    href: "/dashboard/ai-resume",
     icon: Sparkles,
   },
   {
@@ -49,18 +63,35 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const item of sidebarItems) {
+      if (item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/"))) {
+        initial.add(item.name);
+      }
+    }
+    return initial;
+  });
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      for (const item of sidebarItems) {
+        if (item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/"))) {
+          next.add(item.name);
+        }
+      }
+      return next;
+    });
+  }, [pathname]);
+
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setMobileOpen(false);
-      }
+      if (window.innerWidth >= 1024) setMobileOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -70,6 +101,15 @@ export function DashboardSidebar() {
     await authClient.signOut();
     router.push("/");
   };
+
+  function toggleExpand(name: string) {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
 
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="flex h-full flex-col">
@@ -94,7 +134,64 @@ export function DashboardSidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {sidebarItems.map((item) => {
-          const isActive = pathname === item.href;
+          const hasChildren = !!item.children;
+          const isExpanded = expandedItems.has(item.name);
+          const isActive = hasChildren
+            ? item.children!.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))
+            : pathname === item.href;
+
+          if (hasChildren) {
+            return (
+              <div key={item.name}>
+                <button
+                  onClick={() => toggleExpand(item.name)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-muted/20 text-foreground"
+                      : "text-sidebar-foreground hover:bg-muted/10 hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="flex-1 text-left">{item.name}</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                      isExpanded && "rotate-180"
+                    )}
+                  />
+                </button>
+                <div
+                  className={cn(
+                    "overflow-hidden transition-all duration-200",
+                    isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+                    {item.children!.map((child) => {
+                      const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                            childActive
+                              ? "font-medium text-foreground bg-muted/15"
+                              : "text-muted-foreground hover:bg-muted/10 hover:text-foreground"
+                          )}
+                        >
+                          <child.icon className="h-4 w-4 shrink-0" />
+                          <span>{child.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.name}
@@ -119,7 +216,7 @@ export function DashboardSidebar() {
           variant="ghost"
           size="sm"
           onClick={handleLogout}
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-muted/10 dark:hover:bg-muted/10"
         >
           <LogOut className="h-5 w-5" />
           <span>Sign Out</span>

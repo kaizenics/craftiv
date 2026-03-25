@@ -44,7 +44,7 @@ export default function Dashboard() {
     {
       title: "Track your job applications",
       detail: "Keep your job list in one place and apply faster.",
-      href: "/dashboard/documents",
+      href: "/dashboard/documents/resume",
     },
   ];
   
