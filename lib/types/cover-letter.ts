@@ -17,19 +17,9 @@ export interface CoverLetterEmployer {
 export interface CoverLetterData {
   contact: CoverLetterContact;
   employer: CoverLetterEmployer;
-  opening: string;
-  body: string;
-  closing: string;
+  content: string;
   date: string;
 }
-
-export type CoverLetterStep = "contact" | "employer" | "letter";
-
-export const COVER_LETTER_STEPS: { id: CoverLetterStep; label: string }[] = [
-  { id: "contact", label: "Your Info" },
-  { id: "employer", label: "Employer" },
-  { id: "letter", label: "Letter Body" },
-];
 
 export const createEmptyCoverLetterData = (): CoverLetterData => ({
   contact: {
@@ -46,9 +36,7 @@ export const createEmptyCoverLetterData = (): CoverLetterData => ({
     companyAddress: "",
     jobTitle: "",
   },
-  opening: "",
-  body: "",
-  closing: "",
+  content: "",
   date: new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",

@@ -4,7 +4,7 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "../init";
-import { users, accounts, sessions, resumes } from "@/db/schema";
+import { users, accounts, sessions, resumes, coverLetters } from "@/db/schema";
 
 /**
  * User Router
@@ -62,6 +62,8 @@ export const userRouter = createTRPCRouter({
    * Delete user account and all associated data
    */
   deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db.delete(coverLetters).where(eq(coverLetters.userId, ctx.user.id));
+
     // Delete user's resumes first (cascade should handle this, but being explicit)
     await ctx.db.delete(resumes).where(
       eq(resumes.userId, ctx.user.id)

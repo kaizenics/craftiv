@@ -1,5 +1,6 @@
 import { createTRPCRouter } from "./init";
 import { aiRouter } from "./routers/ai";
+import { coverLetterRouter } from "./routers/coverLetter";
 import { resumeRouter } from "./routers/resume";
 import { userRouter } from "./routers/user";
 
@@ -10,6 +11,7 @@ import { userRouter } from "./routers/user";
 export const appRouter = createTRPCRouter({
   user: userRouter,
   resume: resumeRouter,
+  coverLetter: coverLetterRouter,
   ai: aiRouter,
 });
 
