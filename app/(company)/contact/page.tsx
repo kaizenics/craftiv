@@ -40,7 +40,7 @@ export default function ContactPage() {
 		<main className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
 			<div className="mx-auto w-full max-w-5xl bg-white sm:p-10">
 				<div className="border-b border-zinc-200 pb-8">
-					<h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+					<h1 className="font-display text-3xl font-bold tracking-tight text-zinc-900">
 						Contact BoostCV Support
 					</h1>
 					<p className="mt-3 max-w-2xl text-zinc-600">

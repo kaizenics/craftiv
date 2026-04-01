@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload, Check } from "lucide-react";
+import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload, Check } from "@/components/ui/icons";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -176,7 +176,7 @@ function ResumeTemplatesPageContent() {
       <div className="border-b border-zinc-100 bg-white py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
               {fromUpload ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden /> : "1"}
             </span>
             <span className="text-sm font-medium text-zinc-900">{fromUpload ? "Resume uploaded" : "Choose template"}</span>

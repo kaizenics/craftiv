@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import { Manrope, Lora } from "next/font/google";
+import { Manrope, Lora, Figtree } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { TRPCProvider } from "@/trpc/client";
+import { cn } from "@/lib/utils";
+
+const loraHeading = Lora({subsets:['latin'],variable:'--font-heading'});
+
+const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -34,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", figtree.variable, loraHeading.variable)}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

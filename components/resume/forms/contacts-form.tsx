@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Upload, X } from "lucide-react";
+import { Upload, X } from "@/components/ui/icons";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
 import {

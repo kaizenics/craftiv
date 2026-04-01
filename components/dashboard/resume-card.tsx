@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical, Trash2, Edit, Copy, Pencil } from "lucide-react";
+import { MoreVertical, Trash2, Edit, Copy, Pencil } from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

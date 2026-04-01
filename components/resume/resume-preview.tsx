@@ -4,7 +4,7 @@ import { ResumeData, TemplateLayout } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 

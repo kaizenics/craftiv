@@ -15,7 +15,7 @@ import {
 import { ResumeData } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { ResumePreview } from '@/components/resume/resume-preview';
-import { Download, FileText, File, ArrowRight } from 'lucide-react';
+import { Download, FileText, File, ArrowRight } from '@/components/ui/icons';
 import { 
   generatePDF, 
   generateDOCX, 

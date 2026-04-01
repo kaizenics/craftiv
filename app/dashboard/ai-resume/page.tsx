@@ -19,7 +19,7 @@ import {
   ArrowUp,
   ArrowRight,
   ChevronRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -370,7 +370,9 @@ export default function AIAssistantPage() {
               key={t.id}
               onClick={() => { setActiveTool(t.id); setError(null); }}
               className={`flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                active ? "border-foreground bg-foreground text-background" : "border-border hover:bg-muted/10 text-muted-foreground"
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-primary text-primary hover:border-primary/40 hover:bg-primary/10"
               }`}
             >
               <t.icon className="h-4 w-4" />

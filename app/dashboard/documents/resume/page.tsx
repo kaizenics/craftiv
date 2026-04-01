@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Search, Filter, Grid, List, Plus, SortAsc, Check } from "lucide-react";
+import { FileText, Search, Filter, Grid, List, Plus, SortAsc, Check } from "@/components/ui/icons";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCard } from "@/components/dashboard/resume-card";
 import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";

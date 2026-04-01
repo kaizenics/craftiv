@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Copy, Mail, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Mail, MoreVertical, Pencil, Plus, Trash2 } from "@/components/ui/icons";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

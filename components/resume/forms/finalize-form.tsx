@@ -34,7 +34,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-} from 'lucide-react';
+} from '@/components/ui/icons';
 import { useState } from 'react';
 
 interface FinalizeFormProps {

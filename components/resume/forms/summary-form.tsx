@@ -2,7 +2,7 @@
 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, Lightbulb } from 'lucide-react';
+import { Check, Lightbulb } from '@/components/ui/icons';
 
 interface SummaryFormProps {
   data: string;

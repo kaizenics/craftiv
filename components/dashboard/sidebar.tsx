@@ -14,7 +14,7 @@ import {
   ChevronDown,
   ScrollText,
   Mail,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 

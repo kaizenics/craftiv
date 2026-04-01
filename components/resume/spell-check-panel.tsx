@@ -13,7 +13,7 @@ import {
   Loader2,
   Check,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 // ── Type badge styles ───────────────────────────────────────────────────────
 

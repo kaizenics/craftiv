@@ -46,7 +46,7 @@ import {
   X,
   Loader2,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 

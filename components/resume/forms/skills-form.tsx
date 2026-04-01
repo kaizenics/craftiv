@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, X, Check } from 'lucide-react';
+import { Plus, Trash2, X, Check } from '@/components/ui/icons';
 
 interface SkillsFormProps {
   data: Skill[];

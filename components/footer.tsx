@@ -54,7 +54,7 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="bg-zinc-900 font-sans">
+    <footer className="bg-zinc-800 font-sans">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="py-12 lg:py-16">
@@ -136,7 +136,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-zinc-800 py-6">
+        <div className="border-t border-zinc-700 py-6">
           <p className="text-center text-xs text-zinc-500">
             © {new Date().getFullYear()} BoostCV. All rights reserved.
           </p>

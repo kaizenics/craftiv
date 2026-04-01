@@ -3,7 +3,7 @@
 import { ResumeTemplate } from '@/lib/types/resume';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { FileText } from 'lucide-react';
+import { FileText } from '@/components/ui/icons';
 
 interface TemplateCardProps {
   template: ResumeTemplate;
