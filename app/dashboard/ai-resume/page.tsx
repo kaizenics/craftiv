@@ -307,7 +307,7 @@ export default function AIAssistantPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground lg:text-3xl">AI Assistant</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">AI Assistant</h1>
         <p className="mt-1 text-muted-foreground">AI-powered tools to improve your resume and job applications.</p>
       </div>
 

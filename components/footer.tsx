@@ -2,24 +2,19 @@
 
 const navigation = {
   product: [
-    { name: "Features", href: "#features" },
-    { name: "Templates", href: "#templates" },
-    { name: "Examples", href: "#examples" },
+    { name: "Features", href: "/" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "Templates", href: "/resume/templates" },
   ],
   company: [
-    { name: "About", href: "#about" },
-    { name: "Blog", href: "#blog" },
-    { name: "Press", href: "#press" },
+    { name: "Privacy Policy", href: "/privacy" },
+    { name: "Terms of Service", href: "/terms" },
+    { name: "Data Deletion", href: "/data-deletion" },
   ],
   support: [
     { name: "Help Center", href: "#help" },
-    { name: "Contact", href: "#contact" },
+    { name: "Contact", href: "/contact" },
     { name: "Status", href: "#status" },
-  ],
-  legal: [
-    { name: "Privacy", href: "/privacy" },
-    { name: "Terms", href: "/terms" },
-    { name: "Cookies", href: "#cookies" },
   ],
 };
 
@@ -67,7 +62,7 @@ export function Footer() {
             {/* Brand Column */}
             <div className="lg:col-span-2">
               <div>
-                <a href="#" className="text-2xl font-bold text-white">
+                <a href="#" className="font-display text-2xl font-bold text-white">
                   BoostCV
                 </a>
                 <p className="mt-4 max-w-xs text-sm text-zinc-400 leading-relaxed">
@@ -91,7 +86,7 @@ export function Footer() {
 
             {/* Navigation Columns */}
             <div>
-              <h3 className="text-sm font-semibold text-white">Product</h3>
+              <h3 className="font-display text-sm font-semibold text-white">Product</h3>
               <ul className="mt-4 space-y-3">
                 {navigation.product.map((item) => (
                   <li key={item.name}>
@@ -107,7 +102,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-white">Company</h3>
+              <h3 className="font-display text-sm font-semibold text-white">Company</h3>
               <ul className="mt-4 space-y-3">
                 {navigation.company.map((item) => (
                   <li key={item.name}>
@@ -123,22 +118,9 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-white">Support</h3>
+              <h3 className="font-display text-sm font-semibold text-white">Support</h3>
               <ul className="mt-4 space-y-3">
                 {navigation.support.map((item) => (
-                  <li key={item.name}>
-                    <a
-                      href={item.href}
-                      className="text-sm text-zinc-400 hover:text-white transition-colors"
-                    >
-                      {item.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-              <h3 className="mt-8 text-sm font-semibold text-white">Legal</h3>
-              <ul className="mt-4 space-y-3">
-                {navigation.legal.map((item) => (
                   <li key={item.name}>
                     <a
                       href={item.href}

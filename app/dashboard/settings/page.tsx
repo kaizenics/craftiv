@@ -33,6 +33,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
 
@@ -100,10 +101,15 @@ export default function Settings() {
     try {
       await deleteAccountMutation.mutateAsync();
       
-      // Sign out the user
-      await authClient.signOut();
+      // Account is already deleted at this point; sign-out may fail if session no longer resolves.
+      try {
+        await authClient.signOut();
+      } catch (signOutError) {
+        console.warn("Sign out after account deletion failed:", signOutError);
+      }
       
       // Redirect to home page
+      setDeleteDialogOpen(false);
       router.push("/");
       router.refresh();
     } catch (error) {
@@ -114,9 +120,22 @@ export default function Settings() {
     }
   };
 
+  const onSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await authClient.signOut();
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      alert("Failed to sign out. Please try again.");
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <div className="py-8">
-      <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+      <h1 className="font-display text-3xl font-bold text-foreground">Settings</h1>
       <p className="text-muted-foreground mt-1 mb-8">Manage your account preferences</p>
 
       <form onSubmit={onSave} className="space-y-8">
@@ -201,9 +220,14 @@ export default function Settings() {
                 Change password
               </Link>
             )}
-            <Link href="/logout" className="block text-sm text-foreground hover:text-muted-foreground transition-colors">
-              Sign out
-            </Link>
+            <button
+              type="button"
+              onClick={onSignOut}
+              disabled={isSigningOut}
+              className="block text-sm text-foreground hover:text-muted-foreground transition-colors disabled:opacity-50"
+            >
+              {isSigningOut ? "Signing out..." : "Sign out"}
+            </button>
             
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <AlertDialogTrigger asChild>

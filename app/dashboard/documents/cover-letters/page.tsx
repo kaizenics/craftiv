@@ -259,7 +259,7 @@ export default function CoverLettersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground lg:text-3xl">Cover Letters</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">Cover Letters</h1>
           <p className="text-muted-foreground">
             Create tailored cover letters for your job applications.
           </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -9,7 +9,6 @@ import {
   ScanSearch,
   Sparkles,
   Settings,
-  LogOut,
   Menu,
   X,
   ChevronDown,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
 
 interface SidebarItem {
   name: string;
@@ -61,7 +59,6 @@ const sidebarItems: SidebarItem[] = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -97,11 +94,6 @@ export function DashboardSidebar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleLogout = async () => {
-    await authClient.signOut();
-    router.push("/");
-  };
-
   function toggleExpand(name: string) {
     setExpandedItems((prev) => {
       const next = new Set(prev);
@@ -117,7 +109,7 @@ export function DashboardSidebar() {
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <Link href="/" className="flex items-center gap-2">
           <img src="/boostcv.png" alt="logo" width={30} height={30} />
-          <span className="text-lg font-bold">BoostCV</span>
+          <span className="font-display text-lg font-bold">BoostCV</span>
         </Link>
         {isMobile && (
           <Button
@@ -213,13 +205,15 @@ export function DashboardSidebar() {
       {/* Footer */}
       <div className="border-t border-border p-3">
         <Button
+          asChild
           variant="ghost"
           size="sm"
-          onClick={handleLogout}
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-muted/10 dark:hover:bg-muted/10"
+          className="w-full justify-start gap-3 text-foreground hover:bg-muted/10 dark:hover:bg-muted/10"
         >
-          <LogOut className="h-5 w-5" />
-          <span>Sign Out</span>
+          <Link href="/contact">
+            <Mail className="h-5 w-5" />
+            <span>Contact Us</span>
+          </Link>
         </Button>
       </div>
     </div>

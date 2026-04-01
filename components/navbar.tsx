@@ -110,7 +110,13 @@ export function NavbarComponent() {
             })}
           </div>
           <div className="flex items-center gap-4">
-            <NavbarButton variant="secondary">Contact</NavbarButton>
+            <NavbarButton
+              as={Link}
+              href="/contact"
+              variant="secondary"
+            >
+              Contact
+            </NavbarButton>
             {session ? (
               <NavbarButton
                 as={Link}
@@ -193,6 +199,8 @@ export function NavbarComponent() {
                 </NavbarButton>
               )}
               <NavbarButton
+                as={Link}
+                href="/contact"
                 onClick={() => setIsMobileMenuOpen(false)}
                 variant="primary"
                 className="w-full"

@@ -236,7 +236,7 @@ export const NavbarLogo = () => {
         width={30}
         height={30}
       />
-      <span className="font-medium text-black dark:text-white">BoostCV</span>
+      <span className="font-display text-lg font-bold text-black dark:text-white">BoostCV</span>
     </a>
   );
 };

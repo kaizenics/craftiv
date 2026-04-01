@@ -73,7 +73,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground lg:text-3xl">
+          <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">
             Welcome back! 👋
           </h1>
           <p className="text-muted-foreground">
@@ -130,7 +130,7 @@ export default function Dashboard() {
       {/* Recent Resumes Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className="font-display text-lg font-semibold text-foreground">
             {hasResumes ? "Recent Resumes" : "My Resumes"}
           </h2>
           {hasResumes && (

@@ -85,7 +85,7 @@ export default function DocumentsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground lg:text-3xl">
+          <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">
             Documents
           </h1>
           <p className="text-muted-foreground">
