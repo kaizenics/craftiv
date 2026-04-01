@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -54,7 +54,10 @@ const MAX_SIZE = 10 * 1024 * 1024;
 
 export default function WriteCoverLetterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverLetterId = searchParams.get("id");
+  const isEditing = Boolean(coverLetterId);
 
   // Dialog state
   const [methodDialogOpen, setMethodDialogOpen] = useState(true);
@@ -77,18 +80,45 @@ export default function WriteCoverLetterPage() {
   const [inlineGenerateError, setInlineGenerateError] = useState("");
   const [isInlineGenerating, setIsInlineGenerating] = useState(false);
   const [finishError, setFinishError] = useState("");
+  const [pdfError, setPdfError] = useState("");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const utils = trpc.useUtils();
+  const coverLetterQuery = trpc.coverLetter.getById.useQuery(
+    { id: coverLetterId! },
+    { enabled: !!coverLetterId }
+  );
   const saveCoverLetter = trpc.coverLetter.create.useMutation({
     onSuccess: () => {
       utils.coverLetter.list.invalidate();
     },
   });
+  const updateCoverLetter = trpc.coverLetter.update.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+      if (coverLetterId) {
+        utils.coverLetter.getById.invalidate({ id: coverLetterId });
+      }
+    },
+  });
 
   useEffect(() => {
+    if (isEditing) {
+      setMethodDialogOpen(false);
+      return;
+    }
+
     setMethodDialogOpen(true);
     setDialogView("pick");
-  }, []);
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!coverLetterQuery.data) return;
+
+    setCoverLetterData(coverLetterQuery.data.data);
+    setMethodDialogOpen(false);
+    setDialogView("pick");
+  }, [coverLetterQuery.data]);
 
   // ── Upload helpers ──────────────────────────────────────────────────────
 
@@ -431,21 +461,191 @@ export default function WriteCoverLetterPage() {
     return (tmp.innerText || tmp.textContent || "").trim();
   };
 
+  const getCoverLetterTitle = () => {
+    const savedTitle = coverLetterQuery.data?.title?.trim();
+    if (savedTitle) return savedTitle;
+
+    const jobTitle = coverLetterData.employer.jobTitle.trim();
+    if (jobTitle) return `Cover letter - ${jobTitle}`;
+
+    const companyName = coverLetterData.employer.companyName.trim();
+    if (companyName) return `Cover letter - ${companyName}`;
+
+    return "cover-letter";
+  };
+
+  const toSafeFileName = (value: string) =>
+    (value || "cover-letter")
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const toPdfContentHtml = (value: string) => {
+    const trimmed = value?.trim() ?? "";
+    if (!trimmed) return "";
+    if (/<[a-z][\s\S]*>/i.test(trimmed)) {
+      return trimmed.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
+    }
+    return plainToHtmlParagraphs(trimmed);
+  };
+
+  const buildCoverLetterPdfHtml = () => {
+    const { contact, employer, date, content } = coverLetterData;
+    const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
+    const bodyHtml = toPdfContentHtml(content);
+
+    return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @page { size: A4; margin: 0; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        color: #27272a;
+        background: #ffffff;
+      }
+      .page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 18mm 20mm 20mm 20mm;
+        line-height: 1.6;
+        font-size: 12px;
+      }
+      .name { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+      .meta { margin: 0; color: #52525b; }
+      .section { margin-top: 18px; }
+      .body p { margin: 0 0 14px; }
+      .body p:last-child { margin-bottom: 0; }
+      .body ul, .body ol { margin: 0 0 14px 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      ${fullName ? `<p class="name">${escapeHtml(fullName)}</p>` : ""}
+      ${(contact.address || contact.city)
+        ? `<p class="meta">${escapeHtml([contact.address, contact.city].filter(Boolean).join(", "))}</p>`
+        : ""}
+      ${(contact.phone || contact.email)
+        ? `<p class="meta">${escapeHtml([contact.phone, contact.email].filter(Boolean).join(" | "))}</p>`
+        : ""}
+
+      ${date ? `<p class="section">${escapeHtml(date)}</p>` : ""}
+
+      ${(employer.hiringManagerName || employer.jobTitle || employer.companyName || employer.companyAddress)
+        ? `<div class="section">
+            ${employer.hiringManagerName ? `<p>${escapeHtml(employer.hiringManagerName)}</p>` : ""}
+            ${employer.jobTitle ? `<p>${escapeHtml(employer.jobTitle)}</p>` : ""}
+            ${employer.companyName ? `<p>${escapeHtml(employer.companyName)}</p>` : ""}
+            ${employer.companyAddress ? `<p>${escapeHtml(employer.companyAddress)}</p>` : ""}
+           </div>`
+        : ""}
+
+      <div class="section body">
+        ${bodyHtml}
+      </div>
+    </div>
+  </body>
+</html>`;
+  };
+
+  const handleDownloadPdf = async () => {
+    setPdfError("");
+
+    const plain = stripContentToPlain(coverLetterData.content);
+    if (!plain) {
+      setPdfError("Add letter content before downloading PDF.");
+      return;
+    }
+
+    try {
+      setIsDownloadingPdf(true);
+      const fileName = toSafeFileName(getCoverLetterTitle());
+      const html = buildCoverLetterPdfHtml();
+
+      const response = await fetch("/api/cover-letter/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html, fileName }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileName || "cover-letter"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Could not download PDF. Try again.";
+      setPdfError(message);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const handleFinish = async () => {
     setFinishError("");
+    setPdfError("");
     const plain = stripContentToPlain(coverLetterData.content);
     if (!plain) {
       setFinishError("Add letter content before saving.");
       return;
     }
     try {
-      await saveCoverLetter.mutateAsync({ data: coverLetterData });
+      if (isEditing && coverLetterId) {
+        await updateCoverLetter.mutateAsync({
+          id: coverLetterId,
+          data: coverLetterData,
+        });
+      } else {
+        await saveCoverLetter.mutateAsync({ data: coverLetterData });
+      }
       router.push("/dashboard/documents/cover-letters");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Could not save. Try again.";
       setFinishError(message);
     }
   };
+
+  if (isEditing && coverLetterQuery.isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading cover letter...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEditing && coverLetterQuery.error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6">
+        <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm text-red-700">{coverLetterQuery.error.message}</p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => router.push("/dashboard/documents/cover-letters")}
+          >
+            Back to Cover Letters
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -679,7 +879,7 @@ export default function WriteCoverLetterPage() {
             <div className="flex-1 pb-20 sm:pb-24 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
               <div className="mb-4">
                 <h1 className="text-xl font-bold text-foreground">
-                  Write Cover Letter
+                  {isEditing ? "Edit Cover Letter" : "Write Cover Letter"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   Fill in each section — see changes live in the preview.
@@ -800,13 +1000,34 @@ export default function WriteCoverLetterPage() {
                   </Button>
 
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadPdf}
+                    disabled={isDownloadingPdf}
+                  >
+                    {isDownloadingPdf ? (
+                      <>
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        <span className="hidden sm:inline">Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-1 h-4 w-4" />
+                        <span className="hidden sm:inline">Download PDF</span>
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
                     size="sm"
                     onClick={handleFinish}
-                    disabled={saveCoverLetter.isPending}
+                    disabled={saveCoverLetter.isPending || updateCoverLetter.isPending}
                   >
-                    <Download className="mr-1 sm:mr-2 h-4 w-4" />
+                    <Check className="mr-1 sm:mr-2 h-4 w-4" />
                     <span className="hidden sm:inline">
-                      {saveCoverLetter.isPending ? "Saving..." : "Finish"}
+                      {saveCoverLetter.isPending || updateCoverLetter.isPending
+                        ? "Saving..."
+                        : "Finish"}
                     </span>
                   </Button>
                 </div>
@@ -814,6 +1035,11 @@ export default function WriteCoverLetterPage() {
               {finishError && (
                 <p className="px-6 pb-2 text-center text-xs text-red-600 sm:text-left">
                   {finishError}
+                </p>
+              )}
+              {pdfError && (
+                <p className="px-6 pb-2 text-center text-xs text-red-600 sm:text-left">
+                  {pdfError}
                 </p>
               )}
             </div>

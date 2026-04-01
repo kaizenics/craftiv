@@ -1,11 +1,236 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Mail, Plus } from "lucide-react";
+import { Copy, Mail, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { trpc } from "@/trpc/client";
+import type { CoverLetterData } from "@/lib/types/cover-letter";
+
+type CoverLetterListItem = {
+  id: string;
+  title: string;
+  updatedAt: Date;
+  data: CoverLetterData;
+};
+
+function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
+  const router = useRouter();
+  const utils = trpc.useUtils();
+
+  const [showMenu, setShowMenu] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [newTitle, setNewTitle] = useState(letter.title);
+
+  useEffect(() => {
+    setNewTitle(letter.title);
+  }, [letter.title]);
+
+  const updateCoverLetter = trpc.coverLetter.update.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+    },
+  });
+  const deleteCoverLetter = trpc.coverLetter.delete.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+    },
+  });
+  const duplicateCoverLetter = trpc.coverLetter.duplicate.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+    },
+  });
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button")) {
+      return;
+    }
+    router.push(`/cover-letter/write?id=${letter.id}`);
+  };
+
+  const handleRename = async () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+
+    await updateCoverLetter.mutateAsync({
+      id: letter.id,
+      title: trimmed,
+      data: letter.data as any,
+    });
+    setShowRenameDialog(false);
+    setShowMenu(false);
+  };
+
+  const handleDuplicate = async () => {
+    await duplicateCoverLetter.mutateAsync({ id: letter.id });
+    setShowMenu(false);
+  };
+
+  const handleDelete = async () => {
+    await deleteCoverLetter.mutateAsync({ id: letter.id });
+    setShowDeleteDialog(false);
+    setShowMenu(false);
+  };
+
+  return (
+    <>
+      <div
+        className="group relative rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/5 cursor-pointer"
+        onClick={handleCardClick}
+      >
+        <div className="flex items-start gap-3 pr-8">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/20">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>
+            {letter.data.employer.jobTitle && (
+              <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
+                {letter.data.employer.jobTitle}
+                {letter.data.employer.companyName
+                  ? ` · ${letter.data.employer.companyName}`
+                  : ""}
+              </p>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Updated {format(new Date(letter.updatedAt), "MMM d, yyyy")}
+            </p>
+          </div>
+        </div>
+
+        <div className="absolute right-2 top-2">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu((prev) => !prev);
+              }}
+              className="opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+
+            {showMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                  }}
+                />
+                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-lg">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowRenameDialog(true);
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/10"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Rename
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicate();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/10"
+                    disabled={duplicateCoverLetter.isPending}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Duplicate
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteDialog(true);
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Cover Letter</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new title for this cover letter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Cover letter title"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleRename();
+              }
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRename}
+              disabled={updateCoverLetter.isPending || !newTitle.trim()}
+            >
+              {updateCoverLetter.isPending ? "Renaming..." : "Rename"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Cover Letter</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{letter.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteCoverLetter.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteCoverLetter.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
 
 export default function CoverLettersPage() {
   const { data: letters = [], isLoading } = trpc.coverLetter.list.useQuery();
@@ -63,29 +288,8 @@ export default function CoverLettersPage() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {letters.map((letter) => (
-            <li
-              key={letter.id}
-              className="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/5"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/20">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>
-                  {letter.data.employer.jobTitle && (
-                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
-                      {letter.data.employer.jobTitle}
-                      {letter.data.employer.companyName
-                        ? ` · ${letter.data.employer.companyName}`
-                        : ""}
-                    </p>
-                  )}
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Updated {format(new Date(letter.updatedAt), "MMM d, yyyy")}
-                  </p>
-                </div>
-              </div>
+            <li key={letter.id}>
+              <CoverLetterCard letter={letter} />
             </li>
           ))}
         </ul>
