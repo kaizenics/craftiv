@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +52,7 @@ type DialogView = "pick" | "upload";
 const ACCEPTED_EXTENSIONS = [".pdf", ".docx"];
 const MAX_SIZE = 10 * 1024 * 1024;
 
-export default function WriteCoverLetterPage() {
+function WriteCoverLetterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1054,5 +1054,24 @@ export default function WriteCoverLetterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CoverLetterWritePageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading cover letter editor...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function WriteCoverLetterPage() {
+  return (
+    <Suspense fallback={<CoverLetterWritePageFallback />}>
+      <WriteCoverLetterPageContent />
+    </Suspense>
   );
 }
