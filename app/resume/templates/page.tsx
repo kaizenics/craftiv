@@ -108,7 +108,7 @@ function ResumeTemplatesPageContent() {
       }
 
       const result = await createResume.mutateAsync({
-        title: `Resume_${Date.now()}`,
+        title: "Resume_1",
         templateId,
       });
 

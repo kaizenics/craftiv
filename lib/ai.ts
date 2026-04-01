@@ -12,8 +12,8 @@ export const openrouter = new OpenAI({
   },
 });
 
-export const AI_MODEL = "arcee-ai/trinity-large-preview:free";
-export const AI_MODEL_FALLBACK = "stepfun/step-3.5-flash:free";
+export const AI_MODEL = "google/gemini-2.0-flash-001";
+export const AI_MODEL_FALLBACK = "qwen/qwen3.6-plus-preview:free";
 
 // ── Response helpers ────────────────────────────────────────────────────────
 
@@ -136,6 +136,10 @@ ${JSON.stringify(data, null, 2)}`;
 
 export function buildSpellCheckPrompt(fieldsText: string): string {
   return `You are a professional resume proofreader and content reviewer. Analyze the following resume text fields and find ALL issues.
+
+Important exclusions:
+- Do NOT report spelling or grammar issues for personal identifiers such as full name, first name, last name, email address, or phone number.
+- Do NOT report spelling or grammar issues for employer or company names (including company name fields).
 
 Check for these types of problems:
 1. SPELLING: Misspelled words, typos, made-up words (e.g. "Rfacturing", "hillo", "heiy")

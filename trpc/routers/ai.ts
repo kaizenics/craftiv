@@ -47,6 +47,27 @@ function getResumeData(resume: any): Record<string, unknown> {
   return data;
 }
 
+function isIgnoredSpellCheckField(field: string): boolean {
+  const normalized = field.trim().toLowerCase();
+  const ignoredLabels = [
+    "first name",
+    "last name",
+    "full name",
+    "email",
+    "email address",
+    "phone",
+    "phone number",
+    "mobile",
+    "mobile number",
+    "contact number",
+    "employer",
+    "company",
+    "company name",
+  ];
+
+  return ignoredLabels.some((label) => normalized.includes(label));
+}
+
 // ── Input schemas ───────────────────────────────────────────────────────────
 
 const improveSectionInput = z.object({
@@ -147,7 +168,9 @@ export const aiRouter = createTRPCRouter({
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume);
 
-      const textFields = extractResumeTextFields(data);
+      const textFields = extractResumeTextFields(data).filter(
+        (field) => !isIgnoredSpellCheckField(field.field),
+      );
       if (textFields.length === 0) {
         console.log("[AI] spellCheck — no text fields, skipping");
         return { issues: [] };
@@ -180,7 +203,8 @@ export const aiRouter = createTRPCRouter({
           original: item.original,
           corrected: item.corrected,
           context: item.context,
-        }));
+        }))
+        .filter((issue) => !isIgnoredSpellCheckField(issue.field));
 
       console.log(`[AI] spellCheck done — ${issues.length} issue(s) via ${model}`);
       return { issues };

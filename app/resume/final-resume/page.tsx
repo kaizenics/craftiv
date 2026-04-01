@@ -105,6 +105,10 @@ export default function FinalResumePage() {
 
   const { data: session } = authClient.useSession();
   const updateResume = trpc.resume.update.useMutation();
+  const { data: savedResume } = trpc.resume.getById.useQuery(
+    { id: currentResumeId! },
+    { enabled: !!currentResumeId },
+  );
 
   useEffect(() => {
     // Get resume data from localStorage
@@ -208,6 +212,29 @@ export default function FinalResumePage() {
       localStorage.setItem("resumeName", resumeName);
     }
   }, [resumeName, isLoading]);
+
+  // Keep the editor title in sync with the database title when available
+  useEffect(() => {
+    if (!savedResume?.title) return;
+
+    setResumeName(savedResume.title);
+    localStorage.setItem("resumeName", savedResume.title);
+  }, [savedResume?.title]);
+
+  // Persist title edits to database so dashboard name matches final-resume name
+  useEffect(() => {
+    if (isLoading || !currentResumeId) return;
+
+    const normalizedName = resumeName.trim() || "Resume_1";
+    const timeoutId = setTimeout(() => {
+      updateResume.mutate({
+        id: currentResumeId,
+        title: normalizedName,
+      });
+    }, 600);
+
+    return () => clearTimeout(timeoutId);
+  }, [resumeName, isLoading, currentResumeId]);
 
   if (isLoading || !resumeData) {
     return (

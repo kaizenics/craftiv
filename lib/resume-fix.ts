@@ -8,13 +8,50 @@ export interface SpellIssue {
   context: string;
 }
 
+export interface ApplyFixResult {
+  data: ResumeData;
+  changed: boolean;
+}
+
+function normalizeIssueField(field: string): string {
+  return field
+    .trim()
+    .replace(/^[\[\("'\s]+/, "")
+    .replace(/[\]\)"'\s]+$/, "")
+    .trim();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function applyFixToResume(
   resumeData: ResumeData,
   issue: SpellIssue,
-): ResumeData {
+): ApplyFixResult {
   const updated = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
+  const normalizedField = normalizeIssueField(issue.field);
+  let changed = false;
 
-  const replace = (str: string) => str.split(issue.original).join(issue.corrected);
+  const replace = (str: string) => {
+    if (!str || !issue.original) return str;
+
+    if (str.includes(issue.original)) {
+      const next = str.split(issue.original).join(issue.corrected);
+      if (next !== str) changed = true;
+      return next;
+    }
+
+    const pattern = escapeRegExp(issue.original.trim());
+    if (!pattern) return str;
+
+    const re = new RegExp(pattern, "i");
+    if (!re.test(str)) return str;
+
+    const next = str.replace(re, issue.corrected);
+    if (next !== str) changed = true;
+    return next;
+  };
 
   const fieldMap: Record<string, () => void> = {
     Summary: () => { updated.summary = replace(updated.summary); },
@@ -23,12 +60,12 @@ export function applyFixToResume(
     "Job Title": () => { updated.contact.desiredJobTitle = replace(updated.contact.desiredJobTitle); },
   };
 
-  if (fieldMap[issue.field]) {
-    fieldMap[issue.field]();
-    return updated;
+  if (fieldMap[normalizedField]) {
+    fieldMap[normalizedField]();
+    return { data: updated, changed };
   }
 
-  const expMatch = issue.field.match(/^Experience (\d+) - (.+)$/);
+  const expMatch = normalizedField.match(/^Experience (\d+) - (.+)$/);
   if (expMatch) {
     const idx = parseInt(expMatch[1]) - 1;
     const sub = expMatch[2];
@@ -38,10 +75,10 @@ export function applyFixToResume(
       else if (sub === "Employer") exp.employer = replace(exp.employer);
       else if (sub === "Description") exp.description = replace(exp.description);
     }
-    return updated;
+    return { data: updated, changed };
   }
 
-  const eduMatch = issue.field.match(/^Education (\d+) - (.+)$/);
+  const eduMatch = normalizedField.match(/^Education (\d+) - (.+)$/);
   if (eduMatch) {
     const idx = parseInt(eduMatch[1]) - 1;
     const sub = eduMatch[2];
@@ -51,17 +88,17 @@ export function applyFixToResume(
       else if (sub === "Degree") edu.degree = replace(edu.degree);
       else if (sub === "Description") edu.description = replace(edu.description);
     }
-    return updated;
+    return { data: updated, changed };
   }
 
-  const skillMatch = issue.field.match(/^Skill (\d+)$/);
+  const skillMatch = normalizedField.match(/^Skill (\d+)$/);
   if (skillMatch) {
     const idx = parseInt(skillMatch[1]) - 1;
     if (updated.skills[idx]) {
       updated.skills[idx].name = replace(updated.skills[idx].name);
     }
-    return updated;
+    return { data: updated, changed };
   }
 
-  return updated;
+  return { data: updated, changed };
 }
