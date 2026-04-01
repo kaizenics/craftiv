@@ -1,6 +1,5 @@
 "use client";
 
-import { Label } from "@/components/ui/label";
 import { WysiwygEditor } from "@/components/ui/wysiwyg-editor";
 
 interface LetterBodyFormProps {
@@ -21,14 +20,13 @@ export function LetterBodyForm({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Letter Content</h2>
+        <h2 className="font-display text-lg font-bold text-foreground">Letter Content</h2>
         <p className="text-sm text-muted-foreground">
           Write your full cover letter in one rich editor.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label>Cover Letter</Label>
         <WysiwygEditor
           value={content}
           onChange={onContentChange}

@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Upload, Sparkles, Layout } from "lucide-react";
+import { FileText, Upload, Sparkles, Layout } from "@/components/ui/icons";
 import Link from "next/link";
 
 const actions = [

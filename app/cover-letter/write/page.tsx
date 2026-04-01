@@ -22,10 +22,13 @@ import {
   ContactForm,
   EmployerForm,
   LetterBodyForm,
+  TemplateForm,
 } from "@/components/cover-letter/forms";
+import { getCoverLetterTemplate } from "@/lib/cover-letter-templates";
 import {
   CoverLetterData,
   createEmptyCoverLetterData,
+  normalizeCoverLetterData,
 } from "@/lib/types/cover-letter";
 import {
   ArrowLeft,
@@ -43,7 +46,7 @@ import {
   X,
   Loader2,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 
@@ -115,7 +118,7 @@ function WriteCoverLetterPageContent() {
   useEffect(() => {
     if (!coverLetterQuery.data) return;
 
-    setCoverLetterData(coverLetterQuery.data.data);
+    setCoverLetterData(normalizeCoverLetterData(coverLetterQuery.data.data));
     setMethodDialogOpen(false);
     setDialogView("pick");
   }, [coverLetterQuery.data]);
@@ -281,7 +284,7 @@ function WriteCoverLetterPageContent() {
           resumeTextParts.push(`${edu.degree} — ${edu.schoolName}`);
       }
       const skillNames = (resumeData.skills || [])
-        .map((s: any) => s.name)
+        .map((s: { name?: string }) => s.name)
         .filter(Boolean);
       if (skillNames.length > 0)
         resumeTextParts.push(`Skills: ${skillNames.join(", ")}`);
@@ -308,7 +311,7 @@ function WriteCoverLetterPageContent() {
             .map((text: string) => `<p>${escapeHtml(text)}</p>`)
             .join("");
 
-      setCoverLetterData({
+      setCoverLetterData((prev) => ({
         contact: {
           firstName: c.firstName || "",
           lastName: c.lastName || "",
@@ -329,11 +332,14 @@ function WriteCoverLetterPageContent() {
           month: "long",
           day: "numeric",
         }),
-      });
+        templateId: prev.templateId,
+      }));
 
       setMethodDialogOpen(false);
-    } catch (error: any) {
-      setUploadError(error.message || "Something went wrong. Please try again.");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      setUploadError(message);
     } finally {
       setIsGenerating(false);
     }
@@ -409,9 +415,11 @@ function WriteCoverLetterPageContent() {
         ...prev,
         content: generatedContent,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to generate. Please try again.";
       setInlineGenerateError(
-        error?.message || "Failed to generate. Please try again."
+        message
       );
     } finally {
       setIsInlineGenerating(false);
@@ -491,6 +499,8 @@ function WriteCoverLetterPageContent() {
 
   const buildCoverLetterPdfHtml = () => {
     const { contact, employer, date, content } = coverLetterData;
+    const template = getCoverLetterTemplate(coverLetterData.templateId);
+    const isModernAts = template.id === "modern-ats";
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
     const bodyHtml = toPdfContentHtml(content);
 
@@ -504,21 +514,51 @@ function WriteCoverLetterPageContent() {
       body {
         margin: 0;
         padding: 0;
-        font-family: Georgia, "Times New Roman", serif;
-        color: #27272a;
+        font-family: ${isModernAts
+          ? '"Helvetica Neue", Arial, sans-serif'
+          : 'Georgia, "Times New Roman", serif'};
+        color: ${isModernAts ? "#18181b" : "#27272a"};
         background: #ffffff;
       }
       .page {
         width: 210mm;
         min-height: 297mm;
         margin: 0 auto;
-        padding: 18mm 20mm 20mm 20mm;
-        line-height: 1.6;
+        padding: ${isModernAts ? "16mm 18mm 18mm 18mm" : "18mm 20mm 20mm 20mm"};
+        line-height: ${isModernAts ? "1.55" : "1.6"};
         font-size: 12px;
       }
-      .name { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
-      .meta { margin: 0; color: #52525b; }
+      .accent {
+        width: 58px;
+        height: 4px;
+        border-radius: 999px;
+        background: #18181b;
+        margin-bottom: 14px;
+      }
+      .name {
+        font-size: ${isModernAts ? "18px" : "20px"};
+        font-weight: ${isModernAts ? "600" : "700"};
+        margin: 0 0 6px;
+        letter-spacing: ${isModernAts ? "0.1px" : "0.2px"};
+      }
+      .meta { margin: 0; color: ${isModernAts ? "#3f3f46" : "#52525b"}; }
       .section { margin-top: 18px; }
+      .recipient-name {
+        margin: 0;
+        font-weight: ${isModernAts ? "600" : "400"};
+      }
+      .recipient-job {
+        margin: 0;
+        color: #52525b;
+      }
+      .recipient-company {
+        margin: 0;
+        font-weight: ${isModernAts ? "600" : "500"};
+      }
+      .recipient-address {
+        margin: 0;
+        color: #52525b;
+      }
       .body p { margin: 0 0 14px; }
       .body p:last-child { margin-bottom: 0; }
       .body ul, .body ol { margin: 0 0 14px 20px; }
@@ -526,6 +566,7 @@ function WriteCoverLetterPageContent() {
   </head>
   <body>
     <div class="page">
+      ${isModernAts ? `<div class="accent"></div>` : ""}
       ${fullName ? `<p class="name">${escapeHtml(fullName)}</p>` : ""}
       ${(contact.address || contact.city)
         ? `<p class="meta">${escapeHtml([contact.address, contact.city].filter(Boolean).join(", "))}</p>`
@@ -538,10 +579,10 @@ function WriteCoverLetterPageContent() {
 
       ${(employer.hiringManagerName || employer.jobTitle || employer.companyName || employer.companyAddress)
         ? `<div class="section">
-            ${employer.hiringManagerName ? `<p>${escapeHtml(employer.hiringManagerName)}</p>` : ""}
-            ${employer.jobTitle ? `<p>${escapeHtml(employer.jobTitle)}</p>` : ""}
-            ${employer.companyName ? `<p>${escapeHtml(employer.companyName)}</p>` : ""}
-            ${employer.companyAddress ? `<p>${escapeHtml(employer.companyAddress)}</p>` : ""}
+            ${employer.hiringManagerName ? `<p class="recipient-name">${escapeHtml(employer.hiringManagerName)}</p>` : ""}
+            ${employer.jobTitle ? `<p class="recipient-job">${escapeHtml(employer.jobTitle)}</p>` : ""}
+            ${employer.companyName ? `<p class="recipient-company">${escapeHtml(employer.companyName)}</p>` : ""}
+            ${employer.companyAddress ? `<p class="recipient-address">${escapeHtml(employer.companyAddress)}</p>` : ""}
            </div>`
         : ""}
 
@@ -878,7 +919,7 @@ function WriteCoverLetterPageContent() {
           >
             <div className="flex-1 pb-20 sm:pb-24 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
               <div className="mb-4">
-                <h1 className="text-xl font-bold text-foreground">
+                <h1 className="font-display text-3xl font-bold text-foreground">
                   {isEditing ? "Edit Cover Letter" : "Write Cover Letter"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -886,11 +927,17 @@ function WriteCoverLetterPageContent() {
                 </p>
               </div>
 
-              <div className="bg-background rounded-lg border p-4 sm:p-6 mb-4 space-y-8">
+              <div className="bg-background rounded-lg mb-4 space-y-8">
                 <div className="space-y-3">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Your Info
-                  </h2>
+                  <TemplateForm
+                    selectedTemplateId={coverLetterData.templateId}
+                    onChange={(templateId) =>
+                      setCoverLetterData({ ...coverLetterData, templateId })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-3">
                   <ContactForm
                     data={coverLetterData.contact}
                     onChange={(contact) =>
@@ -900,9 +947,6 @@ function WriteCoverLetterPageContent() {
                 </div>
 
                 <div className="space-y-3">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Employer
-                  </h2>
                   <EmployerForm
                     data={coverLetterData.employer}
                     onChange={(employer) => {
@@ -915,9 +959,6 @@ function WriteCoverLetterPageContent() {
                 </div>
 
                 <div className="space-y-3">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Letter Body
-                  </h2>
                   <LetterBodyForm
                     content={coverLetterData.content}
                     onContentChange={(content) =>

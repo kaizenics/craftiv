@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { Menu, X } from "lucide-react";
+import { Menu, X } from "@/components/ui/icons";
 import {
   motion,
   AnimatePresence,

@@ -12,7 +12,7 @@ import {
   Loader2,
   ArrowLeft,
   FileUp,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 
 type UploadState = "idle" | "dragging" | "scanning" | "success" | "error";

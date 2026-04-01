@@ -1,8 +1,13 @@
 "use client";
 
-import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { type HTMLAttributes, createContext, useContext } from 'react';
+import {
+  type ComponentProps,
+  type HTMLAttributes,
+  createContext,
+  useContext,
+} from 'react';
 
 type BadgeContextType = {
   themed: boolean;
@@ -22,7 +27,7 @@ const useBadgeContext = () => {
   return context;
 };
 
-export type AnnouncementProps = BadgeProps & {
+export type AnnouncementProps = ComponentProps<typeof Badge> & {
   themed?: boolean;
 };
 

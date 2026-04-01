@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon } from "@/components/ui/icons"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"

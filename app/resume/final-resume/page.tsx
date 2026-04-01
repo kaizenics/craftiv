@@ -55,7 +55,7 @@ import {
   Pencil,
   Eye,
   Menu,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 // Sidebar tab types
 type SidebarTab = "templates" | "sections" | "design" | "spellcheck";
@@ -409,7 +409,7 @@ export default function FinalResumePage() {
       {/* Header */}
       <header className="border-b bg-background px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+          <span className="font-display text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
             BoostCV
           </span>
         </div>
@@ -422,7 +422,7 @@ export default function FinalResumePage() {
         <Button
           onClick={handleDownloadClick}
           size="sm"
-          className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs sm:text-sm"
+          className="bg-primary hover:bg-primary/80 text-xs sm:text-sm"
         >
           <span className="hidden sm:inline">Download Resume</span>
           <span className="sm:hidden">Download</span>

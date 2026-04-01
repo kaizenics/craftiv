@@ -31,7 +31,7 @@ export function Hero() {
               className="font-display text-3xl font-bold leading-[1.1] tracking-tight text-zinc-900 dark:text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl "
             >
               Professional resumes.{" "}
-              <span className="text-zinc-900 dark:text-white">
+              <span className="text-primary dark:text-white">
                 Built to get interviews.
               </span>
             </motion.h1>
@@ -56,7 +56,7 @@ export function Hero() {
               className="mt-8 sm:mt-10 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4"
             >
               <Link href="/resume/templates">
-                <button className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 sm:px-8 sm:py-4 text-sm sm:text-base font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100">
+                <button className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 sm:px-8 sm:py-4 text-sm sm:text-base font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100">
                   Create New Resume
                 </button>
               </Link>

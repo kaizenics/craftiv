@@ -4,7 +4,11 @@ import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { coverLetters } from "@/db/schema";
-import type { CoverLetterData } from "@/lib/types/cover-letter";
+import {
+  coverLetterTemplateIds,
+  normalizeCoverLetterData,
+  type CoverLetterData,
+} from "@/lib/types/cover-letter";
 
 const contactSchema = z.object({
   firstName: z.string(),
@@ -27,6 +31,7 @@ const coverLetterDataSchema = z.object({
   employer: employerSchema,
   content: z.string(),
   date: z.string(),
+  templateId: z.enum(coverLetterTemplateIds).optional(),
 });
 
 const updateCoverLetterSchema = z.object({
@@ -37,10 +42,15 @@ const updateCoverLetterSchema = z.object({
 
 export const coverLetterRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.coverLetters.findMany({
+    const rows = await ctx.db.query.coverLetters.findMany({
       where: eq(coverLetters.userId, ctx.user.id),
       orderBy: [desc(coverLetters.updatedAt)],
     });
+
+    return rows.map((row) => ({
+      ...row,
+      data: normalizeCoverLetterData(row.data as Partial<CoverLetterData>),
+    }));
   }),
 
   getById: protectedProcedure
@@ -55,7 +65,11 @@ export const coverLetterRouter = createTRPCRouter({
       if (row.userId !== ctx.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this cover letter" });
       }
-      return row;
+
+      return {
+        ...row,
+        data: normalizeCoverLetterData(row.data as Partial<CoverLetterData>),
+      };
     }),
 
   create: protectedProcedure
@@ -67,7 +81,7 @@ export const coverLetterRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const id = crypto.randomUUID();
-      const data = input.data as CoverLetterData;
+      const data = normalizeCoverLetterData(input.data as Partial<CoverLetterData>);
 
       const derivedTitle =
         input.title?.trim() ||
@@ -105,7 +119,7 @@ export const coverLetterRouter = createTRPCRouter({
         });
       }
 
-      const data = input.data as CoverLetterData;
+      const data = normalizeCoverLetterData(input.data as Partial<CoverLetterData>);
       const derivedTitle =
         input.title?.trim() ||
         (data.employer.jobTitle.trim()
@@ -165,11 +179,14 @@ export const coverLetterRouter = createTRPCRouter({
       }
 
       const id = crypto.randomUUID();
+      const normalizedData = normalizeCoverLetterData(
+        existing.data as Partial<CoverLetterData>
+      );
       await ctx.db.insert(coverLetters).values({
         id,
         userId: ctx.user.id,
         title: `${existing.title} (Copy)`,
-        data: existing.data as CoverLetterData,
+        data: normalizedData,
         updatedAt: new Date(),
       });
 

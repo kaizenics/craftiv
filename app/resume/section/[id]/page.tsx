@@ -30,7 +30,7 @@ import {
   createEmptyResumeData,
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from "@/components/ui/icons";
 
 export default function ResumeSectionDynamicPage() {
   const router = useRouter();

@@ -1,7 +1,13 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Zap, Shield, Target, Users } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  FlashIcon,
+  Shield01Icon,
+  Target01Icon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons";
 import {
   Carousel,
   CarouselContent,
@@ -11,25 +17,30 @@ import {
 } from "@/components/ui/carousel";
 import { templates } from "@/lib/data/templates";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
+import { cn } from "@/lib/utils";
 
 const features = [
   {
-    icon: Zap,
+    icon: FlashIcon,
+    eyebrow: "Speed",
     title: "Lightning Fast",
     description: "Create a professional resume in under 10 minutes with our intuitive builder.",
   },
   {
-    icon: Shield,
+    icon: Shield01Icon,
+    eyebrow: "Reliability",
     title: "ATS-Optimized",
     description: "Every resume passes through applicant tracking systems with flying colors.",
   },
   {
-    icon: Target,
+    icon: Target01Icon,
+    eyebrow: "Precision",
     title: "Tailored Content",
     description: "AI-powered suggestions help you highlight your most relevant experience.",
   },
   {
-    icon: Users,
+    icon: UserGroupIcon,
+    eyebrow: "Proof",
     title: "Trusted by Thousands",
     description: "Join 50,000+ professionals who landed their dream jobs using BoostCV.",
   },
@@ -62,7 +73,7 @@ function ResumeTemplateCard({ template }: { template: typeof templates[0] }) {
 
 export function About() {
   return (
-    <section id="about" className="relative bg-zinc-50 py-20 lg:py-32 font-sans">
+    <section id="about" className="relative bg-primary/10 py-20 lg:py-32 font-sans">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
@@ -73,7 +84,7 @@ export function About() {
           className="text-center"
         >
           <h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
-            Why choose BoostCV?
+            Why choose <span className="text-primary">BoostCV</span>?
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg text-zinc-600">
             We make resume building simple, fast, and effective. No fluff, just results.
@@ -89,15 +100,31 @@ export function About() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group rounded-2xl border border-zinc-200 bg-white p-6 transition-all duration-300 hover:border-zinc-300 hover:shadow-lg"
+              className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-[0_10px_24px_-16px_rgba(9,9,11,0.35)] transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_20px_35px_-18px_rgba(9,9,11,0.38)]"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 transition-colors group-hover:bg-zinc-900">
-                <feature.icon className="h-6 w-6 text-zinc-600 transition-colors group-hover:text-white" />
+              <div
+                className={cn(
+                  "pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-100 opacity-70",
+                  "bg-primary/20"
+                )}
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-primary to-primary/70" />
+
+              <div className="relative flex items-start justify-between gap-4">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105"
+                >
+                  <HugeiconsIcon icon={feature.icon} strokeWidth={2} className="h-[22px] w-[22px]" />
+                </div>
+                <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  {feature.eyebrow}
+                </span>
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-zinc-900">
+
+              <h3 className="relative mt-5 text-xl font-semibold tracking-tight text-zinc-900">
                 {feature.title}
               </h3>
-              <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
+              <p className="relative mt-2 text-[15px] leading-relaxed text-zinc-600">
                 {feature.description}
               </p>
             </motion.div>

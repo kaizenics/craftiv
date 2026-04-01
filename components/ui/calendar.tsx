@@ -10,7 +10,8 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowLeftIcon, ArrowRightIcon, ArrowDownIcon } from "@hugeicons/core-free-icons"
 
 function Calendar({
   className,
@@ -31,7 +32,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] group/calendar bg-background in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
+        "group/calendar bg-background p-3 [--cell-radius:var(--radius-4xl)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -73,7 +74,7 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "cn-calendar-dropdown-root relative rounded-(--cell-radius)",
+          "relative rounded-(--cell-radius)",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn(
@@ -84,7 +85,7 @@ function Calendar({
           "font-medium select-none",
           captionLayout === "label"
             ? "text-sm"
-            : "cn-calendar-caption-label flex items-center gap-1 rounded-(--cell-radius) text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
+            : "flex items-center gap-1 rounded-(--cell-radius) text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
           defaultClassNames.caption_label
         ),
         table: "w-full border-collapse",
@@ -147,18 +148,18 @@ function Calendar({
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
-              <ChevronLeftIcon className={cn("cn-rtl-flip size-4", className)} {...props} />
+              <HugeiconsIcon icon={ArrowLeftIcon} strokeWidth={2} className={cn("size-4", className)} {...props} />
             )
           }
 
           if (orientation === "right") {
             return (
-              <ChevronRightIcon className={cn("cn-rtl-flip size-4", className)} {...props} />
+              <HugeiconsIcon icon={ArrowRightIcon} strokeWidth={2} className={cn("size-4", className)} {...props} />
             )
           }
 
           return (
-            <ChevronDownIcon className={cn("size-4", className)} {...props} />
+            <HugeiconsIcon icon={ArrowDownIcon} strokeWidth={2} className={cn("size-4", className)} {...props} />
           )
         },
         DayButton: ({ ...props }) => (

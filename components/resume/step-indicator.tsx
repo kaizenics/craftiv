@@ -2,7 +2,7 @@
 
 import { ResumeStep, RESUME_STEPS } from '@/lib/types/resume';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check } from '@/components/ui/icons';
 
 interface StepIndicatorProps {
   currentStep: ResumeStep;

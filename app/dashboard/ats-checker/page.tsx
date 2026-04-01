@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, Loader2, ShieldCheck, Upload } from "lucide-react";
+import { AlertCircle, Loader2, ShieldCheck, Upload } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 
@@ -99,7 +99,7 @@ export default function AtsCheckerPage() {
 						htmlFor="ats-upload"
 						className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center hover:bg-muted/5"
 					>
-						<Upload className="h-8 w-8 text-amber-600" />
+						<Upload className="h-8 w-8 text-primary" />
 						<div>
 							<p className="font-medium text-foreground">Upload resume (PDF or DOCX)</p>
 							<p className="text-sm text-muted-foreground">Max file size {MAX_SIZE_MB}MB</p>

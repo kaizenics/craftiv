@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/ui/icons";
 import Link from "next/link";
 
 export function CreateResumeCard() {

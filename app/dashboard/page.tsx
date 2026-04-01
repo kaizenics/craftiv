@@ -1,7 +1,8 @@
 
 "use client";
 
-import { ArrowRight, CircleDashed } from "lucide-react";
+import { ArrowRight, CircleDashed } from "@/components/ui/icons";
+import { useRouter } from "next/navigation";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCard } from "@/components/dashboard/resume-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
@@ -17,33 +18,35 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function Dashboard() {
+  const router = useRouter();
+
   // Replace mock data with real tRPC query
   const { data: resumes = [], isLoading } = trpc.resume.list.useQuery();
 
   const checklistItems = [
     {
       title: "Build your resume",
-      detail: "Choose a template and add your details.",
+      detail: "Pick a template and complete each section with clear, role-relevant achievements.",
       href: "/resume/templates",
     },
     {
       title: "Make it ATS-friendly",
-      detail: "Use clear words and format so hiring systems can read it well.",
+      detail: "Improve keywords, structure, and formatting so ATS systems can parse it correctly.",
       href: "/resume/upload",
     },
     {
       title: "Check and improve",
-      detail: "Fix weak lines and make your resume stronger.",
-      href: "/resume/templates",
+      detail: "Review weak bullets, tighten wording, and increase overall impact before applying.",
+      href: "/dashboard/ats-checker",
     },
     {
       title: "Write a cover letter",
-      detail: "Create a simple cover letter that matches the job.",
-      href: "/resume/templates",
+      detail: "Generate a tailored cover letter that aligns with the role and your resume.",
+      href: "/cover-letter/write",
     },
     {
       title: "Track your job applications",
-      detail: "Keep your job list in one place and apply faster.",
+      detail: "Keep your documents organized so each application is ready to send quickly.",
       href: "/dashboard/documents/resume",
     },
   ];
@@ -74,7 +77,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">
-            Welcome back! 👋
+            Welcome back
           </h1>
           <p className="text-muted-foreground">
             {hasResumes
@@ -95,24 +98,27 @@ export default function Dashboard() {
                 <AccordionItem
                   key={item.title}
                   value={`item-${index}`}
-                  className="overflow-hidden rounded-xl border border-border bg-background last:border-b"
+                  className="overflow-hidden rounded-xl border border-primary/20 bg-background last:border-b"
                 >
-                  <AccordionTrigger className="px-4 py-3 text-base font-normal text-foreground hover:no-underline [&>svg]:text-muted-foreground">
+                  <AccordionTrigger className="px-4 py-3 text-md font-medium text-foreground hover:no-underline [&>svg]:text-primary/70">
                     <span className="flex items-center gap-3 leading-none">
-                      <CircleDashed className="h-5 w-5 text-amber-500" />
+                      <CircleDashed className="h-5 w-5 text-primary" />
                       <span>{item.title}</span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pt-0 pb-4">
-                    <Link
-                      href={item.href}
-                      className="flex items-center justify-between rounded-lg  bg-amber-50 px-4 py-3 transition-colors"
+                    <button
+                      type="button"
+                      onClick={() => router.push(item.href)}
+                      className="flex w-full items-center justify-between rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-left transition-colors hover:bg-primary/15"
                     >
-                      <p className="text-sm text-slate-700">{item.detail}</p>
-                      <span className="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-300 text-amber-800">
+                      <p className="text-base leading-relaxed text-foreground">
+                        {item.detail}
+                      </p>
+                      <span className="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                         <ArrowRight className="h-4 w-4" />
                       </span>
-                    </Link>
+                    </button>
                   </AccordionContent>
                 </AccordionItem>
               ))}
@@ -135,7 +141,7 @@ export default function Dashboard() {
           </h2>
           {hasResumes && (
             <Link
-              href="/dashboard/documents"
+              href="/dashboard/documents/resume"
               className="text-sm text-foreground hover:underline"
             >
               View all
