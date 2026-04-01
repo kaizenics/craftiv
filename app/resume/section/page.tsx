@@ -106,7 +106,7 @@ export default function ResumeSectionPage() {
       
       createResume
         .mutateAsync({
-          title: "Untitled Resume",
+          title: "Resume_1",
           templateId: templateId,
         })
         .then((result) => {

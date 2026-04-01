@@ -8,6 +8,46 @@ import {
 } from "../init";
 import { resumes, type ResumeDataJSON } from "@/db/schema";
 
+function splitTitleBaseAndIndex(title: string): { base: string; index: number | null } {
+  const match = title.match(/^(.*?)(?:_(\d+))?$/);
+  const rawBase = match?.[1]?.trim() || title.trim();
+  const base = rawBase || "Resume";
+  const index = match?.[2] ? parseInt(match[2], 10) : null;
+  return { base, index: Number.isNaN(index) ? null : index };
+}
+
+async function getUniqueResumeTitle(args: {
+  db: any;
+  userId: string;
+  requestedTitle: string;
+  excludeId?: string;
+}): Promise<string> {
+  const requested = args.requestedTitle.trim() || "Resume_1";
+
+  const existingResumes = await args.db.query.resumes.findMany({
+    where: eq(resumes.userId, args.userId),
+  });
+
+  const existingTitles = new Set(
+    existingResumes
+      .filter((r: any) => (args.excludeId ? r.id !== args.excludeId : true))
+      .map((r: any) => (r.title || "").trim().toLowerCase()),
+  );
+
+  if (!existingTitles.has(requested.toLowerCase())) {
+    return requested;
+  }
+
+  const { base, index } = splitTitleBaseAndIndex(requested);
+  let next = index ?? 1;
+
+  while (existingTitles.has(`${base}_${next}`.toLowerCase())) {
+    next += 1;
+  }
+
+  return `${base}_${next}`;
+}
+
 // Validation schemas
 const contactSchema = z.object({
   firstName: z.string(),
@@ -176,6 +216,11 @@ export const resumeRouter = createTRPCRouter({
     .input(createResumeSchema)
     .mutation(async ({ ctx, input }) => {
       const id = crypto.randomUUID();
+      const title = await getUniqueResumeTitle({
+        db: ctx.db,
+        userId: ctx.user.id,
+        requestedTitle: input.title,
+      });
       
       const emptyData: ResumeDataJSON = {
         contact: {
@@ -203,13 +248,13 @@ export const resumeRouter = createTRPCRouter({
       await ctx.db.insert(resumes).values({
         id,
         userId: ctx.user.id,
-        title: input.title,
+        title,
         templateId: input.templateId,
         data: emptyData,
         status: "draft",
       });
 
-      return { id };
+      return { id, title };
     }),
 
   /**
@@ -242,7 +287,14 @@ export const resumeRouter = createTRPCRouter({
         updatedAt: new Date(),
       };
 
-      if (input.title !== undefined) updateData.title = input.title;
+      if (input.title !== undefined) {
+        updateData.title = await getUniqueResumeTitle({
+          db: ctx.db,
+          userId: ctx.user.id,
+          requestedTitle: input.title,
+          excludeId: input.id,
+        });
+      }
       if (input.templateId !== undefined) updateData.templateId = input.templateId;
       if (input.data !== undefined) updateData.data = input.data;
       if (input.status !== undefined) updateData.status = input.status;
@@ -255,7 +307,7 @@ export const resumeRouter = createTRPCRouter({
         .set(updateData)
         .where(eq(resumes.id, input.id));
 
-      return { success: true };
+      return { success: true, title: updateData.title ?? existingResume.title };
     }),
 
   /**
