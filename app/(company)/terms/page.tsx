@@ -9,8 +9,8 @@ const LAST_UPDATED = "March 15, 2026";
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-10">
+    <main className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-4xl bg-white sm:p-10">
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
           Terms of Service
         </h1>

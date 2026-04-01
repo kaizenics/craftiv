@@ -87,7 +87,7 @@ export default function AtsCheckerPage() {
 	return (
 		<div className="space-y-8">
 			<div>
-				<h1 className="text-2xl font-bold text-foreground lg:text-3xl">ATS Checker</h1>
+				<h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">ATS Checker</h1>
 				<p className="mt-1 text-muted-foreground">
 					Upload your resume and get AI feedback to improve ATS match and recruiter impact.
 				</p>
