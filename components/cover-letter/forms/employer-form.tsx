@@ -17,7 +17,7 @@ export function EmployerForm({ data, onChange }: EmployerFormProps) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Employer Details</h2>
+        <h2 className="font-display text-lg font-bold text-foreground">Employer Details</h2>
         <p className="text-sm text-muted-foreground">Who are you addressing this letter to?</p>
       </div>
 

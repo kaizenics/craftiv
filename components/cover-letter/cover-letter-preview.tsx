@@ -1,5 +1,6 @@
 "use client";
 
+import { getCoverLetterTemplate } from "@/lib/cover-letter-templates";
 import { CoverLetterData } from "@/lib/types/cover-letter";
 import { cn } from "@/lib/utils";
 import DOMPurify from "isomorphic-dompurify";
@@ -31,6 +32,8 @@ interface CoverLetterPreviewProps {
 
 export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps) {
   const { contact, employer, content, date } = data;
+  const template = getCoverLetterTemplate(data.templateId);
+  const isModernAts = template.id === "modern-ats";
   const hasName = contact.firstName || contact.lastName;
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
   const sanitizedContent = DOMPurify.sanitize(normalizeBodyHtml(content || ""), {
@@ -59,24 +62,41 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[640px] overflow-hidden rounded-sm bg-white text-zinc-800 shadow-lg",
+        "mx-auto w-full max-w-[640px] overflow-hidden rounded-sm bg-white shadow-lg",
+        isModernAts ? "border border-zinc-200 text-zinc-900" : "text-zinc-800",
         className
       )}
       style={{
         aspectRatio: "210 / 297",
         padding: previewPadding,
-        fontFamily: "Georgia, 'Times New Roman', serif",
+        fontFamily: isModernAts
+          ? "'Helvetica Neue', Arial, sans-serif"
+          : "Georgia, 'Times New Roman', serif",
         fontSize: previewFontSize,
         lineHeight: previewLineHeight,
       }}
     >
+      {isModernAts && <div className="mb-4 h-1 w-20 rounded-full bg-zinc-800" />}
+
       {/* Sender info */}
       {hasName && (
         <div className="mb-1">
-          <p className="text-[12.5pt] font-bold tracking-wide">{fullName}</p>
+          <p
+            className={cn(
+              "text-[12.5pt]",
+              isModernAts ? "font-semibold tracking-tight" : "font-bold tracking-wide"
+            )}
+          >
+            {fullName}
+          </p>
         </div>
       )}
-      <div className="space-y-0.5 text-[9pt] text-zinc-500">
+      <div
+        className={cn(
+          "space-y-0.5 text-[9pt]",
+          isModernAts ? "text-zinc-600" : "text-zinc-500"
+        )}
+      >
         {(contact.address || contact.city) && (
           <p>{[contact.address, contact.city].filter(Boolean).join(", ")}</p>
         )}
@@ -86,14 +106,31 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
       </div>
 
       {/* Date */}
-      {date && <p className="mt-5 text-[9.2pt] text-zinc-600">{date}</p>}
+      {date && (
+        <p
+          className={cn(
+            "mt-5 text-[9.2pt]",
+            isModernAts ? "font-medium text-zinc-700" : "text-zinc-600"
+          )}
+        >
+          {date}
+        </p>
+      )}
 
       {/* Recipient info */}
       {(employer.hiringManagerName || employer.companyName || employer.companyAddress || employer.jobTitle) && (
         <div className="mt-4 space-y-0.5 text-[9.2pt]">
-          {employer.hiringManagerName && <p>{employer.hiringManagerName}</p>}
+          {employer.hiringManagerName && (
+            <p className={cn(isModernAts && "font-medium text-zinc-800")}>
+              {employer.hiringManagerName}
+            </p>
+          )}
           {employer.jobTitle && <p className="text-zinc-500">{employer.jobTitle}</p>}
-          {employer.companyName && <p className="font-medium">{employer.companyName}</p>}
+          {employer.companyName && (
+            <p className={cn(isModernAts ? "font-semibold" : "font-medium")}>
+              {employer.companyName}
+            </p>
+          )}
           {employer.companyAddress && <p className="text-zinc-500">{employer.companyAddress}</p>}
         </div>
       )}
@@ -102,7 +139,8 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
       {sanitizedContent ? (
         <div
           className={cn(
-            "mt-6 wrap-break-word text-left [word-spacing:normal] tracking-normal",
+            "mt-6 wrap-break-word text-left [word-spacing:normal]",
+            isModernAts ? "tracking-tight text-zinc-800" : "tracking-normal",
             isVeryLongContent
               ? "[&_p]:mb-2 [&_ul]:my-2 [&_ol]:my-2"
               : isLongContent
@@ -113,7 +151,7 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
           dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       ) : (
-        <p className="mt-6 text-[9.5pt] italic text-zinc-300">
+        <p className="mt-6 text-[9.5pt] italic text-zinc-400">
           Your cover letter content will appear here...
         </p>
       )}

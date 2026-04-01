@@ -17,7 +17,7 @@ export function ContactForm({ data, onChange }: ContactFormProps) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Your Contact Information</h2>
+        <h2 className="font-display text-lg font-bold text-foreground">Your Contact Information</h2>
         <p className="text-sm text-muted-foreground">This appears at the top of your cover letter.</p>
       </div>
 
