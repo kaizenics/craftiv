@@ -27,7 +27,10 @@ export function TemplateLivePreview({ templateId, color, showPhoto = false }: Te
     if (!container) return;
 
     const updateScale = () => {
-      const { width, height } = container.getBoundingClientRect();
+      // Use layout size (clientWidth/clientHeight) so 3D transforms from CardSwap
+      // do not shrink the measured dimensions for back cards.
+      const width = container.clientWidth;
+      const height = container.clientHeight;
       if (!width || !height) return;
 
       const nextScale = Math.min(width / A4_WIDTH_PX, height / A4_HEIGHT_PX);
@@ -43,26 +46,35 @@ export function TemplateLivePreview({ templateId, color, showPhoto = false }: Te
   }, []);
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-hidden bg-white">
+    <div
+      ref={containerRef}
+      className="flex h-full w-full items-start justify-center overflow-hidden bg-white"
+    >
       <div
-        className="origin-top"
+        className="relative overflow-hidden"
         style={{
-          position: 'relative',
-          left: '50%',
-          pointerEvents: 'none',
-          width: `${A4_WIDTH_PX}px`,
-          height: `${A4_HEIGHT_PX}px`,
-          transform: `translateX(-50%) scale(${scale})`,
+          pointerEvents: "none",
+          width: `${A4_WIDTH_PX * scale}px`,
+          height: `${A4_HEIGHT_PX * scale}px`,
         }}
       >
-        <ResumePreview
-          data={sampleData}
-          customColor={color}
-          showPhoto={showPhoto}
-          showScore={false}
-          showFooter={false}
-          plain
-        />
+        <div
+          style={{
+            width: `${A4_WIDTH_PX}px`,
+            height: `${A4_HEIGHT_PX}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <ResumePreview
+            data={sampleData}
+            customColor={color}
+            showPhoto={showPhoto}
+            showScore={false}
+            showFooter={false}
+            plain
+          />
+        </div>
       </div>
     </div>
   );
