@@ -1,10 +1,26 @@
 
 "use client";
 
-import { ArrowRight, CircleDashed } from "@/components/ui/icons";
+import { useMemo, useState } from "react";
+import {
+  ArrowRight,
+  BadgeInfo,
+  CircleDashed,
+  Copy,
+  Download,
+  MoreVertical,
+  Pencil,
+  ScanSearch,
+  Sparkles,
+  SpellCheck,
+  Trash2,
+} from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
-import { ResumeCard } from "@/components/dashboard/resume-card";
+import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
+import { CoverLetterCardPreview } from "@/components/dashboard/cover-letter-card-preview";
+import { CoverLetterDownloadDialog } from "@/components/dashboard/cover-letter-download-dialog";
+import { DownloadDialog } from "@/components/resume/download-dialog";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { TipsCard } from "@/components/dashboard/tips-card";
 import {
@@ -13,15 +29,386 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
 import Image from "next/image";
+import type { ResumeDataJSON } from "@/db/schema";
+import type { CoverLetterData } from "@/lib/types/cover-letter";
+import type { ResumeData } from "@/lib/types/resume";
+
+type ResumeListItem = {
+  id: string;
+  title: string;
+  templateId: string;
+  data?: ResumeDataJSON | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+};
+
+type CoverLetterListItem = {
+  id: string;
+  title: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  data: CoverLetterData;
+};
+
+function buildResumeDataForDownload(resume: ResumeListItem): ResumeData {
+  const data = resume.data ?? ({} as ResumeDataJSON);
+
+  return {
+    templateId: resume.templateId,
+    contact: data.contact ?? {
+      firstName: "",
+      lastName: "",
+      desiredJobTitle: "",
+      phone: "",
+      email: "",
+    },
+    experiences: data.experiences ?? [],
+    educations: data.educations ?? [],
+    skills: data.skills ?? [],
+    summary: data.summary ?? "",
+    finalize: data.finalize ?? {
+      languages: [],
+      certifications: [],
+      awards: [],
+      websites: [],
+      references: [],
+      hobbies: [],
+      customSections: [],
+    },
+  };
+}
+
+function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
+  const utils = trpc.useUtils();
+
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+
+  const downloadData = useMemo(() => buildResumeDataForDownload(resume), [resume]);
+
+  const updateResume = trpc.resume.update.useMutation({
+    onSuccess: () => {
+      utils.resume.list.invalidate();
+      utils.user.stats.invalidate();
+    },
+  });
+  const deleteResume = trpc.resume.delete.useMutation({
+    onSuccess: () => {
+      utils.resume.list.invalidate();
+      utils.user.stats.invalidate();
+    },
+  });
+  const duplicateResume = trpc.resume.duplicate.useMutation({
+    onSuccess: () => {
+      utils.resume.list.invalidate();
+      utils.user.stats.invalidate();
+    },
+  });
+
+  const handleRename = async () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    await updateResume.mutateAsync({ id: resume.id, title: trimmed });
+    setShowRenameDialog(false);
+  };
+
+  const handleDelete = async () => {
+    await deleteResume.mutateAsync({ id: resume.id });
+    setShowDeleteDialog(false);
+  };
+
+  const handleDuplicate = async () => {
+    await duplicateResume.mutateAsync({ id: resume.id });
+  };
+
+  return (
+    <>
+      <div className="flex items-center gap-1 md:justify-end">
+        <button
+          type="button"
+          onClick={() => setShowDownloadDialog(true)}
+          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          aria-label="Download resume"
+        >
+          <Download className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setNewTitle(resume.title);
+            setShowRenameDialog(true);
+          }}
+          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          aria-label="Rename resume"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+              aria-label="More resume actions"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => void handleDuplicate()} disabled={duplicateResume.isPending}>
+              <Copy className="h-4 w-4" />
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={deleteResume.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <DownloadDialog
+        data={downloadData}
+        isOpen={showDownloadDialog}
+        onClose={() => setShowDownloadDialog(false)}
+        customFileName={resume.title}
+      />
+
+      <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Resume</AlertDialogTitle>
+            <AlertDialogDescription>Enter a new title for this resume.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Resume title"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleRename();
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleRename()} disabled={updateResume.isPending || !newTitle.trim()}>
+              {updateResume.isPending ? "Renaming..." : "Rename"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Resume</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Are you sure you want to delete "${resume.title}"? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              disabled={deleteResume.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteResume.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
+  const utils = trpc.useUtils();
+
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+
+  const updateCoverLetter = trpc.coverLetter.update.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+    },
+  });
+  const deleteCoverLetter = trpc.coverLetter.delete.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+    },
+  });
+  const duplicateCoverLetter = trpc.coverLetter.duplicate.useMutation({
+    onSuccess: () => {
+      utils.coverLetter.list.invalidate();
+    },
+  });
+
+  const handleRename = async () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    await updateCoverLetter.mutateAsync({
+      id: letter.id,
+      title: trimmed,
+      data: letter.data,
+    });
+    setShowRenameDialog(false);
+  };
+
+  const handleDelete = async () => {
+    await deleteCoverLetter.mutateAsync({ id: letter.id });
+    setShowDeleteDialog(false);
+  };
+
+  const handleDuplicate = async () => {
+    await duplicateCoverLetter.mutateAsync({ id: letter.id });
+  };
+
+  return (
+    <>
+      <div className="flex items-center gap-1 md:justify-end">
+        <button
+          type="button"
+          onClick={() => setShowDownloadDialog(true)}
+          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          aria-label="Download cover letter"
+        >
+          <Download className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setNewTitle(letter.title);
+            setShowRenameDialog(true);
+          }}
+          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          aria-label="Rename cover letter"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+              aria-label="More cover letter actions"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => void handleDuplicate()} disabled={duplicateCoverLetter.isPending}>
+              <Copy className="h-4 w-4" />
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={deleteCoverLetter.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <CoverLetterDownloadDialog
+        data={letter.data}
+        fileName={letter.title}
+        isOpen={showDownloadDialog}
+        onClose={() => setShowDownloadDialog(false)}
+      />
+
+      <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename Cover Letter</AlertDialogTitle>
+            <AlertDialogDescription>Enter a new title for this cover letter.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Cover letter title"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleRename();
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleRename()}
+              disabled={updateCoverLetter.isPending || !newTitle.trim()}
+            >
+              {updateCoverLetter.isPending ? "Renaming..." : "Rename"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Cover Letter</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Are you sure you want to delete "${letter.title}"? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              disabled={deleteCoverLetter.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteCoverLetter.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
 
 export default function Dashboard() {
   const router = useRouter();
+  const [recentDocumentsTab, setRecentDocumentsTab] = useState<"resume" | "cover-letter">("resume");
 
   // Replace mock data with real tRPC query
   const { data: resumes = [], isLoading } = trpc.resume.list.useQuery();
+  const hasResumes = resumes.length > 0;
+  const { data: coverLetters = [], isLoading: isCoverLettersLoading } =
+    trpc.coverLetter.list.useQuery(undefined, { enabled: hasResumes });
 
   const checklistItems = [
     {
@@ -50,8 +437,6 @@ export default function Dashboard() {
       href: "/dashboard/documents/resume",
     },
   ];
-  
-  const hasResumes = resumes.length > 0;
   
   if (isLoading) {
     return (
@@ -137,11 +522,19 @@ export default function Dashboard() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-foreground">
-            {hasResumes ? "Recent Resumes" : "My Resumes"}
+            {hasResumes
+              ? recentDocumentsTab === "resume"
+                ? "Recent Resumes"
+                : "Recent Cover Letters"
+              : "My Resumes"}
           </h2>
           {hasResumes && (
             <Link
-              href="/dashboard/documents/resume"
+              href={
+                recentDocumentsTab === "resume"
+                  ? "/dashboard/documents/resume"
+                  : "/dashboard/documents/cover-letters"
+              }
               className="text-sm text-foreground hover:underline"
             >
               View all
@@ -150,18 +543,191 @@ export default function Dashboard() {
         </div>
 
         {hasResumes ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {resumes.slice(0, 4).map((resume) => (
-              <ResumeCard
-                key={resume.id}
-                id={resume.id}
-                title={resume.title}
-                updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
-                template={resume.templateId}
-                data={resume.data}
-              />
-            ))}
-          </div>
+          <Tabs
+            value={recentDocumentsTab}
+            onValueChange={(value) => setRecentDocumentsTab(value as "resume" | "cover-letter")}
+            className="space-y-4"
+          >
+            <TabsList className="h-9">
+              <TabsTrigger value="resume">Resume</TabsTrigger>
+              <TabsTrigger value="cover-letter">Cover Letter</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="resume" className="mt-0">
+              <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+                <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-[13px] font-semibold text-foreground/90 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
+                  <p className="tracking-tight">Resume</p>
+                  <p className="flex items-center gap-1.5 tracking-tight">
+                    ATS Status
+                    <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                  </p>
+                  <p className="flex items-center gap-1.5 tracking-tight">
+                    Review Status
+                    <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                  </p>
+                  <p className="flex items-center gap-1.5 tracking-tight">
+                    Tailored Version
+                    <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                  </p>
+                  <p aria-hidden className="text-right text-transparent">
+                    Actions
+                  </p>
+                </div>
+
+                <div>
+                  {resumes.slice(0, 4).map((resume) => (
+                    <div
+                      key={resume.id}
+                      className="grid gap-4 border-b border-border/70 px-4 py-4 transition-colors hover:bg-muted/15 last:border-b-0 sm:px-5 md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px] md:items-center"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/resume/section/${resume.id}`)}
+                          className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02]"
+                        >
+                          <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
+                        </button>
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/resume/section/${resume.id}`)}
+                            className="line-clamp-1 text-left text-[18px] leading-tight font-semibold text-foreground hover:text-primary"
+                          >
+                            {resume.title}
+                          </button>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Created{" "}
+                            {new Date(resume.createdAt).toLocaleDateString(undefined, {
+                              month: "2-digit",
+                              day: "2-digit",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => router.push("/dashboard/ats-checker")}
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                        >
+                          <ScanSearch className="h-4 w-4" />
+                          <span>Check</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => router.push("/dashboard/ai-resume")}
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                        >
+                          <SpellCheck className="h-4 w-4" />
+                          <span>Get Review</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => router.push("/resume/upload")}
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 text-left font-medium text-primary transition-colors hover:bg-primary/10"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          <span>Tailor for a job</span>
+                        </button>
+                      </div>
+
+                      <ResumeRowActions resume={resume} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cover-letter" className="mt-0">
+              {isCoverLettersLoading ? (
+                <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                  Loading recent cover letters...
+                </div>
+              ) : coverLetters.length > 0 ? (
+                <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+                  <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-[13px] font-semibold text-foreground/90 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
+                    <p className="tracking-tight">Cover Letter</p>
+                    <p className="tracking-tight">Job Title</p>
+                    <p className="tracking-tight">Company</p>
+                    <p className="tracking-tight">Last Updated</p>
+                    <p aria-hidden className="text-right text-transparent">
+                      Actions
+                    </p>
+                  </div>
+
+                  <div>
+                    {coverLetters.slice(0, 4).map((letter) => (
+                      <div
+                        key={letter.id}
+                        className="grid gap-4 border-b border-border/70 px-4 py-4 transition-colors hover:bg-muted/15 last:border-b-0 sm:px-5 md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px] md:items-center"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/cover-letter/write?id=${letter.id}`)}
+                            className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02]"
+                          >
+                            <CoverLetterCardPreview data={letter.data} />
+                          </button>
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/cover-letter/write?id=${letter.id}`)}
+                              className="line-clamp-1 text-left text-[18px] leading-tight font-semibold text-foreground hover:text-primary"
+                            >
+                              {letter.title}
+                            </button>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Created{" "}
+                              {new Date(letter.createdAt).toLocaleDateString(undefined, {
+                                month: "2-digit",
+                                day: "2-digit",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="line-clamp-1 text-sm font-medium text-foreground">
+                          {letter.data.employer.jobTitle || "Not set"}
+                        </p>
+
+                        <p className="line-clamp-1 text-sm text-foreground/90">
+                          {letter.data.employer.companyName || "Not set"}
+                        </p>
+
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(letter.updatedAt).toLocaleDateString(undefined, {
+                            month: "2-digit",
+                            day: "2-digit",
+                            year: "numeric",
+                          })}
+                        </p>
+
+                        <CoverLetterRowActions letter={letter} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-card p-8 text-center">
+                  <p className="font-medium text-foreground">No cover letters yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Create your first cover letter to see it here.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         ) : (
           <CreateResumeCard />
         )}
