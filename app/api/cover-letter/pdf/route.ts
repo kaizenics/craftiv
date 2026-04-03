@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    process.env.PLAYWRIGHT_BROWSERS_PATH ??= "0";
     const { chromium } = await import("playwright");
     browser = await chromium.launch({ headless: true });
 

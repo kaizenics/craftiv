@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body. Expected "html" string.' }, { status: 400 });
     }
 
-    process.env.PLAYWRIGHT_BROWSERS_PATH ??= "0";
     const { chromium } = await import('playwright');
     browser = await chromium.launch({ headless: true });
 
