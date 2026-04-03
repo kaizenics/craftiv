@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { launchPdfBrowser } from "@/lib/server/launch-pdf-browser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,9 +10,7 @@ interface PDFRequestBody {
 }
 
 export async function POST(request: NextRequest) {
-  let browser: Awaited<
-    ReturnType<(typeof import("playwright"))["chromium"]["launch"]>
-  > | null = null;
+  let browser: Awaited<ReturnType<typeof launchPdfBrowser>> | null = null;
 
   try {
     const body = (await request.json()) as PDFRequestBody;
@@ -25,11 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { chromium } = await import("playwright");
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browser = await launchPdfBrowser();
 
     const page = await browser.newPage({
       viewport: {
