@@ -16,12 +16,8 @@ import { useAuth } from "@/components/auth-provider";
 import {
   ArrowRight,
   ChevronDown,
-  CheckCheck,
-  Edit,
   FileText,
-  Pencil,
-  ScanSearch,
-  Sparkles,
+  Pen,
 } from "@/components/ui/icons";
 import {
   DropdownMenu,
@@ -79,97 +75,29 @@ const coverLetterTemplateLinks: MegaSimpleLink[] = coverLetterTemplates.map((tem
   link: `/cover-letter/write?template=${template.id}`,
 })).slice(0, MAX_NAVBAR_TEMPLATE_ITEMS);
 
-const resumeMenuData: MegaMenuData = {
-  label: "Resumes",
+const templatesMenuData: MegaMenuData = {
+  label: "Templates",
   features: [
-    {
-      title: "AI Resume Builder",
-      description: "Create your resume with professional templates and content suggestions.",
-      link: "/resume/templates",
-      icon: Sparkles,
-    },
     {
       title: "Resume Templates",
-      description: "Access 100s of templates and designs optimized to pass ATS.",
+      description: "Pick from professional resume templates optimized for ATS and readability.",
       link: "/resume/templates",
       icon: FileText,
-    },
-    {
-      title: "ATS Resume Checker",
-      description: "Scan your resume for on-the-spot suggestions to improve your score.",
-      link: "/dashboard/ats-checker",
-      icon: ScanSearch,
-    },
-    {
-      title: "How to Write a Resume",
-      description: "Write a resume that impresses hiring managers and recruiters.",
-      link: "/resume/templates",
-      icon: Pencil,
-    },
-  ],
-  sectionA: {
-    title: "Popular Templates",
-    links: resumeTemplateLinks,
-  },
-  sectionB: {
-    title: "Resume Examples",
-    links: [
-      { name: "Accountant", link: "/resume/templates" },
-      { name: "Customer Service Representative", link: "/resume/templates" },
-      { name: "Federal", link: "/resume/templates" },
-      { name: "High School", link: "/resume/templates" },
-      { name: "Registered Nurse", link: "/resume/templates" },
-      { name: "Sales", link: "/resume/templates" },
-      { name: "Student", link: "/resume/templates" },
-      { name: "Teacher", link: "/resume/templates" },
-    ],
-  },
-};
-
-const coverLetterMenuData: MegaMenuData = {
-  label: "Cover Letters",
-  features: [
-    {
-      title: "AI Cover Letter Builder",
-      description: "Generate role-specific cover letters with smart AI guidance.",
-      link: "/cover-letter/write",
-      icon: Sparkles,
     },
     {
       title: "Cover Letter Templates",
-      description: "Pick from modern and professional templates in one click.",
+      description: "Choose a cover letter style and start writing with guided structure.",
       link: "/cover-letter/templates",
-      icon: FileText,
-    },
-    {
-      title: "Editor and Preview",
-      description: "Write, refine, and preview your cover letter in real time.",
-      link: "/cover-letter/write",
-      icon: Edit,
-    },
-    {
-      title: "Cover Letter Tips",
-      description: "Use proven structure and tone tips to stand out faster.",
-      link: "/cover-letter/templates",
-      icon: CheckCheck,
+      icon: Pen,
     },
   ],
   sectionA: {
-    title: "Popular Templates",
-    links: coverLetterTemplateLinks,
+    title: "Resume Templates",
+    links: resumeTemplateLinks,
   },
   sectionB: {
-    title: "Cover Letter Examples",
-    links: [
-      { name: "Software Engineer", link: "/cover-letter/write" },
-      { name: "Product Manager", link: "/cover-letter/write" },
-      { name: "Marketing", link: "/cover-letter/write" },
-      { name: "Customer Service", link: "/cover-letter/write" },
-      { name: "Sales", link: "/cover-letter/write" },
-      { name: "Nurse", link: "/cover-letter/write" },
-      { name: "Student", link: "/cover-letter/write" },
-      { name: "Teacher", link: "/cover-letter/write" },
-    ],
+    title: "Cover Letter Templates",
+    links: coverLetterTemplateLinks,
   },
 };
 
@@ -316,7 +244,7 @@ export function NavbarComponent() {
           <NavbarLogo />
           <div
             onMouseLeave={() => setHovered(null)}
-            className="absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2"
+            className="absolute left-1/2 top-1/2 z-10 hidden w-max -translate-x-1/2 -translate-y-1/2 flex-row items-center justify-center gap-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex"
           >
             <a
               href={hashNavItems[0].link}
@@ -334,17 +262,10 @@ export function NavbarComponent() {
             </a>
 
             <MegaMenuDropdown
-              itemKey="resumes"
+              itemKey="templates"
               hovered={hovered}
               setHovered={setHovered}
-              data={resumeMenuData}
-            />
-
-            <MegaMenuDropdown
-              itemKey="cover-letters"
-              hovered={hovered}
-              setHovered={setHovered}
-              data={coverLetterMenuData}
+              data={templatesMenuData}
             />
 
             <a
@@ -413,38 +334,38 @@ export function NavbarComponent() {
             </a>
 
             <details className="w-full rounded-lg">
-              <summary className="cursor-pointer font-medium text-neutral-700">Resumes</summary>
-              <div className="mt-3 space-y-2 pl-1">
-                <Link href="/resume/templates" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  AI Resume Builder
-                </Link>
-                <Link href="/resume/templates" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  Resume Templates
-                </Link>
-                <Link href="/dashboard/ats-checker" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  ATS Resume Checker
-                </Link>
-                <Link href="/resume/templates" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  Resume Examples
-                </Link>
-              </div>
-            </details>
-
-            <details className="w-full rounded-lg">
-              <summary className="cursor-pointer font-medium text-neutral-700">Cover Letters</summary>
-              <div className="mt-3 space-y-2 pl-1">
-                <Link href="/cover-letter/write" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  AI Cover Letter Builder
-                </Link>
-                <Link href="/cover-letter/templates" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  Cover Letter Templates
-                </Link>
-                <Link href="/cover-letter/write" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  Cover Letter Editor
-                </Link>
-                <Link href="/cover-letter/write" onClick={() => setIsMobileMenuOpen(false)} className="block text-sm text-neutral-600">
-                  Cover Letter Examples
-                </Link>
+              <summary className="cursor-pointer font-medium text-neutral-700">Templates</summary>
+              <div className="mt-3 space-y-3 pl-1">
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Resume Templates</p>
+                  <div className="space-y-1.5">
+                    {resumeTemplateLinks.map((link) => (
+                      <Link
+                        key={`mobile-resume-${link.name}`}
+                        href={link.link}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-sm text-neutral-600"
+                      >
+                        {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Cover Letter Templates</p>
+                  <div className="space-y-1.5">
+                    {coverLetterTemplateLinks.map((link) => (
+                      <Link
+                        key={`mobile-cover-${link.name}`}
+                        href={link.link}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-sm text-neutral-600"
+                      >
+                        {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               </div>
             </details>
 
