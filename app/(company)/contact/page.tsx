@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-	title: "Contact Support | Layro",
+	title: "Contact Support | Craftiv",
 	description:
-		"Reach Layro customer support for account, billing, and technical questions.",
+		"Reach Craftiv customer support for account, billing, and technical questions.",
 };
 
 const SUPPORT_HOURS = "Monday to Friday, 9:00 AM - 6:00 PM (UTC)";
@@ -11,25 +11,25 @@ const SUPPORT_HOURS = "Monday to Friday, 9:00 AM - 6:00 PM (UTC)";
 const supportChannels = [
 	{
 		title: "Customer Support",
-		email: "support@layro.app",
+		email: "support@craftiv.app",
 		detail: "Questions about resumes, templates, exports, and app usage.",
 		response: "Typical response: within 24 hours",
 	},
 	{
 		title: "Billing & Subscriptions",
-		email: "billing@layro.app",
+		email: "billing@craftiv.app",
 		detail: "Help with invoices, renewals, refunds, and payment issues.",
 		response: "Typical response: within 1 business day",
 	},
 	{
 		title: "Privacy Requests",
-		email: "privacy@layro.app",
+		email: "privacy@craftiv.app",
 		detail: "Data access, deletion requests, and privacy-related concerns.",
 		response: "Typical response: within 2 business days",
 	},
 	{
 		title: "Legal",
-		email: "legal@layro.app",
+		email: "legal@craftiv.app",
 		detail: "Terms, policy, and legal communication.",
 		response: "Typical response: within 2 business days",
 	},
@@ -41,7 +41,7 @@ export default function ContactPage() {
 			<div className="mx-auto w-full max-w-5xl bg-white sm:p-10">
 				<div className="border-b border-zinc-200 pb-8">
 					<h1 className="font-display text-3xl font-bold tracking-tight text-zinc-900">
-						Contact Layro Support
+						Contact Craftiv Support
 					</h1>
 					<p className="mt-3 max-w-2xl text-zinc-600">
 						Need help with your account, resume downloads, or billing? Reach out

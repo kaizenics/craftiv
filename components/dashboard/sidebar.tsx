@@ -108,8 +108,8 @@ export function DashboardSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/layro.png" alt="logo" width={30} height={30} />
-          <span className="font-display text-lg font-bold">Layro</span>
+          <img src="/craftiv.png" alt="logo" width={30} height={30} />
+          <span className="font-display text-lg font-bold">Craftiv</span>
         </Link>
         {isMobile && (
           <Button
