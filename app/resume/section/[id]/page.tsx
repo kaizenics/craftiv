@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { StepIndicator } from "@/components/resume/step-indicator";
 import { ResumePreview } from "@/components/resume/resume-preview";
+import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import {
   ContactsForm,
   ExperienceForm,
@@ -324,15 +325,17 @@ export default function ResumeSectionDynamicPage() {
                 Preview your resume in real-time
               </SheetDescription>
             </SheetHeader>
-            <div className="h-[calc(85vh-80px)] overflow-auto p-4">
-              <ResumePreview
-                data={resumeData}
-                customColor={
-                  resumeTemplates.find((t) => t.id === resumeData.templateId)
-                    ?.primaryColor || "#2563eb"
-                }
-                showPhoto={showPhoto}
-              />
+            <div className="h-[calc(85vh-80px)]">
+              <PinchZoomContainer className="bg-muted/20">
+                <ResumePreview
+                  data={resumeData}
+                  customColor={
+                    resumeTemplates.find((t) => t.id === resumeData.templateId)
+                      ?.primaryColor || "#2563eb"
+                  }
+                  showPhoto={showPhoto}
+                />
+              </PinchZoomContainer>
             </div>
           </SheetContent>
         </Sheet>

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { StepIndicator } from "@/components/resume/step-indicator";
 import { ResumePreview } from "@/components/resume/resume-preview";
+import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import { DownloadDialog } from "@/components/resume/download-dialog";
 import {
   ContactsForm,
@@ -314,12 +315,14 @@ export default function ResumeSectionPage() {
                             Preview your resume in real-time
                           </SheetDescription>
                         </SheetHeader>
-                        <div className="mt-4 h-[calc(90vh-100px)] overflow-auto">
-                          <ResumePreview
-                            data={resumeData}
-                            className="shadow-none"
-                            showPhoto={showPhoto}
-                          />
+                        <div className="mt-4 h-[calc(90vh-100px)]">
+                          <PinchZoomContainer className="rounded-md bg-muted/20">
+                            <ResumePreview
+                              data={resumeData}
+                              className="shadow-none"
+                              showPhoto={showPhoto}
+                            />
+                          </PinchZoomContainer>
                         </div>
                       </SheetContent>
                     </Sheet>
