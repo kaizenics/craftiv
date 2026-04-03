@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service | Layro",
-  description: "Read the terms that govern your use of Layro.",
+  title: "Terms of Service | Craftiv",
+  description: "Read the terms that govern your use of Craftiv.",
 };
 
 const LAST_UPDATED = "March 15, 2026";
@@ -22,7 +22,7 @@ export default function TermsPage() {
               Acceptance of Terms
             </h2>
             <p className="mt-3 leading-7">
-              By accessing or using Layro, you agree to these Terms of Service.
+              By accessing or using Craftiv, you agree to these Terms of Service.
               If you do not agree, you should not use the platform.
             </p>
           </section>
@@ -32,7 +32,7 @@ export default function TermsPage() {
               Description of Service
             </h2>
             <p className="mt-3 leading-7">
-              Layro provides software tools for creating, editing, and exporting
+              Craftiv provides software tools for creating, editing, and exporting
               resume documents and related career content.
             </p>
           </section>
@@ -57,7 +57,7 @@ export default function TermsPage() {
               Intellectual Property
             </h2>
             <p className="mt-3 leading-7">
-              Layro and related branding, software, and original content are
+              Craftiv and related branding, software, and original content are
               owned by us or our licensors. You retain ownership of resume content
               you create and submit.
             </p>
@@ -89,7 +89,7 @@ export default function TermsPage() {
               Limitation of Liability
             </h2>
             <p className="mt-3 leading-7">
-              To the maximum extent permitted by law, Layro is not liable for
+              To the maximum extent permitted by law, Craftiv is not liable for
               indirect, incidental, special, consequential, or punitive damages,
               or any loss of profits, data, or goodwill.
             </p>
@@ -109,10 +109,10 @@ export default function TermsPage() {
             <p className="mt-3 leading-7">
               For questions regarding these Terms, contact{" "}
               <a
-                href="mailto:legal@layro.app"
+                href="mailto:legal@craftiv.app"
                 className="font-medium text-zinc-900 underline underline-offset-2"
               >
-                legal@layro.app
+                legal@craftiv.app
               </a>
               .
             </p>

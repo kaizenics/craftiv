@@ -15,7 +15,7 @@ const faqs = [
       "Most users complete their resume in under 10 minutes. Our intuitive builder guides you through each section, and AI-powered suggestions help you write compelling content quickly.",
   },
   {
-    question: "Is Layro free to use?",
+    question: "Is Craftiv free to use?",
     answer:
       "We offer a free plan that lets you create and download one resume. Premium plans unlock unlimited resumes, additional templates, and advanced features like AI optimization and cover letter generation.",
   },
@@ -57,7 +57,7 @@ export function FAQ() {
             Frequently Asked Questions
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-base text-zinc-600">
-            Everything you need to know about Layro.
+            Everything you need to know about Craftiv.
           </p>
         </motion.div>
 

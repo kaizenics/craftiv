@@ -1,4 +1,4 @@
-# Layro
+# Craftiv
 
 A modern, minimalist resume builder application that helps users create professional, ATS-optimized resumes in minutes.
 
@@ -33,7 +33,7 @@ A modern, minimalist resume builder application that helps users create professi
 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd layro
+cd craftiv
 ```
 
 2. Install dependencies

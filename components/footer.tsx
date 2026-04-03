@@ -63,7 +63,7 @@ export function Footer() {
             <div className="lg:col-span-2">
               <div>
                 <a href="#" className="font-display text-2xl font-bold text-white">
-                  Layro
+                  Craftiv
                 </a>
                 <p className="mt-4 max-w-xs text-sm text-zinc-400 leading-relaxed">
                  Build professional resumes that get you noticed by hiring managers. Simple, powerful tools to accelerate your career success.
@@ -138,7 +138,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-zinc-700 py-6">
           <p className="text-center text-xs text-zinc-500">
-            © {new Date().getFullYear()} Layro. All rights reserved.
+            © {new Date().getFullYear()} Craftiv. All rights reserved.
           </p>
         </div>
       </div>

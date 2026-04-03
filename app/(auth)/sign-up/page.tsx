@@ -110,7 +110,7 @@ export default function SignUpPage() {
               Create an account
             </h1>
             <p className="mt-2 text-sm text-zinc-600">
-              Get started with Layro today
+              Get started with Craftiv today
             </p>
           </div>
 

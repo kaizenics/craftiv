@@ -23,13 +23,13 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Layro",
+  title: "Craftiv",
   description:
     "Create ATS-optimized, professionally designed resumes that land interviews. No credit card, no hidden fees—just free, forever.",
   icons: {
-    icon: "/layro.png",
-    shortcut: "/layro.png",
-    apple: "/layro.png",
+    icon: "/craftiv.png",
+    shortcut: "/craftiv.png",
+    apple: "/craftiv.png",
   },
 };
 
