@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Copy, Mail, MoreVertical, Pencil, Plus, Trash2 } from "@/components/ui/icons";
 import Image from "next/image";
 import Link from "next/link";
+import { CoverLetterCardPreview } from "@/components/dashboard/cover-letter-card-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,11 +36,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [newTitle, setNewTitle] = useState(letter.title);
-
-  useEffect(() => {
-    setNewTitle(letter.title);
-  }, [letter.title]);
+  const [newTitle, setNewTitle] = useState("");
 
   const updateCoverLetter = trpc.coverLetter.update.useMutation({
     onSuccess: () => {
@@ -71,7 +68,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
     await updateCoverLetter.mutateAsync({
       id: letter.id,
       title: trimmed,
-      data: letter.data as any,
+      data: letter.data,
     });
     setShowRenameDialog(false);
     setShowMenu(false);
@@ -94,9 +91,9 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
         className="group relative rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/5 cursor-pointer"
         onClick={handleCardClick}
       >
-        <div className="flex items-start gap-3 pr-8">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/20">
-            <Mail className="h-5 w-5 text-muted-foreground" />
+        <div className="flex items-center gap-3 pr-8">
+          <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+            <CoverLetterCardPreview data={letter.data} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>
@@ -104,7 +101,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
               <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
                 {letter.data.employer.jobTitle}
                 {letter.data.employer.companyName
-                  ? ` · ${letter.data.employer.companyName}`
+                  ? ` - ${letter.data.employer.companyName}`
                   : ""}
               </p>
             )}
@@ -141,6 +138,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setNewTitle(letter.title);
                       setShowRenameDialog(true);
                       setShowMenu(false);
                     }}
@@ -213,7 +211,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Cover Letter</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{letter.title}"? This action cannot be undone.
+              {`Are you sure you want to delete "${letter.title}"? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

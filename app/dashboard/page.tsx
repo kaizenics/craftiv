@@ -8,8 +8,9 @@ import {
   CircleDashed,
   Copy,
   Download,
+  Edit,
+  FileText,
   MoreVertical,
-  Pencil,
   ScanSearch,
   Sparkles,
   SpellCheck,
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
 import Image from "next/image";
@@ -101,6 +103,7 @@ function buildResumeDataForDownload(resume: ResumeListItem): ResumeData {
 }
 
 function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
+  const router = useRouter();
   const utils = trpc.useUtils();
 
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
@@ -147,14 +150,38 @@ function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
 
   return (
     <>
-      <div className="flex items-center gap-1 md:justify-end">
+      <div className="flex items-center gap-1.5 md:justify-end">
         <button
           type="button"
           onClick={() => setShowDownloadDialog(true)}
-          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
           aria-label="Download resume"
         >
-          <Download className="h-4 w-4" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Download className="h-4 w-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Download</TooltipContent>
+          </Tooltip>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            router.push(`/resume/section/${resume.id}`);
+          }}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          aria-label="Edit resume"
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Edit className="h-4 w-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Edit</TooltipContent>
+          </Tooltip>
         </button>
         <button
           type="button"
@@ -162,16 +189,23 @@ function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
             setNewTitle(resume.title);
             setShowRenameDialog(true);
           }}
-          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
           aria-label="Rename resume"
         >
-          <Pencil className="h-4 w-4" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <FileText className="h-4 w-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Rename</TooltipContent>
+          </Tooltip>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
               aria-label="More resume actions"
             >
               <MoreVertical className="h-4 w-4" />
@@ -250,6 +284,7 @@ function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
 }
 
 function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
+  const router = useRouter();
   const utils = trpc.useUtils();
 
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
@@ -295,14 +330,38 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
 
   return (
     <>
-      <div className="flex items-center gap-1 md:justify-end">
+      <div className="flex items-center gap-1.5 md:justify-end">
         <button
           type="button"
           onClick={() => setShowDownloadDialog(true)}
-          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
           aria-label="Download cover letter"
         >
-          <Download className="h-4 w-4" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Download className="h-4 w-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Download</TooltipContent>
+          </Tooltip>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            router.push(`/cover-letter/write?id=${letter.id}`);
+          }}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          aria-label="Edit cover letter"
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Edit className="h-4 w-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Edit</TooltipContent>
+          </Tooltip>
         </button>
         <button
           type="button"
@@ -310,16 +369,23 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
             setNewTitle(letter.title);
             setShowRenameDialog(true);
           }}
-          className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
           aria-label="Rename cover letter"
         >
-          <Pencil className="h-4 w-4" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <FileText className="h-4 w-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Rename</TooltipContent>
+          </Tooltip>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="rounded-lg border border-transparent p-2 text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
               aria-label="More cover letter actions"
             >
               <MoreVertical className="h-4 w-4" />
@@ -457,6 +523,7 @@ export default function Dashboard() {
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -559,15 +626,36 @@ export default function Dashboard() {
                   <p className="tracking-tight">Resume</p>
                   <p className="flex items-center gap-1.5 tracking-tight">
                     ATS Status
-                    <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Check ATS match quality for this resume.</TooltipContent>
+                    </Tooltip>
                   </p>
                   <p className="flex items-center gap-1.5 tracking-tight">
                     Review Status
-                    <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Track expert review progress to boost your hiring potential.</TooltipContent>
+                    </Tooltip>
                   </p>
                   <p className="flex items-center gap-1.5 tracking-tight">
                     Tailored Version
-                    <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <BadgeInfo className="h-4 w-4 text-muted-foreground/70" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Create a tailored resume version for a specific job.</TooltipContent>
+                    </Tooltip>
                   </p>
                   <p aria-hidden className="text-right text-transparent">
                     Actions
@@ -771,5 +859,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
