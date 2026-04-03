@@ -12,6 +12,7 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ currentStep, completedSteps, onStepClick }: StepIndicatorProps) {
   const currentIndex = RESUME_STEPS.findIndex((s) => s.id === currentStep);
+  const connectorInsetPercent = 50 / RESUME_STEPS.length;
 
   return (
     <div className="w-full">
@@ -26,9 +27,15 @@ export function StepIndicator({ currentStep, completedSteps, onStepClick }: Step
       </div>
 
       <div className="overflow-x-auto pb-1">
-        <div className="relative flex min-w-[620px] items-center justify-between">
+        <div className="relative flex min-w-[620px] items-start">
         {/* Progress line */}
-        <div className="absolute top-4 left-0 right-0 h-0.5 bg-border">
+        <div
+          className="pointer-events-none absolute top-4 h-0.5 bg-border"
+          style={{
+            left: `${connectorInsetPercent}%`,
+            right: `${connectorInsetPercent}%`,
+          }}
+        >
           <div
             className="h-full bg-primary transition-all duration-300"
             style={{
@@ -46,7 +53,7 @@ export function StepIndicator({ currentStep, completedSteps, onStepClick }: Step
             <button
               key={step.id}
               onClick={() => onStepClick(step.id)}
-              className="relative z-10 flex flex-col items-center gap-2 group"
+              className="group relative z-10 flex flex-1 flex-col items-center gap-2 text-center"
             >
               <div
                 className={cn(

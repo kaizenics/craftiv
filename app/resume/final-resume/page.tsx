@@ -41,6 +41,7 @@ import {
   defaultDesignOptions,
 } from "@/components/resume/resume-preview";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
+import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import { ResumeData } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
@@ -852,16 +853,18 @@ export default function FinalResumePage() {
                 Preview your resume in real-time
               </SheetDescription>
             </SheetHeader>
-            <div className="h-[calc(85vh-80px)] overflow-auto p-4">
-              <ResumePreview
-                data={resumeData}
-                designOptions={designOptions}
-                customColor={selectedColor}
-                showPhoto={showPhoto}
-                showScore={false}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+            <div className="h-[calc(85vh-80px)]">
+              <PinchZoomContainer className="rounded-md bg-muted/20">
+                <ResumePreview
+                  data={resumeData}
+                  designOptions={designOptions}
+                  customColor={selectedColor}
+                  showPhoto={showPhoto}
+                  showScore={false}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              </PinchZoomContainer>
             </div>
           </SheetContent>
         </Sheet>
