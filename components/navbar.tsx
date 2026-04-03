@@ -80,23 +80,23 @@ const templatesMenuData: MegaMenuData = {
   features: [
     {
       title: "Resume Templates",
-      description: "Pick from professional resume templates optimized for ATS and readability.",
+      description: "Choose from ATS-friendly resume templates and start building faster.",
       link: "/resume/templates",
       icon: FileText,
     },
     {
       title: "Cover Letter Templates",
-      description: "Choose a cover letter style and start writing with guided structure.",
+      description: "Pick a cover letter style and generate letters tailored to each role.",
       link: "/cover-letter/templates",
       icon: Pen,
     },
   ],
   sectionA: {
-    title: "Resume Templates",
+    title: "Popular Resumes",
     links: resumeTemplateLinks,
   },
   sectionB: {
-    title: "Cover Letter Templates",
+    title: "Popular Cover Letters",
     links: coverLetterTemplateLinks,
   },
 };
@@ -141,7 +141,7 @@ function MegaMenuDropdown({
       <DropdownMenuContent
         align="center"
         sideOffset={14}
-        className="w-[920px] max-w-[calc(100vw-3rem)] rounded-3xl border border-slate-200/90 bg-white/95 p-0 shadow-[0_16px_48px_rgba(15,59,117,0.12)] data-[state=closed]:fade-out-0 data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=open]:animate-in"
+        className="w-[970px] max-w-[calc(100vw-3rem)] rounded-3xl border border-slate-200/90 bg-white/95 p-0 shadow-[0_16px_48px_rgba(15,59,117,0.12)] data-[state=closed]:fade-out-0 data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=open]:animate-in"
       >
         <div className="grid grid-cols-[1.1fr_1fr_1fr] gap-0">
           <div className="space-y-2 border-r border-slate-100 p-5">
@@ -153,7 +153,7 @@ function MegaMenuDropdown({
                   href={feature.link}
                   className="group flex items-start gap-3 rounded-xl border border-transparent p-3 transition-colors duration-100 hover:border-slate-200 hover:bg-slate-50"
                 >
-                  <div className="mt-0.5 flex h-10 w-16 items-center justify-center rounded-sm bg-primary/10 text-primary">
+                  <div className="mt-0.5 flex h-10 w-18 items-center justify-center rounded-sm bg-primary/10 text-primary">
                     <Icon className="h-[20px] w-[20px] shrink-0" />
                   </div>
                   <div>
@@ -337,7 +337,7 @@ export function NavbarComponent() {
               <summary className="cursor-pointer font-medium text-neutral-700">Templates</summary>
               <div className="mt-3 space-y-3 pl-1">
                 <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Resume Templates</p>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Popular Resumes</p>
                   <div className="space-y-1.5">
                     {resumeTemplateLinks.map((link) => (
                       <Link
@@ -352,7 +352,7 @@ export function NavbarComponent() {
                   </div>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Cover Letter Templates</p>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Popular Cover Letters</p>
                   <div className="space-y-1.5">
                     {coverLetterTemplateLinks.map((link) => (
                       <Link
