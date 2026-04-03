@@ -42,7 +42,7 @@ const features = [
     icon: UserGroupIcon,
     eyebrow: "Proof",
     title: "Trusted by Thousands",
-    description: "Join 50,000+ professionals who landed their dream jobs using BoostCV.",
+    description: "Join 50,000+ professionals who landed their dream jobs using Layro.",
   },
 ];
 
@@ -84,7 +84,7 @@ export function About() {
           className="text-center"
         >
           <h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
-            Why choose <span className="text-primary">BoostCV</span>?
+            Why choose <span className="text-primary">Layro</span>?
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg text-zinc-600">
             We make resume building simple, fast, and effective. No fluff, just results.

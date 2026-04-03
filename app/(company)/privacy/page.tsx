@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy | BoostCV",
-  description: "Learn how BoostCV collects, uses, and protects your information.",
+  title: "Privacy Policy | Layro",
+  description: "Learn how Layro collects, uses, and protects your information.",
 };
 
 const LAST_UPDATED = "March 15, 2026";
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-zinc-900">Overview</h2>
             <p className="mt-3 leading-7">
-              BoostCV (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) provides tools that
+              Layro (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) provides tools that
               help users build and export resumes. This policy explains what data
               we collect, how we use it, and the choices you have.
             </p>
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-zinc-900">How We Use Data</h2>
             <p className="mt-3 leading-7">We use information to:</p>
             <ul className="mt-3 list-disc space-y-2 pl-6 leading-7">
-              <li>Provide and improve the BoostCV platform.</li>
+              <li>Provide and improve the Layro platform.</li>
               <li>Generate, store, and export your resume documents.</li>
               <li>Secure accounts and prevent fraud or abuse.</li>
               <li>Respond to support requests and product feedback.</li>
@@ -98,10 +98,10 @@ export default function PrivacyPage() {
             <p className="mt-3 leading-7">
               Questions about this policy can be sent to{" "}
               <a
-                href="mailto:privacy@boostcv.app"
+                href="mailto:privacy@layro.app"
                 className="font-medium text-zinc-900 underline underline-offset-2"
               >
-                privacy@boostcv.app
+                privacy@layro.app
               </a>
               .
             </p>
