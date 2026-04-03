@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 
 export const metadata: Metadata = {
-  title: 'Dashboard | BoostCV',
+  title: 'Dashboard | Layro',
   description: 'Create ATS-optimized, professionally designed resumes that land interviews. No credit card, no hidden fees—just free, forever.',
 };
 

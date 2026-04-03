@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-	title: "Data Deletion | BoostCV",
+	title: "Data Deletion | Layro",
 	description:
-		"Learn how to request deletion of your BoostCV account and associated data.",
+		"Learn how to request deletion of your Layro account and associated data.",
 };
 
 const LAST_UPDATED = "April 1, 2026";
@@ -21,7 +21,7 @@ export default function DataDeletionPage() {
 					<section>
 						<h2 className="text-xl font-semibold text-zinc-900">Overview</h2>
 						<p className="mt-3 leading-7">
-							At BoostCV, we respect your right to control your personal data. You
+							At Layro, we respect your right to control your personal data. You
 							can request deletion of data associated with your account at any
 							time. This page explains what data is deleted, how to submit a
 							request, and what to expect.
@@ -63,14 +63,14 @@ export default function DataDeletionPage() {
 							<li>
 								Send an email to{" "}
 								<a
-									href="mailto:info@boostcv.app"
+									href="mailto:info@layro.app"
 									className="font-medium text-zinc-900 underline underline-offset-2"
 								>
-									info@boostcv.app
+									info@layro.app
 								</a>{" "}
 								with the subject line: Data Deletion Request.
 							</li>
-							<li>Include the email address associated with your BoostCV account.</li>
+							<li>Include the email address associated with your Layro account.</li>
 							<li>
 								Include any additional identifiers that help us verify your
 								account (for example, your latest document title).
