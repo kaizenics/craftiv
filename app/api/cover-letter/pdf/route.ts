@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { chromium } = await import("playwright");
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
 
     const page = await browser.newPage({
       viewport: {
