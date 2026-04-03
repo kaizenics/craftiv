@@ -22,9 +22,11 @@ import {
   ContactForm,
   EmployerForm,
   LetterBodyForm,
-  TemplateForm,
 } from "@/components/cover-letter/forms";
-import { getCoverLetterTemplate } from "@/lib/cover-letter-templates";
+import {
+  getCoverLetterTemplate,
+  normalizeCoverLetterTemplateId,
+} from "@/lib/cover-letter-templates";
 import {
   CoverLetterData,
   createEmptyCoverLetterData,
@@ -49,6 +51,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
+import Link from "next/link";
 
 type DialogView = "pick" | "upload";
 
@@ -60,6 +63,7 @@ function WriteCoverLetterPageContent() {
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverLetterId = searchParams.get("id");
+  const selectedTemplateId = normalizeCoverLetterTemplateId(searchParams.get("template"));
   const isEditing = Boolean(coverLetterId);
 
   // Dialog state
@@ -122,6 +126,19 @@ function WriteCoverLetterPageContent() {
     setMethodDialogOpen(false);
     setDialogView("pick");
   }, [coverLetterQuery.data]);
+
+  useEffect(() => {
+    if (isEditing) return;
+
+    setCoverLetterData((prev) =>
+      prev.templateId === selectedTemplateId
+        ? prev
+        : {
+            ...prev,
+            templateId: selectedTemplateId,
+          }
+    );
+  }, [isEditing, selectedTemplateId]);
 
   // ── Upload helpers ──────────────────────────────────────────────────────
 
@@ -919,24 +936,24 @@ function WriteCoverLetterPageContent() {
           >
             <div className="flex-1 pb-20 sm:pb-24 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
               <div className="mb-4">
-                <h1 className="font-display text-3xl font-bold text-foreground">
-                  {isEditing ? "Edit Cover Letter" : "Write Cover Letter"}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Fill in each section — see changes live in the preview.
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h1 className="font-display text-3xl font-bold text-foreground">
+                      {isEditing ? "Edit Cover Letter" : "Write Cover Letter"}
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                      Fill in each section and see changes live in the preview.
+                    </p>
+                  </div>
+                  {!isEditing && (
+                    <Button variant="outline" asChild>
+                      <Link href="/cover-letter/templates">Change Template</Link>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="bg-background rounded-lg mb-4 space-y-8">
-                <div className="space-y-3">
-                  <TemplateForm
-                    selectedTemplateId={coverLetterData.templateId}
-                    onChange={(templateId) =>
-                      setCoverLetterData({ ...coverLetterData, templateId })
-                    }
-                  />
-                </div>
-
                 <div className="space-y-3">
                   <ContactForm
                     data={coverLetterData.contact}
