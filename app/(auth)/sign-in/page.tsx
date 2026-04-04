@@ -225,7 +225,7 @@ export default function SignInPage() {
           <p className="mt-6 text-center text-sm text-zinc-600">
             Don't have an account?{" "}
             <Link
-              href="/sign-up"
+              href={`/sign-up?redirect=${encodeURIComponent(redirectTo)}`}
               className="font-medium text-zinc-900 hover:underline"
             >
               Sign up

@@ -14,6 +14,7 @@ import {
   FileUp,
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 type UploadState = "idle" | "dragging" | "scanning" | "success" | "error";
 
@@ -23,6 +24,7 @@ const MAX_SIZE = 10 * 1024 * 1024;
 export default function ResumeUploadPageClient() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = authClient.useSession();
 
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -90,6 +92,11 @@ export default function ResumeUploadPageClient() {
   const handleUploadAndScan = async () => {
     if (!selectedFile) return;
 
+    if (!session?.user) {
+      router.push("/sign-up?redirect=%2Fresume%2Fupload&intent=resume-upload");
+      return;
+    }
+
     setUploadState("scanning");
 
     try {
@@ -100,6 +107,11 @@ export default function ResumeUploadPageClient() {
         method: "POST",
         body: formData,
       });
+
+      if (response.status === 401) {
+        router.push("/sign-up?redirect=%2Fresume%2Fupload&intent=resume-upload");
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -144,7 +156,7 @@ export default function ResumeUploadPageClient() {
       <div className="border-b border-zinc-100 bg-white py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
               1
             </span>
             <span className="text-sm font-medium text-zinc-900">Upload resume</span>
@@ -371,7 +383,7 @@ export default function ResumeUploadPageClient() {
               disabled={!selectedFile}
               className="flex-1 h-12"
             >
-              Upload Resume
+              {session?.user ? "Upload Resume" : "Continue to Sign Up"}
             </Button>
 
             {selectedFile && (
@@ -384,6 +396,12 @@ export default function ResumeUploadPageClient() {
               </Button>
             )}
           </motion.div>
+        )}
+
+        {!session?.user && !isProcessing && uploadState !== "success" && (
+          <p className="mt-3 text-center text-xs text-zinc-500">
+            Guest mode is enabled. We&apos;ll ask you to sign up before AI scanning starts.
+          </p>
         )}
       </div>
     </div>
