@@ -12,15 +12,16 @@ import { templates } from "@/lib/data/templates";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { trpc } from "@/trpc/client";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
-// Template categories with their icons
+// Template categories with their icons (shortLabel used on narrow mobile chips)
 const categories = [
-  { id: "all", name: "All Templates", icon: LayoutGrid },
-  { id: "simple", name: "Simple", icon: Star },
-  { id: "modern", name: "Modern", icon: Laptop },
-  { id: "professional", name: "Professional", icon: Briefcase },
-  { id: "ats", name: "ATS Friendly", icon: Shield },
-  { id: "creative", name: "Creative", icon: Image },
+  { id: "all", name: "All Templates", shortLabel: "All", icon: LayoutGrid },
+  { id: "simple", name: "Simple", shortLabel: "Simple", icon: Star },
+  { id: "modern", name: "Modern", shortLabel: "Modern", icon: Laptop },
+  { id: "professional", name: "Professional", shortLabel: "Professional", icon: Briefcase },
+  { id: "ats", name: "ATS Friendly", shortLabel: "ATS", icon: Shield },
+  { id: "creative", name: "Creative", shortLabel: "Creative", icon: Image },
 ];
 
 function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: typeof templates[0]; onUseTemplate: (templateId: string) => void; showPhoto: boolean }) {
@@ -231,29 +232,84 @@ function ResumeTemplatesPageContent() {
         </motion.div>
       </div>
 
-      {/* Category Tabs */}
-      <div className="border-b border-zinc-100">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <Tabs value={activeCategory} onValueChange={setActiveCategory} className="flex-1">
-              <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto bg-transparent p-0 sm:justify-center">
+      {/* Category + photo: mobile = chip grid + card; sm+ = underline tabs */}
+      <div className="border-b border-zinc-100 bg-zinc-50/40 sm:bg-transparent">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-0 lg:px-8">
+          {/* Mobile */}
+          <div className="space-y-4 sm:hidden">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Template category
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {categories.map((category) => {
+                  const Icon = category.icon;
+                  const selected = activeCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setActiveCategory(category.id)}
+                      aria-pressed={selected}
+                      className={cn(
+                        "inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors",
+                        selected
+                          ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
+                          : "border-zinc-200 bg-white text-zinc-600 active:bg-zinc-100"
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "size-4 shrink-0",
+                          selected ? "text-white" : "text-zinc-500"
+                        )}
+                        aria-hidden
+                      />
+                      {category.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900">Preview with photo</p>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  Show a headshot in template previews
+                </p>
+              </div>
+              <Switch
+                id="photo-toggle-mobile"
+                checked={showPhoto}
+                onCheckedChange={setShowPhoto}
+              />
+            </div>
+          </div>
+
+          {/* Tablet / desktop */}
+          <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-4">
+            <Tabs value={activeCategory} onValueChange={setActiveCategory} className="min-w-0 flex-1">
+              <TabsList
+                variant="line"
+                className="scrollbar-none group-data-horizontal/tabs:h-auto flex w-full min-h-0 justify-start gap-1 overflow-x-auto overflow-y-visible bg-transparent p-0 sm:justify-center"
+              >
                 {categories.map((category) => (
                   <TabsTrigger
                     key={category.id}
                     value={category.id}
-                    className="flex items-center gap-2 rounded-none border-0 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-zinc-500 transition-all data-[state=active]:border-b-zinc-900 data-[state=active]:text-zinc-900 hover:text-zinc-900 shadow-none"
+                    className="flex shrink-0 items-center gap-2 rounded-none border-0 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-zinc-500 shadow-none transition-colors hover:text-zinc-900 data-[state=active]:border-b-zinc-900 data-[state=active]:text-zinc-900 after:hidden"
                   >
                     <category.icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{category.name}</span>
-                    <span className="sm:hidden">{category.name.split(" ")[0]}</span>
+                    {category.name}
                   </TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
-            
-            {/* Photo Toggle Switch */}
-            <div className="flex items-center gap-3 border-l border-zinc-200 pl-4">
-              <label htmlFor="photo-toggle" className="text-sm font-medium text-zinc-700 cursor-pointer whitespace-nowrap">
+            <div className="flex shrink-0 items-center gap-3 border-l border-zinc-200 pl-4">
+              <label
+                htmlFor="photo-toggle"
+                className="cursor-pointer whitespace-nowrap text-sm font-medium text-zinc-700"
+              >
                 Include photo
               </label>
               <Switch

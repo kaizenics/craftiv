@@ -30,7 +30,8 @@ const tabsListVariants = cva(
     variants: {
       variant: {
         default: "bg-muted",
-        line: "gap-1 bg-transparent",
+        // Let list grow with triggers (underline tabs); fixed h-9 causes inner vertical scroll with py-3+ content
+        line: "gap-1 bg-transparent group-data-horizontal/tabs:h-auto group-data-horizontal/tabs:min-h-0",
       },
     },
     defaultVariants: {

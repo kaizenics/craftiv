@@ -54,6 +54,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${manrope.variable} ${lora.variable} antialiased font-sans`}
+        suppressHydrationWarning
       >
         <TRPCProvider>
           <AuthProvider>
