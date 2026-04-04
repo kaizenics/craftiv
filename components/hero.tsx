@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
+import { Sparkles, ArrowRight } from "@/components/ui/icons";
 import CardSwap, { Card } from "@/components/ui/card-swap";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 
@@ -67,25 +68,34 @@ export function Hero() {
               </Link>
             </motion.div>
 
-            {/* Trust Badges */}
-            <motion.div className="mt-8 flex flex-wrap items-center gap-5">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                  ATS-Optimized
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                  Easy to Customize
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
-                <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                  Export Instantly
-                </span>
+            {/* AI Highlight */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-6 w-full max-w-2xl rounded-2xl border border-indigo-100 bg-gradient-to-r from-[#f2f4ff] via-[#e9edff] to-[#dde4ff] px-6 py-4 shadow-sm dark:border-zinc-800 dark:bg-gradient-to-r dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-white">
+                    <Sparkles className="h-5 w-5 text-zinc-900 dark:text-white" />
+                    <span>Let AI do the work!</span>
+                  </div>
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    Describe your role in a few words, and we&apos;ll generate
+                    tailored content for your work experience section.
+                  </p>
+                </div>
+
+                <Link
+                  href="/dashboard/ai-resume"
+                  className="inline-flex min-h-10 min-w-[126px] items-center justify-between rounded-full bg-[#4a34d7] px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(74,52,215,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#412dc0]"
+                >
+                  <span className="text-left leading-[1.05]">
+                    Try it first
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
             </motion.div>
           </motion.div>
@@ -121,7 +131,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="absolute -bottom-55 -right-0 hidden lg:block">
+          <div className="absolute -bottom-45 -right-0 hidden lg:block">
             <CardSwap
               width={560}
               height={790}
