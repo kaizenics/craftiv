@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -44,8 +44,22 @@ type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export default function SignUpPage() {
   const router = useRouter();
+  const [redirectTo, setRedirectTo] = useState("/");
+  const [fromResumeUpload, setFromResumeUpload] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirectParam = params.get("redirect");
+    const intent = params.get("intent");
+
+    if (redirectParam?.startsWith("/")) {
+      setRedirectTo(redirectParam);
+    }
+
+    setFromResumeUpload(intent === "resume-upload");
+  }, []);
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -67,11 +81,11 @@ export default function SignUpPage() {
         email: data.email,
         password: data.password,
         name: `${data.firstName} ${data.lastName}`,
-        callbackURL: "/",
+        callbackURL: redirectTo,
       },
       {
         onSuccess: () => {
-          router.push("/");
+          router.push(redirectTo);
           router.refresh();
         },
         onError: (ctx) => {
@@ -91,7 +105,7 @@ export default function SignUpPage() {
     setError(null);
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      callbackURL: redirectTo,
     });
   };
 
@@ -112,6 +126,11 @@ export default function SignUpPage() {
             <p className="mt-2 text-sm text-zinc-600">
               Get started with Craftiv today
             </p>
+            {fromResumeUpload && (
+              <p className="mt-2 text-xs text-zinc-500">
+                Create your account to continue scanning your resume.
+              </p>
+            )}
           </div>
 
           {/* Error Message */}
@@ -266,7 +285,7 @@ export default function SignUpPage() {
           <p className="mt-6 text-center text-sm text-zinc-600">
             Already have an account?{" "}
             <Link
-              href="/sign-in"
+              href={`/sign-in?redirect=${encodeURIComponent(redirectTo)}`}
               className="font-medium text-zinc-900 hover:underline"
             >
               Sign in
