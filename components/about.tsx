@@ -1,13 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  FlashIcon,
-  Shield01Icon,
-  Target01Icon,
-  UserGroupIcon,
-} from "@hugeicons/core-free-icons";
+import Image from "next/image";
+import Link from "next/link";
 import {
   Carousel,
   CarouselContent,
@@ -21,28 +16,28 @@ import { cn } from "@/lib/utils";
 
 const features = [
   {
-    icon: FlashIcon,
+    iconSrc: "/icons/list.png",
     eyebrow: "Speed",
-    title: "Lightning Fast",
-    description: "Create a professional resume in under 10 minutes with our intuitive builder.",
+    title: "Pick a Template",
+    description: "Start with a clean, ATS-friendly design that fits your role and personal style.",
   },
   {
-    icon: Shield01Icon,
+    iconSrc: "/icons/pen.png",
     eyebrow: "Reliability",
-    title: "ATS-Optimized",
-    description: "Every resume passes through applicant tracking systems with flying colors.",
+    title: "Add Content with AI",
+    description: "Describe your role once and let AI generate polished bullet points in seconds.",
   },
   {
-    icon: Target01Icon,
+    iconSrc: "/icons/download.png",
     eyebrow: "Precision",
-    title: "Tailored Content",
-    description: "AI-powered suggestions help you highlight your most relevant experience.",
+    title: "Download and Send",
+    description: "Export your resume instantly as a ready-to-share file and apply with confidence.",
   },
   {
-    icon: UserGroupIcon,
+    iconSrc: "/icons/committee.png",
     eyebrow: "Proof",
-    title: "Trusted by Thousands",
-    description: "Join 50,000+ professionals who landed their dream jobs using Craftiv.",
+    title: "Get Hired",
+    description: "Stand out from the crowd with a professional resume built to win interviews.",
   },
 ];
 
@@ -73,7 +68,7 @@ function ResumeTemplateCard({ template }: { template: typeof templates[0] }) {
 
 export function About() {
   return (
-    <section id="about" className="relative bg-primary/10 py-20 lg:py-32 font-sans">
+    <section id="about" className="relative bg-primary/5 py-20 lg:py-32 font-sans">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
@@ -92,7 +87,7 @@ export function About() {
         </motion.div>
 
         {/* Features Grid */}
-        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -105,16 +100,21 @@ export function About() {
               <div
                 className={cn(
                   "pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-100 opacity-70",
-                  "bg-primary/20"
+                  "bg-primary/10"
                 )}
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-primary to-primary/70" />
 
               <div className="relative flex items-start justify-between gap-4">
                 <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105"
+                  className="flex h-12 w-12 items-center justify-center  text-primary transition-transform duration-300 group-hover:scale-105"
                 >
-                  <HugeiconsIcon icon={feature.icon} strokeWidth={2} className="h-[22px] w-[22px]" />
+                  <Image
+                    src={feature.iconSrc}
+                    alt={`${feature.title} icon`}
+                    width={60}
+                    height={60}
+                    className="h-[50px] w-[50px] object-contain"
+                  />
                 </div>
                 <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   {feature.eyebrow}
@@ -130,6 +130,21 @@ export function About() {
             </motion.div>
           ))}
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45, delay: 0.15 }}
+          className="mt-10 flex justify-center"
+        >
+          <Link
+            href="/resume/templates"
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-7 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90 sm:text-base"
+          >
+            Create Resume
+          </Link>
+        </motion.div>
 
         {/* Resume Templates Carousel */}
         <motion.div

@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FileText } from "@/components/ui/icons";
+import { authClient } from "@/lib/auth-client";
 import { coverLetterTemplates } from "@/lib/cover-letter-templates";
 import {
   createEmptyCoverLetterData,
@@ -84,9 +85,17 @@ function CoverLetterTemplateCard({
 
 export default function CoverLetterTemplatesPage() {
   const router = useRouter();
+  const { data: session } = authClient.useSession();
 
   const handleUseTemplate = (templateId: CoverLetterTemplateId) => {
-    router.push(`/cover-letter/write?template=${templateId}`);
+    const target = `/cover-letter/write?template=${templateId}`;
+
+    if (!session?.user) {
+      router.push(`/sign-in?redirect=${encodeURIComponent(target)}`);
+      return;
+    }
+
+    router.push(target);
   };
 
   return (
@@ -94,7 +103,7 @@ export default function CoverLetterTemplatesPage() {
       <div className="border-b border-zinc-100 bg-white py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
               1
             </span>
             <span className="text-sm font-medium text-zinc-900">Choose template</span>

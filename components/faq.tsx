@@ -43,7 +43,7 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="relative bg-white py-20 lg:py-32 font-sans">
+    <section id="faq" className="relative bg-white py-20 lg:py-12 font-sans">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div

@@ -52,6 +52,7 @@ import {
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
+import { useAuth } from "@/components/auth-provider";
 
 type DialogView = "pick" | "upload";
 
@@ -61,6 +62,7 @@ const MAX_SIZE = 10 * 1024 * 1024;
 function WriteCoverLetterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverLetterId = searchParams.get("id");
   const selectedTemplateId = normalizeCoverLetterTemplateId(searchParams.get("template"));
@@ -108,6 +110,14 @@ function WriteCoverLetterPageContent() {
       }
     },
   });
+
+  useEffect(() => {
+    if (isLoading || session) return;
+
+    const qs = searchParams.toString();
+    const redirectPath = `/cover-letter/write${qs ? `?${qs}` : ""}`;
+    router.replace(`/sign-in?redirect=${encodeURIComponent(redirectPath)}`);
+  }, [isLoading, session, router, searchParams]);
 
   useEffect(() => {
     if (isEditing) {
@@ -676,6 +686,17 @@ function WriteCoverLetterPageContent() {
       setFinishError(message);
     }
   };
+
+  if (isLoading || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isEditing && coverLetterQuery.isLoading) {
     return (
