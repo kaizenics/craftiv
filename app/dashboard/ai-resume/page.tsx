@@ -21,7 +21,7 @@ import {
   ChevronRight,
 } from "@/components/ui/icons";
 import Link from "next/link";
-import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -274,7 +274,7 @@ export default function AIAssistantPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Image src="/cv.gif" alt="Loading" width={80} height={80} className="mx-auto mb-4" unoptimized />
+          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
           <p className="text-muted-foreground">Loading your resumes...</p>
         </div>
       </div>

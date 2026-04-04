@@ -52,7 +52,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
-import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
 import type { ResumeDataJSON } from "@/db/schema";
 import type { CoverLetterData } from "@/lib/types/cover-letter";
 import type { ResumeData } from "@/lib/types/resume";
@@ -508,14 +508,7 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Image 
-            src="/cv.gif" 
-            alt="Loading" 
-            width={80} 
-            height={80} 
-            className="mx-auto mb-4"
-            unoptimized
-          />
+          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
           <p className="text-muted-foreground">Loading your resumes...</p>
         </div>
       </div>

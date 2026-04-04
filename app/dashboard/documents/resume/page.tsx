@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
-import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "grid" | "list";
@@ -66,14 +66,7 @@ export default function DocumentsPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Image 
-            src="/cv.gif" 
-            alt="Loading" 
-            width={80} 
-            height={80} 
-            className="mx-auto mb-4"
-            unoptimized
-          />
+          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
           <p className="text-muted-foreground">Loading your documents...</p>
         </div>
       </div>

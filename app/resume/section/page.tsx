@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
-import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Sheet,
   SheetContent,
@@ -149,14 +149,7 @@ export default function ResumeSectionPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Image 
-            src="/cv.gif" 
-            alt="Loading" 
-            width={80} 
-            height={80} 
-            className="mx-auto mb-4"
-            unoptimized
-          />
+          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
           <p className="text-muted-foreground">Loading your resume...</p>
         </div>
       </div>
@@ -297,7 +290,7 @@ export default function ResumeSectionPage() {
 
                   <div className="flex items-center gap-2">
                     {/* Mobile View Resume Button */}
-                    <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+                    <Sheet modal={false} open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
                       <SheetTrigger asChild>
                         <Button
                           variant="outline"
@@ -308,14 +301,14 @@ export default function ResumeSectionPage() {
                           View Resume
                         </Button>
                       </SheetTrigger>
-                      <SheetContent side="bottom" className="h-[90vh]">
+                      <SheetContent side="bottom" className="h-[90vh] overflow-hidden">
                         <SheetHeader>
                           <SheetTitle>Resume Preview</SheetTitle>
                           <SheetDescription>
                             Preview your resume in real-time
                           </SheetDescription>
                         </SheetHeader>
-                        <div className="mt-4 h-[calc(90vh-100px)]">
+                        <div className="mt-4 h-[calc(90vh-100px)] overflow-hidden">
                           <PinchZoomContainer className="rounded-md bg-muted/20">
                             <ResumePreview
                               data={resumeData}

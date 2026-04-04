@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Copy, Mail, MoreVertical, Pencil, Plus, Trash2 } from "@/components/ui/icons";
-import Image from "next/image";
 import Link from "next/link";
 import { CoverLetterCardPreview } from "@/components/dashboard/cover-letter-card-preview";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/trpc/client";
 import type { CoverLetterData } from "@/lib/types/cover-letter";
+import { Spinner } from "@/components/ui/spinner";
 
 type CoverLetterListItem = {
   id: string;
@@ -237,14 +237,7 @@ export default function CoverLettersPage() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
-          <Image
-            src="/cv.gif"
-            alt="Loading"
-            width={80}
-            height={80}
-            className="mx-auto mb-4"
-            unoptimized
-          />
+          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
           <p className="text-muted-foreground">Loading cover letters...</p>
         </div>
       </div>
