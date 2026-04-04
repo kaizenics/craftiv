@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Sheet,
   SheetContent,
@@ -241,14 +241,7 @@ export default function FinalResumePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Image 
-            src="/cv.gif" 
-            alt="Loading" 
-            width={80} 
-            height={80} 
-            className="mx-auto mb-4"
-            unoptimized
-          />
+          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
           <p className="text-muted-foreground">Loading your resume...</p>
         </div>
       </div>
@@ -837,7 +830,7 @@ export default function FinalResumePage() {
         </main>
 
         {/* Mobile Preview Button - Floating */}
-        <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+        <Sheet modal={false} open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
           <SheetTrigger asChild>
             <Button
               size="sm"
@@ -846,14 +839,14 @@ export default function FinalResumePage() {
               <Eye className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[85vh] p-0">
+          <SheetContent side="bottom" className="h-[85vh] overflow-hidden p-0">
             <SheetHeader className="p-4 border-b">
               <SheetTitle>Resume Preview</SheetTitle>
               <SheetDescription>
                 Preview your resume in real-time
               </SheetDescription>
             </SheetHeader>
-            <div className="h-[calc(85vh-80px)]">
+            <div className="h-[calc(85vh-80px)] overflow-hidden">
               <PinchZoomContainer className="rounded-md bg-muted/20">
                 <ResumePreview
                   data={resumeData}

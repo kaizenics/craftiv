@@ -114,6 +114,8 @@ export function PinchZoomContainer({
   }, []);
 
   const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+
     if (e.touches.length === 2) {
       const touchA = e.touches[0];
       const touchB = e.touches[1];
@@ -143,6 +145,7 @@ export function PinchZoomContainer({
 
     if (gesture.mode === "pinch" && e.touches.length === 2) {
       e.preventDefault();
+      e.stopPropagation();
 
       const touchA = e.touches[0];
       const touchB = e.touches[1];
@@ -170,6 +173,7 @@ export function PinchZoomContainer({
 
     if (gesture.mode === "pan" && e.touches.length === 1) {
       e.preventDefault();
+      e.stopPropagation();
       const currentTouch = getTouchPoint(e.touches[0]);
       const rawOffset = {
         x: gesture.startOffset.x + (currentTouch.x - gesture.startTouch.x),
@@ -181,6 +185,8 @@ export function PinchZoomContainer({
   };
 
   const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+
     if (e.touches.length === 1) {
       gestureRef.current = {
         mode: "pan",
@@ -213,6 +219,7 @@ export function PinchZoomContainer({
         "relative h-full w-full overflow-hidden touch-none select-none",
         className,
       )}
+      style={{ touchAction: "none" }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
