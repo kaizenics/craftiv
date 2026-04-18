@@ -68,6 +68,13 @@ function buildCoverLetterPdfHtml(data: CoverLetterData) {
   const { contact, employer, date, content } = data;
   const template = getCoverLetterTemplate(data.templateId);
   const isModernAts = template.id === "modern-ats";
+  const isExecutive = template.id === "executive";
+  const isCleanBlock = template.id === "clean-block";
+  const isSidebarContact = template.id === "sidebar-contact";
+  const isElegantLine = template.id === "elegant-line";
+  const isSansTemplate =
+    isModernAts || isExecutive || isCleanBlock || isSidebarContact;
+  const accentColor = template.accentColor ?? "#18181b";
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
   const bodyHtml = toPdfContentHtml(content);
 
@@ -81,19 +88,50 @@ function buildCoverLetterPdfHtml(data: CoverLetterData) {
       body {
         margin: 0;
         padding: 0;
-        font-family: ${isModernAts
+        font-family: ${isSansTemplate
           ? '"Helvetica Neue", Arial, sans-serif'
           : 'Georgia, "Times New Roman", serif'};
-        color: ${isModernAts ? "#18181b" : "#27272a"};
+        color: ${isSansTemplate ? "#18181b" : "#27272a"};
         background: #ffffff;
       }
       .page {
         width: 210mm;
         min-height: 297mm;
         margin: 0 auto;
-        padding: ${isModernAts ? "16mm 18mm 18mm 18mm" : "18mm 20mm 20mm 20mm"};
-        line-height: ${isModernAts ? "1.55" : "1.6"};
+        padding: ${isSidebarContact ? "0" : isModernAts || isCleanBlock ? "16mm 18mm 18mm 18mm" : "18mm 20mm 20mm 20mm"};
+        line-height: ${isSansTemplate ? "1.55" : "1.6"};
         font-size: 12px;
+      }
+      .layout-sidebar {
+        display: grid;
+        grid-template-columns: 33% 67%;
+        min-height: 297mm;
+      }
+      .sidebar {
+        background: ${accentColor};
+        color: #ffffff;
+        padding: 18mm 12mm;
+      }
+      .sidebar-label {
+        margin: 0;
+        font-size: 9px;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.72);
+      }
+      .sidebar-name {
+        margin: 12px 0 0;
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .sidebar-meta {
+        margin: 10px 0 0;
+        font-size: 11px;
+        color: rgba(255,255,255,0.88);
+      }
+      .main {
+        padding: 18mm 18mm 18mm 16mm;
       }
       .accent {
         width: 58px;
@@ -102,21 +140,34 @@ function buildCoverLetterPdfHtml(data: CoverLetterData) {
         background: #18181b;
         margin-bottom: 14px;
       }
-      .name {
-        font-size: ${isModernAts ? "18px" : "20px"};
-        font-weight: ${isModernAts ? "600" : "700"};
-        margin: 0 0 6px;
+      .top-card {
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        border: 1px solid ${accentColor}33;
+        background: ${accentColor}10;
       }
-      .meta { margin: 0; color: ${isModernAts ? "#3f3f46" : "#52525b"}; }
+      .name {
+        font-size: ${isModernAts || isExecutive ? "18px" : "20px"};
+        font-weight: ${isModernAts || isExecutive ? "600" : "700"};
+        margin: 0 0 6px;
+        color: ${isExecutive || isElegantLine ? accentColor : "inherit"};
+      }
+      .meta { margin: 0; color: ${isSansTemplate ? "#3f3f46" : "#52525b"}; }
       .section { margin-top: 18px; }
+      .recipient-box {
+        border-left: ${isExecutive ? `2px solid ${accentColor}` : "0"};
+        border-top: ${isElegantLine ? `1px solid ${accentColor}66` : "0"};
+        padding-left: ${isExecutive ? "10px" : "0"};
+        padding-top: ${isElegantLine ? "10px" : "0"};
+      }
       .recipient-name {
         margin: 0;
-        font-weight: ${isModernAts ? "600" : "400"};
+        font-weight: ${isModernAts || isExecutive || isCleanBlock ? "600" : "400"};
       }
       .recipient-job { margin: 0; color: #52525b; }
       .recipient-company {
         margin: 0;
-        font-weight: ${isModernAts ? "600" : "500"};
+        font-weight: ${isModernAts || isExecutive || isCleanBlock ? "600" : "500"};
       }
       .recipient-address { margin: 0; color: #52525b; }
       .body p { margin: 0 0 14px; }
@@ -125,20 +176,45 @@ function buildCoverLetterPdfHtml(data: CoverLetterData) {
     </style>
   </head>
   <body>
-    <div class="page">
+    <div class="page ${isSidebarContact ? "layout-sidebar" : ""}">
+      ${isSidebarContact ? `
+        <div class="sidebar">
+          <p class="sidebar-label">Contact</p>
+          ${fullName ? `<p class="sidebar-name">${escapeHtml(fullName)}</p>` : ""}
+          ${contact.email ? `<p class="sidebar-meta">${escapeHtml(contact.email)}</p>` : ""}
+          ${contact.phone ? `<p class="sidebar-meta">${escapeHtml(contact.phone)}</p>` : ""}
+          ${(contact.address || contact.city)
+            ? `<p class="sidebar-meta">${escapeHtml([contact.address, contact.city].filter(Boolean).join(", "))}</p>`
+            : ""}
+          ${date ? `<p class="sidebar-meta" style="margin-top: 24px;">${escapeHtml(date)}</p>` : ""}
+        </div>
+        <div class="main">
+      ` : ""}
       ${isModernAts ? `<div class="accent"></div>` : ""}
-      ${fullName ? `<p class="name">${escapeHtml(fullName)}</p>` : ""}
-      ${(contact.address || contact.city)
-        ? `<p class="meta">${escapeHtml([contact.address, contact.city].filter(Boolean).join(", "))}</p>`
-        : ""}
-      ${(contact.phone || contact.email)
-        ? `<p class="meta">${escapeHtml([contact.phone, contact.email].filter(Boolean).join(" | "))}</p>`
-        : ""}
+      ${isCleanBlock ? `
+        <div class="top-card">
+          ${fullName ? `<p class="name">${escapeHtml(fullName)}</p>` : ""}
+          ${(contact.address || contact.city)
+            ? `<p class="meta">${escapeHtml([contact.address, contact.city].filter(Boolean).join(", "))}</p>`
+            : ""}
+          ${(contact.phone || contact.email)
+            ? `<p class="meta">${escapeHtml([contact.phone, contact.email].filter(Boolean).join(" | "))}</p>`
+            : ""}
+        </div>
+      ` : `
+        ${fullName ? `<p class="name">${escapeHtml(fullName)}</p>` : ""}
+        ${(contact.address || contact.city)
+          ? `<p class="meta">${escapeHtml([contact.address, contact.city].filter(Boolean).join(", "))}</p>`
+          : ""}
+        ${(contact.phone || contact.email)
+          ? `<p class="meta">${escapeHtml([contact.phone, contact.email].filter(Boolean).join(" | "))}</p>`
+          : ""}
+      `}
 
-      ${date ? `<p class="section">${escapeHtml(date)}</p>` : ""}
+      ${date && !isSidebarContact ? `<p class="section">${escapeHtml(date)}</p>` : ""}
 
       ${(employer.hiringManagerName || employer.jobTitle || employer.companyName || employer.companyAddress)
-        ? `<div class="section">
+        ? `<div class="section recipient-box">
             ${employer.hiringManagerName ? `<p class="recipient-name">${escapeHtml(employer.hiringManagerName)}</p>` : ""}
             ${employer.jobTitle ? `<p class="recipient-job">${escapeHtml(employer.jobTitle)}</p>` : ""}
             ${employer.companyName ? `<p class="recipient-company">${escapeHtml(employer.companyName)}</p>` : ""}
@@ -149,6 +225,7 @@ function buildCoverLetterPdfHtml(data: CoverLetterData) {
       <div class="section body">
         ${bodyHtml}
       </div>
+      ${isSidebarContact ? `</div>` : ""}
     </div>
   </body>
 </html>`;

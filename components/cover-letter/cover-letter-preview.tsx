@@ -34,6 +34,13 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
   const { contact, employer, content, date } = data;
   const template = getCoverLetterTemplate(data.templateId);
   const isModernAts = template.id === "modern-ats";
+  const isProfessional = template.id === "professional";
+  const isExecutive = template.id === "executive";
+  const isMinimalSerif = template.id === "minimal-serif";
+  const isCleanBlock = template.id === "clean-block";
+  const isSidebarContact = template.id === "sidebar-contact";
+  const isElegantLine = template.id === "elegant-line";
+  const accentColor = template.accentColor ?? "#18181b";
   const hasName = contact.firstName || contact.lastName;
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
   const sanitizedContent = DOMPurify.sanitize(normalizeBodyHtml(content || ""), {
@@ -58,103 +65,163 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
     : isLongContent
       ? "7% 9% 8.5% 9%"
       : "8% 10% 10% 10%";
+  const wrapperPadding = isSidebarContact
+    ? isVeryLongContent
+      ? "0"
+      : "0"
+    : previewPadding;
+  const previewFontFamily = isModernAts || isExecutive || isCleanBlock || isSidebarContact
+    ? "'Helvetica Neue', Arial, sans-serif"
+    : "Georgia, 'Times New Roman', serif";
+  const baseTextColor = isModernAts || isExecutive || isCleanBlock || isSidebarContact
+    ? "text-zinc-900"
+    : "text-zinc-800";
+  const metaTone = isMinimalSerif || isProfessional ? "text-zinc-500" : "text-zinc-600";
 
   return (
     <div
       className={cn(
         "mx-auto w-full max-w-[640px] overflow-hidden rounded-sm bg-white shadow-lg",
-        isModernAts ? "border border-zinc-200 text-zinc-900" : "text-zinc-800",
+        (isModernAts || isCleanBlock || isSidebarContact || isExecutive || isElegantLine)
+          ? "border border-zinc-200"
+          : "",
+        baseTextColor,
         className
       )}
       style={{
         aspectRatio: "210 / 297",
-        padding: previewPadding,
-        fontFamily: isModernAts
-          ? "'Helvetica Neue', Arial, sans-serif"
-          : "Georgia, 'Times New Roman', serif",
+        padding: wrapperPadding,
+        fontFamily: previewFontFamily,
         fontSize: previewFontSize,
         lineHeight: previewLineHeight,
       }}
     >
-      {isModernAts && <div className="mb-4 h-1 w-20 rounded-full bg-zinc-800" />}
-
-      {/* Sender info */}
-      {hasName && (
-        <div className="mb-1">
-          <p
-            className={cn(
-              "text-[12.5pt]",
-              isModernAts ? "font-semibold tracking-tight" : "font-bold tracking-wide"
-            )}
-          >
-            {fullName}
-          </p>
-        </div>
-      )}
       <div
         className={cn(
-          "space-y-0.5 text-[9pt]",
-          isModernAts ? "text-zinc-600" : "text-zinc-500"
+          "h-full",
+          isSidebarContact ? "grid grid-cols-[30%_70%]" : ""
         )}
       >
-        {(contact.address || contact.city) && (
-          <p>{[contact.address, contact.city].filter(Boolean).join(", ")}</p>
+        {isSidebarContact && (
+          <aside
+            className="flex h-full flex-col justify-between p-[9%] text-white"
+            style={{ backgroundColor: accentColor }}
+          >
+            <div>
+              <p className="text-[9pt] uppercase tracking-[0.28em] text-white/70">Contact</p>
+              {hasName && <p className="mt-4 text-[14pt] font-semibold leading-tight">{fullName}</p>}
+              {contact.email && <p className="mt-5 text-[9pt] break-words">{contact.email}</p>}
+              {contact.phone && <p className="mt-2 text-[9pt]">{contact.phone}</p>}
+              {(contact.address || contact.city) && (
+                <p className="mt-2 text-[9pt] text-white/80">
+                  {[contact.address, contact.city].filter(Boolean).join(", ")}
+                </p>
+              )}
+            </div>
+            <div className="text-[8.7pt] text-white/75">
+              {date && <p>{date}</p>}
+            </div>
+          </aside>
         )}
-        {(contact.phone || contact.email) && (
-          <p>{[contact.phone, contact.email].filter(Boolean).join("  |  ")}</p>
-        )}
-      </div>
 
-      {/* Date */}
-      {date && (
-        <p
-          className={cn(
-            "mt-5 text-[9.2pt]",
-            isModernAts ? "font-medium text-zinc-700" : "text-zinc-600"
+        <div className={cn(isSidebarContact ? "p-[8.5%]" : "")}>
+          {isModernAts && <div className="mb-4 h-1 w-20 rounded-full bg-zinc-800" />}
+          {isCleanBlock && (
+            <div className="mb-5 rounded-sm border px-4 py-3" style={{ borderColor: `${accentColor}30`, backgroundColor: `${accentColor}08` }}>
+              {hasName && <p className="text-[13pt] font-semibold">{fullName}</p>}
+              <div className={cn("mt-1 space-y-0.5 text-[9pt]", metaTone)}>
+                {(contact.address || contact.city) && <p>{[contact.address, contact.city].filter(Boolean).join(", ")}</p>}
+                {(contact.phone || contact.email) && <p>{[contact.phone, contact.email].filter(Boolean).join("  |  ")}</p>}
+              </div>
+            </div>
           )}
-        >
-          {date}
-        </p>
-      )}
 
-      {/* Recipient info */}
-      {(employer.hiringManagerName || employer.companyName || employer.companyAddress || employer.jobTitle) && (
-        <div className="mt-4 space-y-0.5 text-[9.2pt]">
-          {employer.hiringManagerName && (
-            <p className={cn(isModernAts && "font-medium text-zinc-800")}>
-              {employer.hiringManagerName}
+          {!isCleanBlock && !isSidebarContact && hasName && (
+            <div className="mb-1">
+              <p
+                className={cn(
+                  "text-[12.5pt]",
+                  isModernAts || isExecutive ? "font-semibold tracking-tight" : "font-bold tracking-wide"
+                )}
+                style={isExecutive || isElegantLine ? { color: accentColor } : undefined}
+              >
+                {fullName}
+              </p>
+            </div>
+          )}
+
+          {!isCleanBlock && !isSidebarContact && (
+            <div className={cn("space-y-0.5 text-[9pt]", metaTone)}>
+              {(contact.address || contact.city) && (
+                <p>{[contact.address, contact.city].filter(Boolean).join(", ")}</p>
+              )}
+              {(contact.phone || contact.email) && (
+                <p>{[contact.phone, contact.email].filter(Boolean).join("  |  ")}</p>
+              )}
+            </div>
+          )}
+
+          {date && !isSidebarContact && (
+            <p
+              className={cn(
+                "mt-5 text-[9.2pt]",
+                isModernAts || isExecutive || isCleanBlock ? "font-medium text-zinc-700" : "text-zinc-600"
+              )}
+            >
+              {date}
             </p>
           )}
-          {employer.jobTitle && <p className="text-zinc-500">{employer.jobTitle}</p>}
-          {employer.companyName && (
-            <p className={cn(isModernAts ? "font-semibold" : "font-medium")}>
-              {employer.companyName}
+
+          {(employer.hiringManagerName || employer.companyName || employer.companyAddress || employer.jobTitle) && (
+            <div
+              className={cn(
+                "mt-4 space-y-0.5 text-[9.2pt]",
+                isExecutive ? "border-l-2 pl-3" : "",
+                isElegantLine ? "border-t pt-3" : ""
+              )}
+              style={
+                isExecutive || isElegantLine
+                  ? { borderColor: `${accentColor}55` }
+                  : undefined
+              }
+            >
+              {employer.hiringManagerName && (
+                <p className={cn(isModernAts || isExecutive || isCleanBlock ? "font-medium text-zinc-800" : "font-medium")}>
+                  {employer.hiringManagerName}
+                </p>
+              )}
+              {employer.jobTitle && <p className="text-zinc-500">{employer.jobTitle}</p>}
+              {employer.companyName && (
+                <p className={cn(isModernAts || isCleanBlock || isExecutive ? "font-semibold" : "font-medium")}>
+                  {employer.companyName}
+                </p>
+              )}
+              {employer.companyAddress && <p className="text-zinc-500">{employer.companyAddress}</p>}
+            </div>
+          )}
+
+          {sanitizedContent ? (
+            <div
+              className={cn(
+                "mt-6 wrap-break-word text-left [word-spacing:normal]",
+                isModernAts || isExecutive || isCleanBlock || isSidebarContact ? "tracking-tight text-zinc-800" : "tracking-normal",
+                isVeryLongContent
+                  ? "[&_p]:mb-2 [&_ul]:my-2 [&_ol]:my-2"
+                  : isLongContent
+                    ? "[&_p]:mb-2.5 [&_ul]:my-2.5 [&_ol]:my-2.5"
+                    : "[&_p]:mb-3 [&_ul]:my-3 [&_ol]:my-3",
+                isMinimalSerif ? "[&_p]:text-zinc-700" : "",
+                "[&_p:last-child]:mb-0 [&_li]:mb-1"
+              )}
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+            />
+          ) : (
+            <p className="mt-6 text-[9.5pt] italic text-zinc-400">
+              Your cover letter content will appear here...
             </p>
           )}
-          {employer.companyAddress && <p className="text-zinc-500">{employer.companyAddress}</p>}
         </div>
-      )}
-
-      {/* Letter content (single WYSIWYG source) */}
-      {sanitizedContent ? (
-        <div
-          className={cn(
-            "mt-6 wrap-break-word text-left [word-spacing:normal]",
-            isModernAts ? "tracking-tight text-zinc-800" : "tracking-normal",
-            isVeryLongContent
-              ? "[&_p]:mb-2 [&_ul]:my-2 [&_ol]:my-2"
-              : isLongContent
-                ? "[&_p]:mb-2.5 [&_ul]:my-2.5 [&_ol]:my-2.5"
-                : "[&_p]:mb-3 [&_ul]:my-3 [&_ol]:my-3",
-            "[&_p:last-child]:mb-0 [&_li]:mb-1"
-          )}
-          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-        />
-      ) : (
-        <p className="mt-6 text-[9.5pt] italic text-zinc-400">
-          Your cover letter content will appear here...
-        </p>
-      )}
+      </div>
     </div>
   );
 }
