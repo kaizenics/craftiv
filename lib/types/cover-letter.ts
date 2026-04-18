@@ -17,6 +17,11 @@ export interface CoverLetterEmployer {
 export const coverLetterTemplateIds = [
   "modern-ats",
   "professional",
+  "executive",
+  "minimal-serif",
+  "clean-block",
+  "sidebar-contact",
+  "elegant-line",
 ] as const;
 
 export type CoverLetterTemplateId = (typeof coverLetterTemplateIds)[number];
