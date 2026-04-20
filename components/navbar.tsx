@@ -420,6 +420,20 @@ export function NavbarComponent() {
               <span className="relative z-20">FAQ</span>
             </a>
 
+            <Link
+              href="/pricing"
+              onMouseEnter={() => setHovered("pricing")}
+              className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300"
+            >
+              {hovered === "pricing" && (
+                <motion.div
+                  layoutId="hovered"
+                  className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
+                />
+              )}
+              <span className="relative z-20">Pricing</span>
+            </Link>
+
         
           </div>
           <div className="flex items-center gap-4">

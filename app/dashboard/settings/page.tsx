@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,7 +23,6 @@ import { trpc } from "@/trpc/client";
 
 export default function Settings() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
   const { data: providers } = trpc.user.getProviders.useQuery();
   const [firstName, setFirstName] = useState("");
@@ -85,8 +84,9 @@ export default function Settings() {
         setSubscriptionStatus(storedStatus);
       }
 
-      const subscribed = searchParams.get("subscribed");
-      const plan = searchParams.get("plan");
+      const params = new URLSearchParams(window.location.search);
+      const subscribed = params.get("subscribed");
+      const plan = params.get("plan");
       if (subscribed === "1" && (plan === "plus" || plan === "pro")) {
         setSubscriptionPlan(plan);
         setSubscriptionStatus("active");
@@ -96,7 +96,7 @@ export default function Settings() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [searchParams]);
+  }, []);
 
   const onSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
