@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type SubscriptionPlan = "free" | "plus" | "pro";
-const RESUME_CREATED_COUNT_KEY = "craftiv.usage.resumeCreatedCount";
 
 function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
   if (plan === "free") return 1;
@@ -95,19 +94,10 @@ function ResumeTemplatesPageContent() {
   const { data: resumes = [] } = trpc.resume.list.useQuery(undefined, {
     enabled: !!session?.user,
   });
-  const [resumeCreatedCount, setResumeCreatedCount] = useState<number>(() => {
-    if (typeof window === "undefined") return 0;
-    const raw = localStorage.getItem(RESUME_CREATED_COUNT_KEY);
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0;
+  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
+    enabled: !!session?.user,
   });
-  const [subscriptionPlan] = useState<SubscriptionPlan>(() => {
-    if (typeof window === "undefined") return "free";
-    const storedPlan = localStorage.getItem("craftiv.subscription.plan");
-    return storedPlan === "free" || storedPlan === "plus" || storedPlan === "pro"
-      ? storedPlan
-      : "free";
-  });
+  const subscriptionPlan = (subscription?.plan as SubscriptionPlan | undefined) ?? "free";
   const fromUpload =
     searchParams.get("from") === "upload" &&
     typeof window !== "undefined" &&
@@ -115,7 +105,7 @@ function ResumeTemplatesPageContent() {
   
   const createResume = trpc.resume.create.useMutation();
   const updateResume = trpc.resume.update.useMutation();
-  const effectiveCreatedCount = Math.max(resumeCreatedCount, resumes.length);
+  const effectiveCreatedCount = subscription?.resumeCreatedCount ?? resumes.length;
 
   const createAndNavigate = async (templateId: string) => {
     setIsCreating(true);
@@ -129,7 +119,7 @@ function ResumeTemplatesPageContent() {
         return;
       }
 
-      const resumeLimit = getResumeLimitByPlan(subscriptionPlan);
+      const resumeLimit = subscription?.resumeCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
       if (resumeLimit !== null && effectiveCreatedCount >= resumeLimit) {
         toast.error(
           `You've reached your ${subscriptionPlan.toUpperCase()} plan limit. Upgrade your plan to create more resume templates.`
@@ -146,9 +136,6 @@ function ResumeTemplatesPageContent() {
       localStorage.setItem('currentResumeId', result.id);
       localStorage.setItem('selectedTemplateId', templateId);
       localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
-      const nextCreatedCount = effectiveCreatedCount + 1;
-      localStorage.setItem(RESUME_CREATED_COUNT_KEY, String(nextCreatedCount));
-      setResumeCreatedCount(nextCreatedCount);
 
       const uploadedRaw = localStorage.getItem("uploadedResumeData");
       if (fromUpload && uploadedRaw) {
@@ -171,6 +158,11 @@ function ResumeTemplatesPageContent() {
       router.push(`/resume/section/${result.id}`);
     } catch (error) {
       console.error('Failed to create resume:', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to create resume right now. Please try again.";
+      toast.error(message);
       setIsCreating(false);
     }
   };

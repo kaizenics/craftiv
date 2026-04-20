@@ -23,7 +23,6 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 
 type SubscriptionPlan = "free" | "plus" | "pro";
-const RESUME_CREATED_COUNT_KEY = "craftiv.usage.resumeCreatedCount";
 
 function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
   if (plan === "free") return 1;
@@ -65,7 +64,8 @@ export default function Settings() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const { data: providers } = trpc.user.getProviders.useQuery();
-  const { data: resumes = [] } = trpc.resume.list.useQuery(undefined, {
+  const utils = trpc.useUtils();
+  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
   });
   const [firstName, setFirstName] = useState("");
@@ -76,9 +76,6 @@ export default function Settings() {
   const [defaultSpellCheck, setDefaultSpellCheck] = useState(true);
   const [compactEditor, setCompactEditor] = useState(false);
   const [showResumeScore, setShowResumeScore] = useState(true);
-  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>("free");
-  const [subscriptionStatus, setSubscriptionStatus] = useState<"inactive" | "active">("inactive");
-  const [resumeCreatedCount, setResumeCreatedCount] = useState(0);
   const [isCancellingPlan, setIsCancellingPlan] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,6 +83,11 @@ export default function Settings() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
+  const cancelPlanMutation = trpc.user.cancelPlan.useMutation({
+    onSuccess: () => {
+      utils.user.subscription.invalidate();
+    },
+  });
 
   // Check if user is using OAuth (has google, github, etc. - not credential)
   // Email/password users either have no accounts or only 'credential' provider
@@ -116,44 +118,6 @@ export default function Settings() {
       return () => window.clearTimeout(timer);
     }
   }, [session]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const storedPlan = localStorage.getItem("craftiv.subscription.plan");
-      const storedStatus = localStorage.getItem("craftiv.subscription.status");
-
-      if (storedPlan === "plus" || storedPlan === "pro" || storedPlan === "free") {
-        setSubscriptionPlan(storedPlan);
-      }
-      if (storedStatus === "active" || storedStatus === "inactive") {
-        setSubscriptionStatus(storedStatus);
-      }
-
-      const params = new URLSearchParams(window.location.search);
-      const subscribed = params.get("subscribed");
-      const plan = params.get("plan");
-      if (subscribed === "1" && (plan === "plus" || plan === "pro")) {
-        setSubscriptionPlan(plan);
-        setSubscriptionStatus("active");
-        localStorage.setItem("craftiv.subscription.plan", plan);
-        localStorage.setItem("craftiv.subscription.status", "active");
-      }
-
-      const storedCreatedCountRaw = localStorage.getItem(RESUME_CREATED_COUNT_KEY);
-      const storedCreatedCount = Number(storedCreatedCountRaw);
-      const normalizedStoredCount =
-        Number.isFinite(storedCreatedCount) && storedCreatedCount >= 0
-          ? Math.floor(storedCreatedCount)
-          : 0;
-      const effectiveCount = Math.max(normalizedStoredCount, resumes.length);
-      setResumeCreatedCount(effectiveCount);
-      if (effectiveCount !== normalizedStoredCount) {
-        localStorage.setItem(RESUME_CREATED_COUNT_KEY, String(effectiveCount));
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [resumes.length]);
 
   const onSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -228,22 +192,29 @@ export default function Settings() {
   const onCancelPlan = async () => {
     setIsCancellingPlan(true);
     try {
-      // Current billing state is client-side mocked. Downgrade immediately in app state.
-      localStorage.setItem("craftiv.subscription.plan", "free");
-      localStorage.setItem("craftiv.subscription.status", "inactive");
-      setSubscriptionPlan("free");
-      setSubscriptionStatus("inactive");
+      await cancelPlanMutation.mutateAsync();
       alert("Your plan has been cancelled. You are now on the Free plan.");
     } finally {
       setIsCancellingPlan(false);
     }
   };
 
-  const resumeLimit = getResumeLimitByPlan(subscriptionPlan);
-  const resumeUsageCount = resumeCreatedCount;
-  const usageLabel = resumeLimit ? `${Math.min(resumeUsageCount, resumeLimit)}/${resumeLimit}` : "Unlimited";
-  const usagePercent = resumeLimit
+  const subscriptionPlan = (subscription?.plan as SubscriptionPlan | undefined) ?? "free";
+  const subscriptionStatus = subscription?.status ?? "inactive";
+  const resumeLimit = subscription?.resumeCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
+  const resumeUsageCount = subscription?.resumeCreatedCount ?? 0;
+  const coverLetterLimit =
+    subscription?.coverLetterCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
+  const coverLetterUsageCount = subscription?.coverLetterCreatedCount ?? 0;
+  const resumeUsageLabel = resumeLimit ? `${Math.min(resumeUsageCount, resumeLimit)}/${resumeLimit}` : "Unlimited";
+  const resumeUsagePercent = resumeLimit
     ? Math.min((resumeUsageCount / resumeLimit) * 100, 100)
+    : 100;
+  const coverLetterUsageLabel = coverLetterLimit
+    ? `${Math.min(coverLetterUsageCount, coverLetterLimit)}/${coverLetterLimit}`
+    : "Unlimited";
+  const coverLetterUsagePercent = coverLetterLimit
+    ? Math.min((coverLetterUsageCount / coverLetterLimit) * 100, 100)
     : 100;
   const currentPlanBenefits = getPlanBenefits(subscriptionPlan);
 
@@ -372,14 +343,27 @@ export default function Settings() {
                 </p>
                 <div className="mt-3">
                   <p className="text-xs font-medium text-muted-foreground">
-                    Resume creation usage: {usageLabel}
+                    Resume creation usage: {resumeUsageLabel}
                   </p>
                   <div className="mt-1 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-200">
                     <div
                       className={`h-full rounded-full ${
                         subscriptionPlan === "free" ? "bg-zinc-500" : "bg-primary"
                       }`}
-                      style={{ width: `${usagePercent}%` }}
+                      style={{ width: `${resumeUsagePercent}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Cover letter creation usage: {coverLetterUsageLabel}
+                  </p>
+                  <div className="mt-1 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-200">
+                    <div
+                      className={`h-full rounded-full ${
+                        subscriptionPlan === "free" ? "bg-zinc-500" : "bg-primary"
+                      }`}
+                      style={{ width: `${coverLetterUsagePercent}%` }}
                     />
                   </div>
                 </div>

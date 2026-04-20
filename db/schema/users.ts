@@ -16,6 +16,12 @@ export const users = sqliteTable("users", {
   isPaid: integer("is_paid", { mode: "boolean" })
     .notNull()
     .default(false),
+  resumeCreatedCount: integer("resume_created_count")
+    .notNull()
+    .default(0),
+  coverLetterCreatedCount: integer("cover_letter_created_count")
+    .notNull()
+    .default(0),
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),

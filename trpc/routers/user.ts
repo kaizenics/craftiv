@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
@@ -56,6 +57,47 @@ export const userRouter = createTRPCRouter({
       completedResumes,
       draftResumes,
     };
+  }),
+
+  subscription: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.query.users.findFirst({
+      where: eq(users.id, ctx.user.id),
+    });
+
+    if (!user) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "User not found",
+      });
+    }
+
+    const plan = user.plan ?? "free";
+    const resumeCreated = user.resumeCreatedCount ?? 0;
+    const coverLetterCreated = user.coverLetterCreatedCount ?? 0;
+    const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
+
+    return {
+      plan,
+      isPaid: !!user.isPaid,
+      status: user.isPaid ? "active" : "inactive",
+      resumeCreatedCount: resumeCreated,
+      resumeCreationLimit: limit,
+      coverLetterCreatedCount: coverLetterCreated,
+      coverLetterCreationLimit: limit,
+    };
+  }),
+
+  cancelPlan: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .update(users)
+      .set({
+        plan: "free",
+        isPaid: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, ctx.user.id));
+
+    return { success: true };
   }),
 
   /**

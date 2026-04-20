@@ -6,7 +6,7 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "../init";
-import { resumes, type ResumeDataJSON } from "@/db/schema";
+import { resumes, users, type ResumeDataJSON } from "@/db/schema";
 
 function splitTitleBaseAndIndex(title: string): { base: string; index: number | null } {
   const match = title.match(/^(.*?)(?:_(\d+))?$/);
@@ -46,6 +46,32 @@ async function getUniqueResumeTitle(args: {
   }
 
   return `${base}_${next}`;
+}
+
+async function assertCanCreateResume(db: any, userId: string) {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!user) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "User not found",
+    });
+  }
+
+  const plan = user.plan ?? "free";
+  const createdCount = user.resumeCreatedCount ?? 0;
+  const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
+
+  if (limit !== null && createdCount >= limit) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You've reached your ${plan.toUpperCase()} plan limit. Upgrade your plan to create more resume templates.`,
+    });
+  }
+
+  return user;
 }
 
 // Validation schemas
@@ -215,6 +241,8 @@ export const resumeRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createResumeSchema)
     .mutation(async ({ ctx, input }) => {
+      const user = await assertCanCreateResume(ctx.db, ctx.user.id);
+
       const id = crypto.randomUUID();
       const title = await getUniqueResumeTitle({
         db: ctx.db,
@@ -253,6 +281,14 @@ export const resumeRouter = createTRPCRouter({
         data: emptyData,
         status: "draft",
       });
+
+      await ctx.db
+        .update(users)
+        .set({
+          resumeCreatedCount: (user.resumeCreatedCount ?? 0) + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
 
       return { id, title };
     }),
@@ -345,6 +381,8 @@ export const resumeRouter = createTRPCRouter({
   duplicate: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const user = await assertCanCreateResume(ctx.db, ctx.user.id);
+
       const existingResume = await ctx.db.query.resumes.findFirst({
         where: eq(resumes.id, input.id),
       });
@@ -373,6 +411,14 @@ export const resumeRouter = createTRPCRouter({
         data: existingResume.data,
         status: "draft",
       });
+
+      await ctx.db
+        .update(users)
+        .set({
+          resumeCreatedCount: (user.resumeCreatedCount ?? 0) + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
 
       return { id: newId };
     }),
