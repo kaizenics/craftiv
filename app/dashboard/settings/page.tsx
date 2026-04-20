@@ -29,7 +29,10 @@ export default function Settings() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [receiveEmails, setReceiveEmails] = useState(true);
-  const [monochrome, setMonochrome] = useState(true);
+  const [autoSaveDrafts, setAutoSaveDrafts] = useState(true);
+  const [defaultSpellCheck, setDefaultSpellCheck] = useState(true);
+  const [compactEditor, setCompactEditor] = useState(false);
+  const [showResumeScore, setShowResumeScore] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -193,17 +196,38 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between py-2">
               <div>
-                <p className="text-sm text-foreground">Monochrome theme</p>
-                <p className="text-xs text-muted-foreground">Use black & white theme</p>
-              </div>
-              <Switch checked={monochrome} onCheckedChange={setMonochrome} />
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <div>
                 <p className="text-sm text-foreground">Email notifications</p>
                 <p className="text-xs text-muted-foreground">Receive updates via email</p>
               </div>
               <Switch checked={receiveEmails} onCheckedChange={setReceiveEmails} />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm text-foreground">Auto-save drafts</p>
+                <p className="text-xs text-muted-foreground">Automatically save resume changes while editing</p>
+              </div>
+              <Switch checked={autoSaveDrafts} onCheckedChange={setAutoSaveDrafts} />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm text-foreground">Enable spell check by default</p>
+                <p className="text-xs text-muted-foreground">Open resume editor with spell check panel enabled</p>
+              </div>
+              <Switch checked={defaultSpellCheck} onCheckedChange={setDefaultSpellCheck} />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm text-foreground">Show resume score in preview</p>
+                <p className="text-xs text-muted-foreground">Display score badge at the top of resume preview</p>
+              </div>
+              <Switch checked={showResumeScore} onCheckedChange={setShowResumeScore} />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm text-foreground">Compact editor mode</p>
+                <p className="text-xs text-muted-foreground">Use denser spacing in editor forms for faster scanning</p>
+              </div>
+              <Switch checked={compactEditor} onCheckedChange={setCompactEditor} />
             </div>
           </div>
         </section>
