@@ -2398,7 +2398,7 @@ export function ResumePreview({
             position: renderAllPages ? 'relative' : 'relative',
             width: '100%',
             background: isSidebarLayout
-              ? `linear-gradient(to right, ${activeColor} 0mm, ${activeColor} ${SIDEBAR_WIDTH_MM}mm, #ffffff ${SIDEBAR_WIDTH_MM}mm, #ffffff ${A4_PAGE_WIDTH_MM}mm)`
+              ? `linear-gradient(to right, #374151 0mm, #374151 ${SIDEBAR_WIDTH_MM}mm, #ffffff ${SIDEBAR_WIDTH_MM}mm, #ffffff ${A4_PAGE_WIDTH_MM}mm)`
               : undefined
           }}
         >
