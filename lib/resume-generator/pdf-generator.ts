@@ -71,6 +71,7 @@ export async function generatePDF({
   const clonedElement = resumeElement.cloneNode(true) as HTMLElement;
   inlineComputedStyles(resumeElement, clonedElement);
   absolutizeMediaUrls(clonedElement);
+  const pageBackgroundColor = window.getComputedStyle(resumeElement).backgroundColor || '#ffffff';
 
   clonedElement.querySelectorAll('button, input, select, textarea, [data-pagination], [data-score], [data-preview-header], [data-preview-footer], [data-page-break-indicator]').forEach((el) => {
     el.remove();
@@ -101,15 +102,18 @@ export async function generatePDF({
       html, body {
         margin: 0;
         padding: 0;
-        background: #ffffff;
+        background: ${pageBackgroundColor};
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
 
       [data-resume-preview] {
+        width: 210mm !important;
+        max-width: 210mm !important;
         margin: 0 auto !important;
         box-shadow: none !important;
         border-radius: 0 !important;
+        background: ${pageBackgroundColor} !important;
       }
     </style>
   </head>

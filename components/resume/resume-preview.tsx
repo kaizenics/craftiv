@@ -167,7 +167,10 @@ export function ResumePreview({
 
     const measurePages = () => {
       const pageHeightPx = A4_PAGE_HEIGHT_MM * MM_TO_PX;
+      const previousMinHeight = contentEl.style.minHeight;
+      contentEl.style.minHeight = '0px';
       const contentHeightPx = contentEl.scrollHeight;
+      contentEl.style.minHeight = previousMinHeight;
       const nextPages = Math.max(1, Math.ceil(contentHeightPx / pageHeightPx));
       setMeasuredTotalPages((prev) => (prev === nextPages ? prev : nextPages));
     };
@@ -198,6 +201,7 @@ export function ResumePreview({
   const visiblePage = renderAllPages ? 1 : Math.min(currentPage, totalPages);
   const layout = template.layout || 'classic';
   const templateId = template.id;
+  const pageBackgroundColor = templateId === 'boardroom' ? '#fbfbfa' : '#ffffff';
   const isSidebarLayout = layout === 'sidebar' && templateId === 'astral';
   const shouldShowFooter = showFooter ?? !renderAllPages;
   const shouldShowScore = showScore && !renderAllPages;
@@ -265,7 +269,7 @@ export function ResumePreview({
         </h1>
         <div className="flex justify-center items-center gap-3 mt-2 text-sm text-zinc-600">
           {data.contact.email && <span>{data.contact.email}</span>}
-          {data.contact.email && data.contact.phone && <span>â€¢</span>}
+          {data.contact.email && data.contact.phone && <span>•</span>}
           {data.contact.phone && <span>{data.contact.phone}</span>}
         </div>
       </div>
@@ -284,7 +288,7 @@ export function ResumePreview({
                     {edu.location && <p className="text-zinc-600 text-sm">{edu.location}</p>}
                   </div>
                   <p className="text-zinc-600 text-sm">
-                    {edu.startDate || 'Start'} â€“ {edu.endDate || 'End'}
+                    {edu.startDate || 'Start'}  -  {edu.endDate || 'End'}
                   </p>
                 </div>
                 {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
@@ -308,7 +312,7 @@ export function ResumePreview({
                     {exp.location && <p className="text-zinc-600 text-sm">{exp.location}</p>}
                   </div>
                   <p className="text-zinc-600 text-sm">
-                    {exp.startDate || 'Start'} â€“ {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                    {exp.startDate || 'Start'}  -  {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
                   </p>
                 </div>
                 {exp.description && (
@@ -393,7 +397,7 @@ export function ResumePreview({
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
                       <p className="text-zinc-500 text-sm">
-                        {exp.startDate} â€“ {exp.isCurrentJob ? 'Present' : exp.endDate}
+                        {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
                       </p>
                     </div>
                     {exp.description && (
@@ -417,7 +421,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-800">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName}</p>
-                    <p className="text-zinc-500 text-sm">{edu.startDate} â€“ {edu.endDate}</p>
+                    <p className="text-zinc-500 text-sm">{edu.startDate}  -  {edu.endDate}</p>
                   </div>
                 ))}
               </div>
@@ -449,7 +453,7 @@ export function ResumePreview({
               <div className="space-y-1">
                 {data.finalize.languages.map((lang) => (
                   <p key={lang.id} className="text-zinc-600">
-                    {lang.name} â€“ <span className="text-zinc-500">{lang.proficiency}</span>
+                    {lang.name}  -  <span className="text-zinc-500">{lang.proficiency}</span>
                   </p>
                 ))}
               </div>
@@ -463,7 +467,7 @@ export function ResumePreview({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {data.finalize.certifications.map((cert) => (
                   <p key={cert.id} className="text-zinc-600 text-sm">
-                    {cert.name} â€“ {cert.issuer} ({cert.date})
+                    {cert.name}  -  {cert.issuer} ({cert.date})
                   </p>
                 ))}
               </div>
@@ -741,7 +745,7 @@ export function ResumePreview({
                       {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                     </div>
                     <p className="text-zinc-500 text-sm">
-                      {exp.startDate} â€“ {exp.isCurrentJob ? 'Present' : exp.endDate}
+                      {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
                     </p>
                   </div>
                   {exp.description && (
@@ -762,7 +766,7 @@ export function ResumePreview({
                 <div key={edu.id} className="border-l-4 pl-4" style={{ borderColor: activeColor }}>
                   <p className="font-bold text-zinc-800">{edu.degree}</p>
                   <p style={{ color: activeColor }}>{edu.schoolName}</p>
-                  <p className="text-zinc-500 text-sm">{edu.startDate} â€“ {edu.endDate}</p>
+                  <p className="text-zinc-500 text-sm">{edu.startDate}  -  {edu.endDate}</p>
                 </div>
               ))}
             </div>
@@ -842,7 +846,7 @@ export function ResumePreview({
                     <p className="text-zinc-600">{exp.employer}</p>
                   </div>
                   <p className="text-zinc-400 text-sm">
-                    {exp.startDate} â€“ {exp.isCurrentJob ? 'Present' : exp.endDate}
+                    {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
                   </p>
                 </div>
                 {exp.description && (
@@ -863,7 +867,7 @@ export function ResumePreview({
               <div key={edu.id}>
                 <p className="font-medium text-zinc-800">{edu.degree}</p>
                 <p className="text-zinc-600">{edu.schoolName}</p>
-                <p className="text-zinc-400 text-sm">{edu.startDate} â€“ {edu.endDate}</p>
+                <p className="text-zinc-400 text-sm">{edu.startDate}  -  {edu.endDate}</p>
               </div>
             ))}
           </div>
@@ -875,7 +879,7 @@ export function ResumePreview({
         <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
           <SectionHeader title="Skills" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
           <p className="text-zinc-600">
-            {data.skills.map((skill) => skill.name).join(' â€¢ ')}
+            {data.skills.map((skill) => skill.name).join(" • ")}
           </p>
         </div>
       )}
@@ -940,7 +944,7 @@ export function ResumePreview({
                     {exp.location && <p className="text-zinc-500">{exp.location}</p>}
                   </div>
                   <p className="text-zinc-500 text-sm">
-                    {exp.startDate} â€“ {exp.isCurrentJob ? 'Present' : exp.endDate}
+                    {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
                   </p>
                 </div>
                 {exp.description && (
@@ -961,7 +965,7 @@ export function ResumePreview({
               <div key={edu.id}>
                 <p className="font-bold text-zinc-800">{edu.schoolName}</p>
                 <p style={{ color: activeColor }}>{edu.degree}</p>
-                <p className="text-zinc-500 text-sm">{edu.startDate} â€“ {edu.endDate}</p>
+                <p className="text-zinc-500 text-sm">{edu.startDate}  -  {edu.endDate}</p>
               </div>
             ))}
           </div>
@@ -1046,7 +1050,7 @@ export function ResumePreview({
                     <p className="text-gray-500">{exp.location}</p>
                   </div>
                   <p className="text-gray-500 text-sm">
-                    {exp.startDate || 'Start'} â€“ {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                    {exp.startDate || 'Start'}  -  {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
                   </p>
                 </div>
                 {exp.description && (
@@ -1075,7 +1079,7 @@ export function ResumePreview({
                     </p>
                   </div>
                   <p className="text-gray-500 text-sm">
-                    {edu.startDate || 'Start'} â€“ {edu.endDate || 'End'}
+                    {edu.startDate || 'Start'}  -  {edu.endDate || 'End'}
                   </p>
                 </div>
               </div>
@@ -1097,7 +1101,7 @@ export function ResumePreview({
               >
                 {skill.name}
                 {skill.showLevel && skill.level && (
-                  <span className="text-gray-500"> â€¢ {skill.level}</span>
+                  <span className="text-gray-500"> • {skill.level}</span>
                 )}
               </span>
             ))}
@@ -2063,12 +2067,12 @@ export function ResumePreview({
               <h2 className="mb-5 text-[1.05rem] font-bold uppercase tracking-[0.22em] text-[#5c6269]">
                 Experience
               </h2>
-              <div className="relative pl-6">
-                <div className="absolute bottom-0 left-[5px] top-[3px] w-px bg-[#a7a7a7]" />
+              <div className="relative pl-8">
+                <div className="absolute bottom-2 left-[7px] top-2 w-px bg-[#a7a7a7]" />
                 <div className="space-y-6">
                   {data.experiences.map((exp) => (
                     <div key={exp.id} className="relative">
-                      <span className="absolute -left-6 top-1.5 h-[9px] w-[9px] rounded-full border border-[#8d8d8d] bg-[#fbfbfa]" />
+                      <span className="absolute -left-[29px] top-[0.62rem] h-[9px] w-[9px] rounded-full border border-[#8d8d8d] bg-[#fbfbfa]" />
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="font-bold text-[#565d66]">{exp.jobTitle || 'Role'}</p>
@@ -2079,9 +2083,18 @@ export function ResumePreview({
                         </p>
                       </div>
                       {exp.description && (
-                        <div className="mt-2 pl-1 text-[0.87rem] leading-[1.7] text-[#6b7280]">
-                          <p className="whitespace-pre-line">â€¢ {exp.description.replace(/\n+/g, '\nâ€¢ ')}</p>
-                        </div>
+                        <ul className="mt-2 space-y-1.5 pl-1 text-[0.87rem] leading-[1.7] text-[#6b7280]">
+                          {exp.description
+                            .split(/\n+/)
+                            .map((line) => line.trim())
+                            .filter(Boolean)
+                            .map((line, index) => (
+                              <li key={`${exp.id}-bullet-${index}`} className="flex items-start gap-2">
+                                <span className="mt-[0.62rem] h-[3.5px] w-[3.5px] shrink-0 rounded-full bg-[#6b7280]" />
+                                <span>{line.replace(/^[•\-\*\u2022]\s*/, "")}</span>
+                              </li>
+                            ))}
+                        </ul>
                       )}
                     </div>
                   ))}
@@ -2155,7 +2168,7 @@ export function ResumePreview({
                 {data.finalize.certifications.map((cert) => (
                   <div key={cert.id}>
                     <p className="font-semibold text-[#565d66]">{cert.name}</p>
-                    <p>{cert.issuer}{cert.date ? ` â€¢ ${cert.date}` : ''}</p>
+                    <p>{cert.issuer}{cert.date ? ` • ${cert.date}` : ''}</p>
                   </div>
                 ))}
               </div>
@@ -2210,7 +2223,7 @@ export function ResumePreview({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {data.finalize.certifications.map((cert) => (
               <p key={cert.id}>
-                {cert.name} â€“ {cert.issuer} ({cert.date})
+                {cert.name}  -  {cert.issuer} ({cert.date})
               </p>
             ))}
           </div>
@@ -2245,7 +2258,7 @@ export function ResumePreview({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {data.finalize.awards.map((award) => (
               <p key={award.id}>
-                {award.title} â€“ {award.issuer} ({award.date})
+                {award.title}  -  {award.issuer} ({award.date})
               </p>
             ))}
           </div>
@@ -2300,12 +2313,13 @@ export function ResumePreview({
       data-resume-preview 
       data-render-all-pages={renderAllPages ? 'true' : 'false'}
       className={cn(
-        'bg-white overflow-hidden flex flex-col',
+        'overflow-hidden flex flex-col',
         plain ? 'rounded-none shadow-none' : 'shadow-xl rounded-lg',
         className
       )} 
       style={{ 
         fontFamily: designOptions.fontFamily,
+        backgroundColor: pageBackgroundColor,
         // Set A4 width for preview (210mm)
         width: renderAllPages ? 'auto' : '210mm',
         maxWidth: renderAllPages ? 'none' : '210mm',
@@ -2321,7 +2335,7 @@ export function ResumePreview({
             <div className="bg-cyan-500 text-white text-xs font-bold px-2 py-1 rounded">
               {calculateScore(data)}%
             </div>
-            <span className="text-sm text-gray-600">Your resume score ðŸ˜Š</span>
+            <span className="text-sm text-gray-600">Your resume score 😊</span>
           </div>
         </div>
       )}
@@ -2334,7 +2348,8 @@ export function ResumePreview({
           // For preview mode: clip to A4 height per page, for PDF: let it flow
           height: renderAllPages ? 'auto' : '297mm',
           maxHeight: renderAllPages ? 'none' : '297mm',
-          position: renderAllPages ? 'relative' : 'relative'
+          position: renderAllPages ? 'relative' : 'relative',
+          backgroundColor: pageBackgroundColor
         }}
       >
         {/* Render all content continuously - both for PDF and preview */}
@@ -2347,7 +2362,7 @@ export function ResumePreview({
             transform: !renderAllPages ? `translateY(-${(visiblePage - 1) * A4_PAGE_HEIGHT_MM}mm)` : 'none',
             transition: !renderAllPages ? 'transform 0.3s ease' : 'none',
             height: renderAllPages ? 'auto' : 'auto',
-            minHeight: `${Math.max(1, totalPages) * A4_PAGE_HEIGHT_MM}mm`,
+            minHeight: renderAllPages ? undefined : `${Math.max(1, totalPages) * A4_PAGE_HEIGHT_MM}mm`,
             position: renderAllPages ? 'relative' : 'relative',
             width: '100%',
             background: isSidebarLayout
@@ -2458,6 +2473,7 @@ function calculateScore(data: ResumeData): number {
 
   return Math.min(score, maxScore);
 }
+
 
 
 

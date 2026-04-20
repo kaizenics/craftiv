@@ -59,6 +59,3 @@ npm run dev
 
 This project is private and proprietary.
 
-## Alpha Testing Site
-[https://boostcv.vercel.app](https://boostcv.vercel.app)
-

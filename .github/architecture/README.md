@@ -1,6 +1,6 @@
-# BoostCV Architecture
+# Craftiv Architecture
 
-This folder contains architecture documentation for BoostCV.
+This folder contains architecture documentation for Craftiv.
 
 ## Document Map
 
