@@ -9,6 +9,7 @@ const navigation = {
   company: [
     { name: "Privacy Policy", href: "/privacy" },
     { name: "Terms of Service", href: "/terms" },
+    { name: "Refund Policy", href: "/refund-policy" },
     { name: "Data Deletion", href: "/data-deletion" },
   ],
   support: [

@@ -63,10 +63,10 @@ export default function DataDeletionPage() {
 							<li>
 								Send an email to{" "}
 								<a
-									href="mailto:info@craftiv.app"
+									href="mailto:info@gocraftiv.com"
 									className="font-medium text-zinc-900 underline underline-offset-2"
 								>
-									info@craftiv.app
+									info@gocraftiv.com
 								</a>{" "}
 								with the subject line: Data Deletion Request.
 							</li>

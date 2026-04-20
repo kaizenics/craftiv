@@ -98,10 +98,10 @@ export default function PrivacyPage() {
             <p className="mt-3 leading-7">
               Questions about this policy can be sent to{" "}
               <a
-                href="mailto:privacy@craftiv.app"
+                href="mailto:privacy@gocraftiv.com"
                 className="font-medium text-zinc-900 underline underline-offset-2"
               >
-                privacy@craftiv.app
+                privacy@gocraftiv.com
               </a>
               .
             </p>

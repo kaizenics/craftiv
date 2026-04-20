@@ -11,25 +11,25 @@ const SUPPORT_HOURS = "Monday to Friday, 9:00 AM - 6:00 PM (UTC)";
 const supportChannels = [
 	{
 		title: "Customer Support",
-		email: "support@craftiv.app",
+		email: "support@gocraftiv.com",
 		detail: "Questions about resumes, templates, exports, and app usage.",
 		response: "Typical response: within 24 hours",
 	},
 	{
 		title: "Billing & Subscriptions",
-		email: "billing@craftiv.app",
+		email: "billing@gocraftiv.com",
 		detail: "Help with invoices, renewals, refunds, and payment issues.",
 		response: "Typical response: within 1 business day",
 	},
 	{
 		title: "Privacy Requests",
-		email: "privacy@craftiv.app",
+		email: "privacy@gocraftiv.com",
 		detail: "Data access, deletion requests, and privacy-related concerns.",
 		response: "Typical response: within 2 business days",
 	},
 	{
 		title: "Legal",
-		email: "legal@craftiv.app",
+		email: "legal@gocraftiv.com",
 		detail: "Terms, policy, and legal communication.",
 		response: "Typical response: within 2 business days",
 	},
