@@ -109,10 +109,10 @@ export default function TermsPage() {
             <p className="mt-3 leading-7">
               For questions regarding these Terms, contact{" "}
               <a
-                href="mailto:legal@craftiv.app"
+                href="mailto:legal@gocraftiv.com"
                 className="font-medium text-zinc-900 underline underline-offset-2"
               >
-                legal@craftiv.app
+                legal@gocraftiv.com
               </a>
               .
             </p>

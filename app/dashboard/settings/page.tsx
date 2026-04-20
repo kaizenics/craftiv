@@ -33,6 +33,8 @@ export default function Settings() {
   const [defaultSpellCheck, setDefaultSpellCheck] = useState(true);
   const [compactEditor, setCompactEditor] = useState(false);
   const [showResumeScore, setShowResumeScore] = useState(true);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<"free" | "plus" | "pro">("free");
+  const [subscriptionStatus, setSubscriptionStatus] = useState<"inactive" | "active">("inactive");
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,19 +54,49 @@ export default function Settings() {
   // Populate form with user data from session
   useEffect(() => {
     if (session?.user) {
-      // Split name into firstName and lastName
-      const fullName = session.user.name || "";
-      const nameParts = fullName.trim().split(" ");
-      if (nameParts.length > 1) {
-        setFirstName(nameParts[0]);
-        setLastName(nameParts.slice(1).join(" "));
-      } else {
-        setFirstName(fullName);
-        setLastName("");
-      }
-      setEmail(session.user.email || "");
+      const timer = window.setTimeout(() => {
+        // Split name into firstName and lastName
+        const fullName = session.user.name || "";
+        const nameParts = fullName.trim().split(" ");
+        if (nameParts.length > 1) {
+          setFirstName(nameParts[0]);
+          setLastName(nameParts.slice(1).join(" "));
+        } else {
+          setFirstName(fullName);
+          setLastName("");
+        }
+        setEmail(session.user.email || "");
+      }, 0);
+
+      return () => window.clearTimeout(timer);
     }
   }, [session]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedPlan = localStorage.getItem("craftiv.subscription.plan");
+      const storedStatus = localStorage.getItem("craftiv.subscription.status");
+
+      if (storedPlan === "plus" || storedPlan === "pro" || storedPlan === "free") {
+        setSubscriptionPlan(storedPlan);
+      }
+      if (storedStatus === "active" || storedStatus === "inactive") {
+        setSubscriptionStatus(storedStatus);
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const subscribed = params.get("subscribed");
+      const plan = params.get("plan");
+      if (subscribed === "1" && (plan === "plus" || plan === "pro")) {
+        setSubscriptionPlan(plan);
+        setSubscriptionStatus("active");
+        localStorage.setItem("craftiv.subscription.plan", plan);
+        localStorage.setItem("craftiv.subscription.status", "active");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const onSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -237,6 +269,31 @@ export default function Settings() {
         {/* Account Section */}
         <section>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
+
+          <div className="mb-6 rounded-xl border border-border bg-muted/30 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Current subscription</p>
+                <p className="text-lg font-semibold text-foreground capitalize">
+                  {subscriptionPlan}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Status:{" "}
+                  <span
+                    className={subscriptionStatus === "active" ? "text-green-600 font-medium" : "text-muted-foreground"}
+                  >
+                    {subscriptionStatus}
+                  </span>
+                </p>
+              </div>
+              <Link
+                href="/pricing"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Manage plan
+              </Link>
+            </div>
+          </div>
           
           <div className="space-y-3">
             {!isOAuthUser && (
