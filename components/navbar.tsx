@@ -285,7 +285,7 @@ function MegaMenuDropdown({
 
                   <Link
                     href="/resume/templates"
-                    className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[#355de8] px-5 py-3 text-base font-semibold text-white transition-colors duration-150 hover:bg-[#2f53cf]"
+                    className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-primary px-5 py-3 text-base font-semibold text-white transition-colors duration-150 hover:bg-[#2f53cf]"
                   >
                     Build your resume
                   </Link>
@@ -330,7 +330,7 @@ function MegaMenuDropdown({
 
                   <Link
                     href="/cover-letter/templates"
-                    className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-[#355de8] px-5 py-3 text-base font-semibold text-white transition-colors duration-150 hover:bg-[#2f53cf]"
+                    className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-primary px-5 py-3 text-base font-semibold text-white transition-colors duration-150 hover:bg-[#2f53cf]"
                   >
                     Build your cover letter
                   </Link>

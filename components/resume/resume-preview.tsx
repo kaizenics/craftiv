@@ -142,6 +142,7 @@ export function ResumePreview({
   renderAllPages = false
 }: ResumePreviewProps) {
   const template = resumeTemplates.find((t) => t.id === data.templateId) || resumeTemplates[0];
+  const templateId = template.id;
   const [internalPage, setInternalPage] = useState(1);
   const [measuredTotalPages, setMeasuredTotalPages] = useState(1);
   const pdfContentRef = useRef<HTMLDivElement>(null);
@@ -167,10 +168,23 @@ export function ResumePreview({
 
     const measurePages = () => {
       const pageHeightPx = A4_PAGE_HEIGHT_MM * MM_TO_PX;
-      const previousMinHeight = contentEl.style.minHeight;
-      contentEl.style.minHeight = '0px';
-      const contentHeightPx = contentEl.scrollHeight;
-      contentEl.style.minHeight = previousMinHeight;
+      let contentHeightPx = contentEl.scrollHeight;
+
+      // Orbit uses a sidebar stretched to document height for visual consistency.
+      // Measure pages from the main content column so the decorative sidebar
+      // does not create an extra blank page.
+      if (templateId === 'orbit') {
+        const orbitMain = contentEl.querySelector('[data-orbit-main]') as HTMLElement | null;
+        if (orbitMain) {
+          contentHeightPx = orbitMain.scrollHeight;
+        }
+      } else {
+        const previousMinHeight = contentEl.style.minHeight;
+        contentEl.style.minHeight = '0px';
+        contentHeightPx = contentEl.scrollHeight;
+        contentEl.style.minHeight = previousMinHeight;
+      }
+
       const nextPages = Math.max(1, Math.ceil(contentHeightPx / pageHeightPx));
       setMeasuredTotalPages((prev) => (prev === nextPages ? prev : nextPages));
     };
@@ -195,12 +209,13 @@ export function ResumePreview({
       observer.disconnect();
       window.removeEventListener('resize', scheduleMeasure);
     };
-  }, [data, designOptions, renderAllPages]);
+  }, [data, designOptions, renderAllPages, templateId]);
 
   const totalPages = measuredTotalPages;
   const visiblePage = renderAllPages ? 1 : Math.min(currentPage, totalPages);
   const layout = template.layout || 'classic';
-  const templateId = template.id;
+  const shouldRenderPhoto = templateId === 'orbit' ? true : showPhoto;
+  const totalDocumentHeightMm = Math.max(1, totalPages) * A4_PAGE_HEIGHT_MM;
   const pageBackgroundColor = templateId === 'boardroom' ? '#fbfbfa' : '#ffffff';
   const isSidebarLayout = layout === 'sidebar' && templateId === 'astral';
   const shouldShowFooter = showFooter ?? !renderAllPages;
@@ -1116,15 +1131,23 @@ export function ResumePreview({
 
   const renderOrbitLayout = () => (
     <div
-      className="bg-white"
+      className="h-full bg-white"
       style={{
         fontSize: `${designOptions.fontSize}px`,
-        lineHeight: designOptions.lineSpacing
+        lineHeight: designOptions.lineSpacing,
+        minHeight: `${totalDocumentHeightMm}mm`,
+        height: '100%'
       }}
     >
-      <div className="grid grid-cols-[30%_70%] min-h-full">
-        <aside className="bg-[#3f3f42] text-white">
-          <div className="bg-[#f3f3f3] px-7 py-10 text-[#4b5563]">
+      <div
+        className="grid items-start grid-cols-[30%_70%]"
+        style={{ minHeight: `${totalDocumentHeightMm}mm`, height: '100%' }}
+      >
+        <aside
+          className="relative flex flex-col overflow-hidden bg-[#f3f3f3] text-white"
+          style={{ minHeight: `${totalDocumentHeightMm}mm`, height: '100%' }}
+        >
+          <div className="px-7 py-10 text-[#4b5563]">
             <div className="space-y-3 text-[0.84rem]">
               {data.contact.phone && <p>{data.contact.phone}</p>}
               {data.contact.email && <p className="break-words">{data.contact.email}</p>}
@@ -1133,11 +1156,21 @@ export function ResumePreview({
             </div>
           </div>
 
-          <div className="px-4 py-5">
-            {showPhoto && data.contact.photoUrl ? (
+          <div
+            className="-mt-4 flex-1 rounded-t-[999px] bg-[#3f3f42] px-4 py-5"
+            style={{ minHeight: 0 }}
+          >
+            {shouldRenderPhoto ? (
               <div className="mx-auto mb-5 flex h-48 w-48 items-center justify-center rounded-full bg-[#4a4a4d]">
                 <div className="h-40 w-40 overflow-hidden rounded-full border-[3px] border-white/95 bg-white/20">
-                  <Image src={data.contact.photoUrl} alt="Profile" width={160} height={160} className="h-full w-full object-cover" />
+                  {data.contact.photoUrl ? (
+                    <Image src={data.contact.photoUrl} alt="Profile" width={160} height={160} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[#5a5a5f] text-[2.1rem] font-bold text-white/85">
+                      {(data.contact.firstName?.[0] || "Y").toUpperCase()}
+                      {(data.contact.lastName?.[0] || "N").toUpperCase()}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -1185,7 +1218,7 @@ export function ResumePreview({
           </div>
         </aside>
 
-        <main className="px-8 py-9">
+        <main data-orbit-main className="self-start px-8 py-9">
           <div className="mb-8">
             <h1 className="text-[3rem] font-black uppercase leading-[0.95] tracking-tight text-black">
               {data.contact.firstName || 'Your'}
@@ -1204,11 +1237,10 @@ export function ResumePreview({
               </h2>
               <div className="space-y-6">
                 {data.experiences.map((exp) => (
-                  <div key={exp.id} className="grid grid-cols-[56px_1fr] gap-5">
+                  <div key={exp.id} className="grid grid-cols-[84px_1fr] gap-5">
                     <div className="text-[0.84rem] leading-5 text-[#374151]">
-                      <p>{exp.startDate || '2021'}</p>
-                      <p>-</p>
-                      <p>{exp.isCurrentJob ? 'Present' : (exp.endDate || '2022')}</p>
+                      <p className="whitespace-nowrap">{exp.startDate || '2021'}</p>
+                      <p className="whitespace-nowrap">{exp.isCurrentJob ? 'Present' : (exp.endDate || '2022')}</p>
                     </div>
                     <div>
                       <p className="text-[1rem] font-bold text-black">{exp.jobTitle || 'Sales Representative'}</p>
