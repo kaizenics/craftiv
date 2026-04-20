@@ -2,7 +2,7 @@
 
 ## Purpose
 
-BoostCV is a resume builder platform where users create, optimize, and export job-ready resumes.
+Craftiv is a resume builder platform where users create, optimize, and export job-ready resumes.
 
 ## Primary Actors
 

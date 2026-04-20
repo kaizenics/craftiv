@@ -235,43 +235,44 @@ function MegaMenuDropdown({
             <div className="rounded-2xl">
               {activeTab === "resume" ? (
                 <>
-                  <div className="relative h-36 overflow-hidden rounded-2xl bg-[#6fc0eb]">
-                    <div className="absolute left-14 top-3 h-28 w-32 rounded-sm bg-white shadow-md">
-                      <div className="space-y-1 px-2 py-2">
-                        <p className="text-[9px] font-semibold leading-none text-zinc-700">KATHLEEN</p>
-                        <p className="text-[9px] font-semibold leading-none text-zinc-700">JONES</p>
-                        <div className="space-y-1 pt-1">
-                          <div className="h-1 w-16 rounded bg-zinc-200" />
-                          <div className="h-1 w-14 rounded bg-zinc-100" />
+                  <div className="relative h-36 overflow-hidden rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-200 via-cyan-200 to-sky-300">
+                    <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-white/25 blur-2xl" />
+                    <div className="absolute -right-6 bottom-2 h-28 w-28 rounded-full bg-cyan-500/20 blur-2xl" />
+
+                    <div className="absolute left-7 top-4 h-28 w-20 rounded-xl border border-slate-200/80 bg-white/95 shadow-[0_14px_24px_-14px_rgba(15,23,42,0.45)]">
+                      <div className="space-y-1.5 px-2 py-2">
+                        <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-700">KATHLEEN</p>
+                        <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-700">JONES</p>
+                        <div className="mt-2 space-y-1">
+                          <div className="h-1 w-full rounded bg-slate-200" />
+                          <div className="h-1 w-10 rounded bg-slate-100" />
                         </div>
                       </div>
                     </div>
-                    <div className="absolute left-32 top-3 h-28 w-36 rounded-sm border-l border-zinc-200 bg-white shadow-lg">
-                      <div className="space-y-1 px-2 py-2">
-                        <div className="h-2 w-8 rounded bg-zinc-300" />
-                        <div className="h-1 w-20 rounded bg-zinc-200" />
-                        <div className="h-1 w-20 rounded bg-zinc-100" />
-                        <div className="mt-3 h-2 w-7 rounded bg-zinc-300" />
-                        <div className="h-1 w-20 rounded bg-zinc-200" />
-                        <div className="h-1 w-20 rounded bg-zinc-100" />
+                    <div className="absolute left-20 top-3 h-[7.5rem] w-[9.5rem] rounded-xl border border-slate-200/80 bg-white/95 shadow-[0_14px_24px_-14px_rgba(15,23,42,0.45)]">
+                      <div className="space-y-2 px-3 py-3">
+                        <div className="h-2 w-16 rounded bg-slate-300" />
+                        <div className="h-1 w-24 rounded bg-slate-200" />
+                        <div className="h-1 w-20 rounded bg-slate-100" />
+                        <div className="pt-1">
+                          <div className="h-2 w-12 rounded bg-slate-300" />
+                          <div className="mt-1 h-1 w-24 rounded bg-slate-200" />
+                          <div className="mt-1 h-1 w-16 rounded bg-slate-100" />
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="absolute right-8 top-10 grid grid-cols-4 gap-1.5 rounded-md bg-white/90 p-2 shadow-sm">
-                      <span className="h-2.5 w-2.5 rounded-full bg-zinc-500" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-zinc-300" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#2b6fdb]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#56b9df]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#12a5ab]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#f49a22]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#d95030]" />
+                    <div className="absolute right-6 top-6 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-sky-300/70 bg-white/90 text-sky-700 shadow-sm">
+                      <FileText className="h-4 w-4" />
                     </div>
-
-                    <div className="absolute left-8 top-[55px] h-6 w-6 -rotate-12 rounded-full bg-[#ffd37b] text-[#9b5b00]">
-                      <FileText className="m-1 h-4 w-4" />
-                    </div>
-                    <div className="absolute right-6 top-[74px] h-7 w-7 rotate-12 rounded-md bg-[#87e299] text-[#1a7d2d]">
-                      <Pen className="m-1.5 h-4 w-4" />
+                    <div className="absolute right-5 top-16 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-300/70 bg-emerald-100 text-emerald-700 shadow-sm">
+                      <Pen className="h-4 w-4" />
                     </div>
                   </div>
 
@@ -291,25 +292,32 @@ function MegaMenuDropdown({
                 </>
               ) : (
                 <>
-                  <div className="relative h-36 overflow-hidden rounded-2xl bg-[#f3c775]">
-                    <div className="absolute left-10 top-0 h-10 w-12 border-t-[3px] border-l-[3px] border-[#5fb5ff]" />
-                    <div className="absolute left-14 top-5 h-26 w-40 rounded-sm bg-white shadow-lg">
-                      <div className="space-y-1 px-2 py-2">
-                        <div className="h-2 w-16 rounded bg-zinc-700" />
-                        <div className="h-1 w-24 rounded bg-zinc-200" />
-                        <div className="mt-2 h-2 w-10 rounded bg-zinc-300" />
-                        <div className="h-1 w-28 rounded bg-zinc-200" />
-                        <div className="h-1 w-28 rounded bg-zinc-100" />
-                        <div className="mt-2 h-2 w-10 rounded bg-zinc-300" />
-                        <div className="h-1 w-28 rounded bg-zinc-200" />
+                  <div className="relative h-36 overflow-hidden rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-200 via-orange-100 to-amber-300">
+                    <div className="absolute -left-6 top-4 h-24 w-24 rounded-full bg-white/30 blur-2xl" />
+                    <div className="absolute -right-5 -bottom-6 h-24 w-24 rounded-full bg-orange-400/25 blur-2xl" />
+
+                    <div className="absolute left-10 top-5 h-[6.5rem] w-44 rounded-xl border border-amber-100 bg-white/95 shadow-[0_14px_24px_-14px_rgba(120,53,15,0.45)]">
+                      <div className="space-y-1.5 px-3 py-3">
+                        <div className="h-2 w-20 rounded bg-slate-700/90" />
+                        <div className="h-1 w-28 rounded bg-slate-200" />
+                        <div className="h-1 w-24 rounded bg-slate-100" />
+                        <div className="pt-1.5">
+                          <div className="h-1.5 w-16 rounded bg-slate-300" />
+                          <div className="mt-1 h-1 w-[7.5rem] rounded bg-slate-200" />
+                          <div className="mt-1 h-1 w-28 rounded bg-slate-100" />
+                        </div>
+                        <div className="pt-1.5">
+                          <div className="h-1.5 w-18 rounded bg-slate-300" />
+                          <div className="mt-1 h-1 w-[7.5rem] rounded bg-slate-200" />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="absolute right-8 top-12 flex h-10 w-10 items-center justify-center rounded-full border border-[#1f2f3f] bg-[#75cdf8] text-[#1f2f3f]">
+                    <div className="absolute right-8 top-10 flex h-10 w-10 items-center justify-center rounded-full border border-cyan-700/30 bg-cyan-200 text-cyan-900 shadow-sm">
                       <ChevronDown className="h-5 w-5" />
                     </div>
-                    <div className="absolute right-4 top-[86px] h-7 w-7 rotate-12 rounded-md bg-[#87e299] text-[#1a7d2d]">
-                      <Pen className="m-1.5 h-4 w-4" />
+                    <div className="absolute right-5 top-20 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-300/70 bg-emerald-100 text-emerald-700 shadow-sm">
+                      <Pen className="h-4 w-4" />
                     </div>
                   </div>
 
@@ -411,6 +419,8 @@ export function NavbarComponent() {
               )}
               <span className="relative z-20">FAQ</span>
             </a>
+
+        
           </div>
           <div className="flex items-center gap-4">
             <NavbarButton
@@ -505,6 +515,13 @@ export function NavbarComponent() {
             >
               <span className="block">FAQ</span>
             </a>
+            <Link
+              href="/pricing"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="relative text-neutral-600 dark:text-neutral-300"
+            >
+              <span className="block">Pricing</span>
+            </Link>
             <div className="flex w-full flex-col gap-4">
               {session ? (
                 <NavbarButton

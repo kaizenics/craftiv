@@ -4,7 +4,7 @@ const testimonials = [
         name: "Emily Carter",
         role: "Marketing Specialist",
         quote:
-            "BoostCV helped me rebuild my resume in one evening. I got two interview calls within a week.",
+            "Craftiv helped me rebuild my resume in one evening. I got two interview calls within a week.",
         avatar: "https://randomuser.me/api/portraits/women/44.jpg",
     },
     {

@@ -86,6 +86,7 @@ const templateColors = [
   "#000",
   "#f472b6",
 ];
+const BOARDROOM_FIXED_COLOR = "#fbfbfa";
 
 export default function FinalResumePage() {
   const router = useRouter();
@@ -143,7 +144,9 @@ export default function FinalResumePage() {
       // Set initial color from template
       const template = resumeTemplates.find((t) => t.id === parsed.templateId);
       if (template) {
-        setSelectedColor(template.primaryColor);
+        setSelectedColor(
+          template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor
+        );
       }
     } catch {
       router.push("/resume/templates");
@@ -332,11 +335,17 @@ export default function FinalResumePage() {
     // Update color to match new template
     const template = resumeTemplates.find((t) => t.id === templateId);
     if (template) {
-      setSelectedColor(template.primaryColor);
+      setSelectedColor(
+        template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor
+      );
     }
   };
 
   const handleColorChange = (color: string) => {
+    if (resumeData.templateId === "boardroom") {
+      setSelectedColor(BOARDROOM_FIXED_COLOR);
+      return;
+    }
     setSelectedColor(color);
   };
 
@@ -397,6 +406,11 @@ export default function FinalResumePage() {
       icon: <SpellCheck className="h-5 w-5" />,
     },
   ];
+
+  const isBoardroomTemplate = resumeData.templateId === "boardroom";
+  const availableTemplateColors = isBoardroomTemplate
+    ? [BOARDROOM_FIXED_COLOR]
+    : templateColors;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -477,7 +491,7 @@ export default function FinalResumePage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Template Color</Label>
                   <div className="flex gap-2 items-center flex-wrap">
-                    {templateColors.map((color) => (
+                    {availableTemplateColors.map((color) => (
                       <button
                         key={color}
                         onClick={() => handleColorChange(color)}
@@ -491,37 +505,38 @@ export default function FinalResumePage() {
                         title={color}
                       />
                     ))}
-                    {/* Custom Color Picker */}
-                    <div className="relative group">
-                      <label
-                        className={cn(
-                          "w-9 h-9 rounded-full border-2 cursor-pointer flex items-center justify-center transition-all hover:scale-110",
-                          !templateColors.includes(selectedColor)
-                            ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
-                            : "border-zinc-200 hover:border-zinc-400"
-                        )}
-                        style={{
-                          backgroundColor: !templateColors.includes(
-                            selectedColor
-                          )
-                            ? selectedColor
-                            : "transparent",
-                          backgroundImage: templateColors.includes(
-                            selectedColor
-                          )
-                            ? "conic-gradient(from 90deg, red, yellow, lime, aqua, blue, magenta, red)"
-                            : "none",
-                        }}
-                        title="Custom color"
-                      >
-                        <input
-                          type="color"
-                          value={selectedColor}
-                          onChange={(e) => handleColorChange(e.target.value)}
-                          className="opacity-0 w-0 h-0 absolute"
-                        />
-                      </label>
-                    </div>
+                    {!isBoardroomTemplate && (
+                      <div className="relative group">
+                        <label
+                          className={cn(
+                            "w-9 h-9 rounded-full border-2 cursor-pointer flex items-center justify-center transition-all hover:scale-110",
+                            !templateColors.includes(selectedColor)
+                              ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
+                              : "border-zinc-200 hover:border-zinc-400"
+                          )}
+                          style={{
+                            backgroundColor: !templateColors.includes(
+                              selectedColor
+                            )
+                              ? selectedColor
+                              : "transparent",
+                            backgroundImage: templateColors.includes(
+                              selectedColor
+                            )
+                              ? "conic-gradient(from 90deg, red, yellow, lime, aqua, blue, magenta, red)"
+                              : "none",
+                          }}
+                          title="Custom color"
+                        >
+                          <input
+                            type="color"
+                            value={selectedColor}
+                            onChange={(e) => handleColorChange(e.target.value)}
+                            className="opacity-0 w-0 h-0 absolute"
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Selected: {selectedColor}
