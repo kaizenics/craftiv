@@ -3,7 +3,7 @@ import { eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { coverLetters } from "@/db/schema";
+import { coverLetters, users } from "@/db/schema";
 import {
   coverLetterTemplateIds,
   normalizeCoverLetterData,
@@ -39,6 +39,32 @@ const updateCoverLetterSchema = z.object({
   data: coverLetterDataSchema,
   title: z.string().min(1).optional(),
 });
+
+async function assertCanCreateCoverLetter(db: any, userId: string) {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!user) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "User not found",
+    });
+  }
+
+  const plan = user.plan ?? "free";
+  const createdCount = user.coverLetterCreatedCount ?? 0;
+  const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
+
+  if (limit !== null && createdCount >= limit) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `You've reached your ${plan.toUpperCase()} plan limit. Upgrade your plan to create more cover letter templates.`,
+    });
+  }
+
+  return user;
+}
 
 export const coverLetterRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -80,6 +106,7 @@ export const coverLetterRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const user = await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
       const id = crypto.randomUUID();
       const data = normalizeCoverLetterData(input.data as Partial<CoverLetterData>);
 
@@ -98,6 +125,14 @@ export const coverLetterRouter = createTRPCRouter({
         data,
         updatedAt: new Date(),
       });
+
+      await ctx.db
+        .update(users)
+        .set({
+          coverLetterCreatedCount: (user.coverLetterCreatedCount ?? 0) + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
 
       return { id };
     }),
@@ -164,6 +199,7 @@ export const coverLetterRouter = createTRPCRouter({
   duplicate: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const user = await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
       const existing = await ctx.db.query.coverLetters.findFirst({
         where: eq(coverLetters.id, input.id),
       });
@@ -189,6 +225,14 @@ export const coverLetterRouter = createTRPCRouter({
         data: normalizedData,
         updatedAt: new Date(),
       });
+
+      await ctx.db
+        .update(users)
+        .set({
+          coverLetterCreatedCount: (user.coverLetterCreatedCount ?? 0) + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
 
       return { id };
     }),

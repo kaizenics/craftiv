@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -316,6 +319,17 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    });
+    const plan = user?.plan ?? "free";
+    if (plan === "free") {
+      return NextResponse.json(
+        { error: "ATS Checker is available on Plus and Pro plans." },
+        { status: 403 }
+      );
     }
 
     const formData = await request.formData();

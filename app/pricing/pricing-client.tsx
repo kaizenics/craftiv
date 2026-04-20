@@ -1,11 +1,12 @@
 ﻿"use client";
 
-import { useEffect, useState, type ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import Link from "next/link";
 import { NavbarComponent } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { loadAndInitPaddle } from "@/lib/paddle";
 import { authClient } from "@/lib/auth-client";
+import { trpc } from "@/trpc/client";
 import {
   ArrowRight,
   CheckCircle2,
@@ -37,14 +38,15 @@ const PRICING = {
   proPrice: 5,
 };
 
-function isSubscriptionPlan(value: string | null): value is SubscriptionPlan {
-  return value === "free" || value === "plus" || value === "pro";
-}
-
 export function PricingClient() {
   const { data: session } = authClient.useSession();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
-  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
+  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
+    enabled: !!session?.user,
+  });
+  const currentPlan: SubscriptionPlan | null = session?.user
+    ? (subscription?.plan as SubscriptionPlan | undefined) ?? "free"
+    : null;
 
   const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || "";
   const paddleSuccessUrl = process.env.NEXT_PUBLIC_PADDLE_SUCCESS_URL || "";
@@ -114,19 +116,6 @@ export function PricingClient() {
     },
   ];
 
-  useEffect(() => {
-    if (!session?.user) {
-      setCurrentPlan(null);
-      return;
-    }
-    const storedPlan = localStorage.getItem("craftiv.subscription.plan");
-    if (isSubscriptionPlan(storedPlan)) {
-      setCurrentPlan(storedPlan);
-      return;
-    }
-    setCurrentPlan("free");
-  }, [session?.user]);
-
   const openPaddleCheckout = async (plan: Plan) => {
     if (plan.name === "Free") return;
     if (!plan.paddlePriceId) {
@@ -160,9 +149,9 @@ export function PricingClient() {
           "name" in event &&
           (event as { name?: string }).name === "checkout.completed"
         ) {
-          localStorage.setItem("craftiv.subscription.plan", normalizedPlan);
-          localStorage.setItem("craftiv.subscription.status", "active");
-          setCurrentPlan(normalizedPlan);
+          window.location.href =
+            paddleSuccessUrl ||
+            `${window.location.origin}/dashboard/settings?subscribed=1&plan=${normalizedPlan}`;
           return;
         }
         if (
@@ -178,16 +167,15 @@ export function PricingClient() {
           );
         }
       });
-      const successUrl =
-        paddleSuccessUrl ||
-        `${window.location.origin}/dashboard/settings?subscribed=1&plan=${normalizedPlan}`;
       paddle.Checkout.open({
         items: [{ priceId: plan.paddlePriceId, quantity: 1 }],
         settings: {
           displayMode: "overlay",
           theme: "light",
           locale: "en",
-          successUrl,
+          successUrl:
+            paddleSuccessUrl ||
+            `${window.location.origin}/dashboard/settings?subscribed=1&plan=${normalizedPlan}`,
         },
       });
     } catch (error) {
