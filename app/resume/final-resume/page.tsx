@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -52,10 +52,11 @@ import {
   Paintbrush,
   SpellCheck,
   Check,
+  Loader2,
+  AlertCircle,
   RotateCcw,
   Pencil,
   Eye,
-  Menu,
 } from "@/components/ui/icons";
 
 // Sidebar tab types
@@ -104,12 +105,45 @@ export default function FinalResumePage() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const [showPhoto, setShowPhoto] = useState(false);
+  const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
+  const latestSaveRequestRef = useRef(0);
+  const hasHydratedRef = useRef(false);
+  const lastSavedResumeDataRef = useRef("");
+  const lastSavedDesignOptionsRef = useRef("");
+  const lastSavedSelectedColorRef = useRef("");
+  const lastSavedResumeNameRef = useRef("");
 
   const { data: session } = authClient.useSession();
   const updateResume = trpc.resume.update.useMutation();
   const { data: savedResume } = trpc.resume.getById.useQuery(
     { id: currentResumeId! },
     { enabled: !!currentResumeId },
+  );
+
+  const runServerAutosave = useCallback(
+    (
+      payload: Parameters<typeof updateResume.mutate>[0],
+      onSuccess?: () => void,
+    ) => {
+      const requestId = latestSaveRequestRef.current + 1;
+      latestSaveRequestRef.current = requestId;
+      setSaveState("saving");
+
+      updateResume.mutate(payload, {
+        onSuccess: () => {
+          if (latestSaveRequestRef.current === requestId) {
+            setSaveState("saved");
+          }
+          onSuccess?.();
+        },
+        onError: () => {
+          if (latestSaveRequestRef.current === requestId) {
+            setSaveState("error");
+          }
+        },
+      });
+    },
+    [updateResume],
   );
 
   useEffect(() => {
@@ -137,16 +171,28 @@ export default function FinalResumePage() {
       }
     }
 
+    let initialResumeData: ResumeData | null = null;
+    let initialSelectedColor = "#1e3a5f";
+    let initialDesignOptions = defaultDesignOptions;
+    let initialResumeName = "Resume_1";
+
     try {
       const parsed = JSON.parse(savedData);
+      initialResumeData = parsed;
       setResumeData(parsed);
 
       // Set initial color from template
       const template = resumeTemplates.find((t) => t.id === parsed.templateId);
       if (template) {
-        setSelectedColor(
-          template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor
-        );
+        const savedSelectedColor = localStorage.getItem("selectedColor");
+        const defaultColor =
+          template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
+        const preferredColor =
+          template.id === "boardroom"
+            ? BOARDROOM_FIXED_COLOR
+            : savedSelectedColor || defaultColor;
+        initialSelectedColor = preferredColor;
+        setSelectedColor(preferredColor);
       }
     } catch {
       router.push("/resume/templates");
@@ -157,7 +203,9 @@ export default function FinalResumePage() {
     const savedDesign = localStorage.getItem("designOptions");
     if (savedDesign) {
       try {
-        setDesignOptions(JSON.parse(savedDesign));
+        const parsedDesign = JSON.parse(savedDesign);
+        initialDesignOptions = parsedDesign;
+        setDesignOptions(parsedDesign);
       } catch {
         // Use defaults
       }
@@ -166,53 +214,91 @@ export default function FinalResumePage() {
     // Load saved resume name if any
     const savedResumeName = localStorage.getItem("resumeName");
     if (savedResumeName) {
+      initialResumeName = savedResumeName;
       setResumeName(savedResumeName);
     }
 
+    if (initialResumeData) {
+      lastSavedResumeDataRef.current = JSON.stringify(initialResumeData);
+    }
+    lastSavedDesignOptionsRef.current = JSON.stringify(initialDesignOptions);
+    lastSavedSelectedColorRef.current = initialSelectedColor;
+    lastSavedResumeNameRef.current = initialResumeName.trim() || "Resume_1";
+    hasHydratedRef.current = true;
     setIsLoading(false);
   }, [router]);
 
   // Save design options to localStorage and database
   useEffect(() => {
-    if (!isLoading && currentResumeId) {
-      localStorage.setItem("designOptions", JSON.stringify(designOptions));
-      
-      // Auto-save design changes to database with debounce
-      const timeoutId = setTimeout(() => {
-        if (resumeData) {
-          updateResume.mutate({
-            id: currentResumeId,
-            data: resumeData,
-            status: "draft",
-          });
-        }
-      }, 1000);
+    if (isLoading || !currentResumeId || !hasHydratedRef.current) return;
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [designOptions, isLoading, currentResumeId, resumeData]);
+    const serializedDesign = JSON.stringify(designOptions);
+    localStorage.setItem("designOptions", serializedDesign);
+
+    if (serializedDesign === lastSavedDesignOptionsRef.current) return;
+
+    const requestId = latestSaveRequestRef.current + 1;
+    latestSaveRequestRef.current = requestId;
+    setSaveState("saving");
+
+    const timeoutId = setTimeout(() => {
+      if (latestSaveRequestRef.current !== requestId) return;
+      lastSavedDesignOptionsRef.current = serializedDesign;
+      setSaveState("saved");
+    }, 350);
+
+    return () => clearTimeout(timeoutId);
+  }, [designOptions, isLoading, currentResumeId]);
 
   // Save resume data changes to localStorage and database
   useEffect(() => {
-    if (resumeData && currentResumeId) {
-      localStorage.setItem("resumeData", JSON.stringify(resumeData));
-      
-      // Auto-save to database with debounce
-      const timeoutId = setTimeout(() => {
-        updateResume.mutate({
+    if (!resumeData || !currentResumeId || !hasHydratedRef.current) return;
+    const serializedResume = JSON.stringify(resumeData);
+    localStorage.setItem("resumeData", serializedResume);
+
+    if (serializedResume === lastSavedResumeDataRef.current) return;
+
+    const timeoutId = setTimeout(() => {
+      runServerAutosave(
+        {
           id: currentResumeId,
           data: resumeData,
+          templateId: resumeData.templateId,
           status: "draft",
-        });
-      }, 1000);
+        },
+        () => {
+          lastSavedResumeDataRef.current = serializedResume;
+        },
+      );
+    }, 1000);
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [resumeData, currentResumeId]);
+    return () => clearTimeout(timeoutId);
+  }, [resumeData, currentResumeId, runServerAutosave]);
+
+  // Save selected color to localStorage and mark draft update
+  useEffect(() => {
+    if (isLoading || !currentResumeId || !hasHydratedRef.current) return;
+
+    localStorage.setItem("selectedColor", selectedColor);
+
+    if (selectedColor === lastSavedSelectedColorRef.current) return;
+
+    const requestId = latestSaveRequestRef.current + 1;
+    latestSaveRequestRef.current = requestId;
+    setSaveState("saving");
+
+    const timeoutId = setTimeout(() => {
+      if (latestSaveRequestRef.current !== requestId) return;
+      lastSavedSelectedColorRef.current = selectedColor;
+      setSaveState("saved");
+    }, 350);
+
+    return () => clearTimeout(timeoutId);
+  }, [selectedColor, isLoading, currentResumeId]);
 
   // Save resume name to localStorage when it changes
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && hasHydratedRef.current) {
       localStorage.setItem("resumeName", resumeName);
     }
   }, [resumeName, isLoading]);
@@ -221,24 +307,33 @@ export default function FinalResumePage() {
   useEffect(() => {
     if (!savedResume?.title) return;
 
+    const normalizedTitle = savedResume.title.trim() || "Resume_1";
     setResumeName(savedResume.title);
     localStorage.setItem("resumeName", savedResume.title);
+    lastSavedResumeNameRef.current = normalizedTitle;
   }, [savedResume?.title]);
 
   // Persist title edits to database so dashboard name matches final-resume name
   useEffect(() => {
-    if (isLoading || !currentResumeId) return;
+    if (isLoading || !currentResumeId || !hasHydratedRef.current) return;
 
     const normalizedName = resumeName.trim() || "Resume_1";
+    if (normalizedName === lastSavedResumeNameRef.current) return;
+
     const timeoutId = setTimeout(() => {
-      updateResume.mutate({
-        id: currentResumeId,
-        title: normalizedName,
-      });
+      runServerAutosave(
+        {
+          id: currentResumeId,
+          title: normalizedName,
+        },
+        () => {
+          lastSavedResumeNameRef.current = normalizedName;
+        },
+      );
     }, 600);
 
     return () => clearTimeout(timeoutId);
-  }, [resumeName, isLoading, currentResumeId]);
+  }, [resumeName, isLoading, currentResumeId, runServerAutosave]);
 
   if (isLoading || !resumeData) {
     return (
@@ -423,8 +518,24 @@ export default function FinalResumePage() {
         </div>
 
         <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-          <Check className="h-4 w-4 text-green-500" />
-          <span>Saved</span>
+          {saveState === "saving" && (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>Saving...</span>
+            </>
+          )}
+          {saveState === "saved" && (
+            <>
+              <Check className="h-4 w-4 text-green-500" />
+              <span>Saved</span>
+            </>
+          )}
+          {saveState === "error" && (
+            <>
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <span>Save failed</span>
+            </>
+          )}
         </div>
 
         <Button
@@ -837,6 +948,7 @@ export default function FinalResumePage() {
               designOptions={designOptions}
               customColor={selectedColor}
               showPhoto={showPhoto}
+              saveStatus={saveState}
               showScore={false}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
@@ -868,6 +980,7 @@ export default function FinalResumePage() {
                   designOptions={designOptions}
                   customColor={selectedColor}
                   showPhoto={showPhoto}
+                  saveStatus={saveState}
                   showScore={false}
                   currentPage={currentPage}
                   onPageChange={setCurrentPage}

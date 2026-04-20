@@ -81,6 +81,9 @@ export default function Settings() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [noticeDialogOpen, setNoticeDialogOpen] = useState(false);
+  const [noticeDialogTitle, setNoticeDialogTitle] = useState("Notice");
+  const [noticeDialogMessage, setNoticeDialogMessage] = useState("");
 
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
   const cancelPlanMutation = trpc.user.cancelPlan.useMutation({
@@ -88,6 +91,12 @@ export default function Settings() {
       utils.user.subscription.invalidate();
     },
   });
+
+  const openNotice = (title: string, message: string) => {
+    setNoticeDialogTitle(title);
+    setNoticeDialogMessage(message);
+    setNoticeDialogOpen(true);
+  };
 
   // Check if user is using OAuth (has google, github, etc. - not credential)
   // Email/password users either have no accounts or only 'credential' provider
@@ -126,7 +135,7 @@ export default function Settings() {
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     await new Promise((r) => setTimeout(r, 700));
     setSaving(false);
-    alert(`Settings saved (mock)\nName: ${fullName}\nEmail: ${email}`);
+    openNotice("Settings Saved", `Name: ${fullName}\nEmail: ${email}`);
   };
 
   // Get provider display info
@@ -170,7 +179,7 @@ export default function Settings() {
       router.refresh();
     } catch (error) {
       console.error("Failed to delete account:", error);
-      alert("Failed to delete account. Please try again.");
+      openNotice("Delete Failed", "Failed to delete account. Please try again.");
       setIsDeleting(false);
       setDeleteDialogOpen(false);
     }
@@ -184,7 +193,7 @@ export default function Settings() {
       router.refresh();
     } catch (error) {
       console.error("Failed to sign out:", error);
-      alert("Failed to sign out. Please try again.");
+      openNotice("Sign Out Failed", "Failed to sign out. Please try again.");
       setIsSigningOut(false);
     }
   };
@@ -193,7 +202,7 @@ export default function Settings() {
     setIsCancellingPlan(true);
     try {
       await cancelPlanMutation.mutateAsync();
-      alert("Your plan has been cancelled. You are now on the Free plan.");
+      openNotice("Plan Cancelled", "Your plan has been cancelled. You are now on the Free plan.");
     } finally {
       setIsCancellingPlan(false);
     }
@@ -503,6 +512,22 @@ export default function Settings() {
           </Button>
         </div>
       </form>
+
+      <AlertDialog open={noticeDialogOpen} onOpenChange={setNoticeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{noticeDialogTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {noticeDialogMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setNoticeDialogOpen(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

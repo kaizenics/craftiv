@@ -36,6 +36,13 @@
       "when": 1776210600000,
       "tag": "0004_cover_letter_creation_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1776212600000,
+      "tag": "0005_processed_transactions",
+      "breakpoints": true
     }
   ]
 }

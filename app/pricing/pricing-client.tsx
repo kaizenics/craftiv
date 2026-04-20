@@ -41,6 +41,7 @@ const PRICING = {
 export function PricingClient() {
   const { data: session } = authClient.useSession();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
+  const confirmCheckout = trpc.user.confirmCheckout.useMutation();
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
   });
@@ -142,6 +143,29 @@ export function PricingClient() {
     try {
       setActiveCheckoutPlan(plan.name);
       const normalizedPlan = plan.name.toLowerCase() as Exclude<SubscriptionPlan, "free">;
+      const extractTransactionId = (event: unknown): string | null => {
+        const keys = new Set(["transaction_id", "transactionid", "txn_id"]);
+        const search = (value: unknown): string | null => {
+          if (Array.isArray(value)) {
+            for (const item of value) {
+              const match = search(item);
+              if (match) return match;
+            }
+            return null;
+          }
+          if (value && typeof value === "object") {
+            for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+              if (keys.has(key.toLowerCase()) && typeof nested === "string") {
+                return nested;
+              }
+              const match = search(nested);
+              if (match) return match;
+            }
+          }
+          return null;
+        };
+        return search(event);
+      };
       const paddle = await loadAndInitPaddle(paddleClientToken, paddleEnv, (event) => {
         if (
           typeof event === "object" &&
@@ -149,9 +173,28 @@ export function PricingClient() {
           "name" in event &&
           (event as { name?: string }).name === "checkout.completed"
         ) {
-          window.location.href =
-            paddleSuccessUrl ||
-            `${window.location.origin}/dashboard/settings?subscribed=1&plan=${normalizedPlan}`;
+          const transactionId = extractTransactionId(event);
+          if (!transactionId) {
+            alert("Checkout completed, but transaction ID was missing. Please contact support.");
+            return;
+          }
+          void (async () => {
+            try {
+              await confirmCheckout.mutateAsync({
+                plan: normalizedPlan,
+                transactionId,
+              });
+              window.location.href =
+                paddleSuccessUrl || `${window.location.origin}/dashboard/settings`;
+            } catch (error) {
+              console.error("Failed to confirm Paddle checkout:", error);
+              const message =
+                error instanceof Error
+                  ? error.message
+                  : "Payment completed but plan activation failed. Please contact support.";
+              alert(message);
+            }
+          })();
           return;
         }
         if (
@@ -174,13 +217,14 @@ export function PricingClient() {
           theme: "light",
           locale: "en",
           successUrl:
-            paddleSuccessUrl ||
-            `${window.location.origin}/dashboard/settings?subscribed=1&plan=${normalizedPlan}`,
+            paddleSuccessUrl || `${window.location.origin}/dashboard/settings`,
         },
       });
     } catch (error) {
       console.error("Paddle checkout failed:", error);
-      alert("Unable to open checkout. Please try again.");
+      const message =
+        error instanceof Error ? error.message : "Unable to open checkout. Please try again.";
+      alert(message);
     } finally {
       setActiveCheckoutPlan(null);
     }
