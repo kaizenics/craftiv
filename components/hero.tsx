@@ -8,7 +8,7 @@ import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 
 const showcaseTemplates = [
    { id: "harvard", name: "Harvard", color: "#1e1e1e" },
-  { id: "celestial", name: "Celestial", color: "#1e3a5f" },
+  { id: "orbit", name: "Orbit", color: "#f3f3f3" },
   { id: "boardroom", name: "Boardroom", color: "#fbfbfa" },
 ];
 
