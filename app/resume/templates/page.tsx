@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload, Check } from "@/components/ui/icons";
@@ -13,6 +13,16 @@ import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { trpc } from "@/trpc/client";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+type SubscriptionPlan = "free" | "plus" | "pro";
+const RESUME_CREATED_COUNT_KEY = "craftiv.usage.resumeCreatedCount";
+
+function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
+  if (plan === "free") return 1;
+  if (plan === "plus") return 20;
+  return null;
+}
 
 // Template categories with their icons (shortLabel used on narrow mobile chips)
 const categories = [
@@ -79,22 +89,33 @@ function ResumeTemplatesPageContent() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [showPhoto, setShowPhoto] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [fromUpload, setFromUpload] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
+  const { data: resumes = [] } = trpc.resume.list.useQuery(undefined, {
+    enabled: !!session?.user,
+  });
+  const [resumeCreatedCount, setResumeCreatedCount] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = localStorage.getItem(RESUME_CREATED_COUNT_KEY);
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0;
+  });
+  const [subscriptionPlan] = useState<SubscriptionPlan>(() => {
+    if (typeof window === "undefined") return "free";
+    const storedPlan = localStorage.getItem("craftiv.subscription.plan");
+    return storedPlan === "free" || storedPlan === "plus" || storedPlan === "pro"
+      ? storedPlan
+      : "free";
+  });
+  const fromUpload =
+    searchParams.get("from") === "upload" &&
+    typeof window !== "undefined" &&
+    !!localStorage.getItem("uploadedResumeData");
   
   const createResume = trpc.resume.create.useMutation();
   const updateResume = trpc.resume.update.useMutation();
-
-  useEffect(() => {
-    if (searchParams.get("from") === "upload") {
-      const uploadedData = localStorage.getItem("uploadedResumeData");
-      if (uploadedData) {
-        setFromUpload(true);
-      }
-    }
-  }, [searchParams]);
+  const effectiveCreatedCount = Math.max(resumeCreatedCount, resumes.length);
 
   const createAndNavigate = async (templateId: string) => {
     setIsCreating(true);
@@ -108,6 +129,15 @@ function ResumeTemplatesPageContent() {
         return;
       }
 
+      const resumeLimit = getResumeLimitByPlan(subscriptionPlan);
+      if (resumeLimit !== null && effectiveCreatedCount >= resumeLimit) {
+        toast.error(
+          `You've reached your ${subscriptionPlan.toUpperCase()} plan limit. Upgrade your plan to create more resume templates.`
+        );
+        setIsCreating(false);
+        return;
+      }
+
       const result = await createResume.mutateAsync({
         title: "Resume_1",
         templateId,
@@ -116,6 +146,9 @@ function ResumeTemplatesPageContent() {
       localStorage.setItem('currentResumeId', result.id);
       localStorage.setItem('selectedTemplateId', templateId);
       localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
+      const nextCreatedCount = effectiveCreatedCount + 1;
+      localStorage.setItem(RESUME_CREATED_COUNT_KEY, String(nextCreatedCount));
+      setResumeCreatedCount(nextCreatedCount);
 
       const uploadedRaw = localStorage.getItem("uploadedResumeData");
       if (fromUpload && uploadedRaw) {
@@ -202,7 +235,7 @@ function ResumeTemplatesPageContent() {
       </div>
 
       {/* Header */}
-      <div className="py-12 text-center">
+      <div className="px-4 py-12 text-center sm:px-0">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

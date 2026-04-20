@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { TRPCProvider } from "@/trpc/client";
 import { cn } from "@/lib/utils";
+import { Toaster } from "sonner";
 
 const loraHeading = Lora({subsets:['latin'],variable:'--font-heading'});
 
@@ -66,6 +67,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               {children}
+              <Toaster richColors position="bottom-right" />
             </ThemeProvider>
           </AuthProvider>
         </TRPCProvider>

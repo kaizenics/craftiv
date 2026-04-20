@@ -70,7 +70,7 @@ export function PricingClient() {
         "Community email support",
       ],
       cta: "Start Free",
-      href: "/sign-up",
+      href: "/resume/templates",
       featured: false,
       paddlePriceId: "",
       icon: FileText,

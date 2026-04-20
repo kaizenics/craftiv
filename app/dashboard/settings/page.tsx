@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { CheckCircle2 } from "@/components/ui/icons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +22,52 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 
+type SubscriptionPlan = "free" | "plus" | "pro";
+const RESUME_CREATED_COUNT_KEY = "craftiv.usage.resumeCreatedCount";
+
+function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
+  if (plan === "free") return 1;
+  if (plan === "plus") return 20;
+  return null;
+}
+
+function getPlanBenefits(plan: SubscriptionPlan): string[] {
+  if (plan === "free") {
+    return [
+      "Unlimited PDF/DOCX downloads",
+      "1 resume and cover letter template",
+      "Manual editing tools",
+      "Community email support",
+    ];
+  }
+  if (plan === "plus") {
+    return [
+      "Unlimited PDF/DOCX downloads",
+      "20 resume and cover letter templates",
+      "AI-powered features",
+      "ATS optimization tools",
+    ];
+  }
+  return [
+    "Everything in Plus",
+    "Advanced AI optimization",
+    "Priority support",
+    "Early access to new features",
+  ];
+}
+
+function isAIBenefit(benefit: string): boolean {
+  const normalized = benefit.toLowerCase();
+  return normalized.includes("ai-powered") || normalized.includes("advanced ai optimization");
+}
+
 export default function Settings() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const { data: providers } = trpc.user.getProviders.useQuery();
+  const { data: resumes = [] } = trpc.resume.list.useQuery(undefined, {
+    enabled: !!session?.user,
+  });
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,8 +76,9 @@ export default function Settings() {
   const [defaultSpellCheck, setDefaultSpellCheck] = useState(true);
   const [compactEditor, setCompactEditor] = useState(false);
   const [showResumeScore, setShowResumeScore] = useState(true);
-  const [subscriptionPlan, setSubscriptionPlan] = useState<"free" | "plus" | "pro">("free");
+  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>("free");
   const [subscriptionStatus, setSubscriptionStatus] = useState<"inactive" | "active">("inactive");
+  const [resumeCreatedCount, setResumeCreatedCount] = useState(0);
   const [isCancellingPlan, setIsCancellingPlan] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -94,10 +138,22 @@ export default function Settings() {
         localStorage.setItem("craftiv.subscription.plan", plan);
         localStorage.setItem("craftiv.subscription.status", "active");
       }
+
+      const storedCreatedCountRaw = localStorage.getItem(RESUME_CREATED_COUNT_KEY);
+      const storedCreatedCount = Number(storedCreatedCountRaw);
+      const normalizedStoredCount =
+        Number.isFinite(storedCreatedCount) && storedCreatedCount >= 0
+          ? Math.floor(storedCreatedCount)
+          : 0;
+      const effectiveCount = Math.max(normalizedStoredCount, resumes.length);
+      setResumeCreatedCount(effectiveCount);
+      if (effectiveCount !== normalizedStoredCount) {
+        localStorage.setItem(RESUME_CREATED_COUNT_KEY, String(effectiveCount));
+      }
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [resumes.length]);
 
   const onSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -182,6 +238,14 @@ export default function Settings() {
       setIsCancellingPlan(false);
     }
   };
+
+  const resumeLimit = getResumeLimitByPlan(subscriptionPlan);
+  const resumeUsageCount = resumeCreatedCount;
+  const usageLabel = resumeLimit ? `${Math.min(resumeUsageCount, resumeLimit)}/${resumeLimit}` : "Unlimited";
+  const usagePercent = resumeLimit
+    ? Math.min((resumeUsageCount / resumeLimit) * 100, 100)
+    : 100;
+  const currentPlanBenefits = getPlanBenefits(subscriptionPlan);
 
   return (
     <div className="py-8">
@@ -306,6 +370,19 @@ export default function Settings() {
                     {subscriptionStatus}
                   </span>
                 </p>
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Resume creation usage: {usageLabel}
+                  </p>
+                  <div className="mt-1 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-200">
+                    <div
+                      className={`h-full rounded-full ${
+                        subscriptionPlan === "free" ? "bg-zinc-500" : "bg-primary"
+                      }`}
+                      style={{ width: `${usagePercent}%` }}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Link
@@ -348,6 +425,29 @@ export default function Settings() {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
+              </div>
+            </div>
+            <div className="mt-4 border-t border-border/60 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Plan benefits
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your active perks and feature access for this plan.
+              </p>
+              <div className="mt-3 space-y-2">
+                {currentPlanBenefits.map((benefit) => (
+                  <div
+                    key={benefit}
+                    className={`flex items-center gap-2.5 px-1 py-1.5 text-xs ${
+                      isAIBenefit(benefit)
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">{benefit}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
