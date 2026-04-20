@@ -15,6 +15,13 @@
       "when": 1774475194424,
       "tag": "0001_cover_letters",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776207600000,
+      "tag": "0002_user_subscription",
+      "breakpoints": true
     }
   ]
 }
