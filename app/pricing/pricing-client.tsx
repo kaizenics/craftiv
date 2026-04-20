@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { NavbarComponent } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -14,12 +14,7 @@ import {
   Sparkles,
 } from "@/components/ui/icons";
 
-type RegionPricing = {
-  currencySymbol: string;
-  currencyCode: "PHP" | "USD";
-  plusPrice: number;
-  proPrice: number;
-};
+type SubscriptionPlan = "free" | "plus" | "pro";
 
 type Plan = {
   name: string;
@@ -35,18 +30,24 @@ type Plan = {
   badge: string;
 };
 
-const DEFAULT_PRICING: RegionPricing = {
+const PRICING = {
   currencySymbol: "$",
-  currencyCode: "USD",
+  currencyCode: "USD" as const,
   plusPrice: 2,
   proPrice: 5,
 };
 
+function isSubscriptionPlan(value: string | null): value is SubscriptionPlan {
+  return value === "free" || value === "plus" || value === "pro";
+}
+
 export function PricingClient() {
   const { data: session } = authClient.useSession();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
 
   const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || "";
+  const paddleSuccessUrl = process.env.NEXT_PUBLIC_PADDLE_SUCCESS_URL || "";
   const paddleEnv =
     (process.env.NEXT_PUBLIC_PADDLE_ENV as "sandbox" | "production" | undefined) ||
     "sandbox";
@@ -55,7 +56,6 @@ export function PricingClient() {
     plusUSD: process.env.NEXT_PUBLIC_PADDLE_PRICE_PLUS_USD || "",
     proUSD: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_USD || "",
   };
-  const pricing = useMemo<RegionPricing>(() => DEFAULT_PRICING, []);
 
   const plans: Plan[] = [
     {
@@ -78,7 +78,7 @@ export function PricingClient() {
     },
     {
       name: "Plus",
-      price: pricing.plusPrice,
+      price: PRICING.plusPrice,
       cadence: "/month",
       description: "Great for active job seekers.",
       features: [
@@ -96,7 +96,7 @@ export function PricingClient() {
     },
     {
       name: "Pro",
-      price: pricing.proPrice,
+      price: PRICING.proPrice,
       cadence: "/month",
       description: "For power users who need maximum output.",
       features: [
@@ -114,14 +114,17 @@ export function PricingClient() {
     },
   ];
 
-  const currentPlan = useMemo<"free" | "plus" | "pro" | null>(() => {
-    if (!session?.user) return null;
-    if (typeof window === "undefined") return "free";
-    const storedPlan = localStorage.getItem("craftiv.subscription.plan");
-    if (storedPlan === "plus" || storedPlan === "pro" || storedPlan === "free") {
-      return storedPlan;
+  useEffect(() => {
+    if (!session?.user) {
+      setCurrentPlan(null);
+      return;
     }
-    return "free";
+    const storedPlan = localStorage.getItem("craftiv.subscription.plan");
+    if (isSubscriptionPlan(storedPlan)) {
+      setCurrentPlan(storedPlan);
+      return;
+    }
+    setCurrentPlan("free");
   }, [session?.user]);
 
   const openPaddleCheckout = async (plan: Plan) => {
@@ -134,17 +137,57 @@ export function PricingClient() {
       alert("Missing NEXT_PUBLIC_PADDLE_CLIENT_TOKEN.");
       return;
     }
+    if (!plan.paddlePriceId.startsWith("pri_")) {
+      alert(`Invalid Paddle price ID for ${plan.name}. It must start with pri_.`);
+      return;
+    }
+    if (paddleEnv === "sandbox" && !paddleClientToken.startsWith("test_")) {
+      alert("Paddle env is sandbox, but client token does not start with test_.");
+      return;
+    }
+    if (paddleEnv === "production" && paddleClientToken.startsWith("test_")) {
+      alert("Paddle env is production, but client token is a test token.");
+      return;
+    }
 
     try {
       setActiveCheckoutPlan(plan.name);
-      const paddle = await loadAndInitPaddle(paddleClientToken, paddleEnv);
+      const normalizedPlan = plan.name.toLowerCase() as Exclude<SubscriptionPlan, "free">;
+      const paddle = await loadAndInitPaddle(paddleClientToken, paddleEnv, (event) => {
+        if (
+          typeof event === "object" &&
+          event !== null &&
+          "name" in event &&
+          (event as { name?: string }).name === "checkout.completed"
+        ) {
+          localStorage.setItem("craftiv.subscription.plan", normalizedPlan);
+          localStorage.setItem("craftiv.subscription.status", "active");
+          setCurrentPlan(normalizedPlan);
+          return;
+        }
+        if (
+          typeof event === "object" &&
+          event !== null &&
+          "name" in event &&
+          "detail" in event &&
+          (event as { name?: string }).name === "checkout.error" &&
+          (event as { detail?: string }).detail === "transaction_default_checkout_url_not_set"
+        ) {
+          alert(
+            "Paddle checkout setup is incomplete: set a Default payment link in your Paddle dashboard (Checkout settings), then try again."
+          );
+        }
+      });
+      const successUrl =
+        paddleSuccessUrl ||
+        `${window.location.origin}/dashboard/settings?subscribed=1&plan=${normalizedPlan}`;
       paddle.Checkout.open({
         items: [{ priceId: plan.paddlePriceId, quantity: 1 }],
         settings: {
           displayMode: "overlay",
           theme: "light",
           locale: "en",
-          successUrl: `${window.location.origin}/dashboard/settings?subscribed=1&plan=${plan.name.toLowerCase()}`,
+          successUrl,
         },
       });
     } catch (error) {
@@ -167,9 +210,6 @@ export function PricingClient() {
           <p className="mx-auto mt-3 max-w-2xl text-zinc-600">
             Build resumes faster, optimize for ATS, and generate tailored cover
             letters. Checkout will be powered by Paddle.
-          </p>
-          <p className="mt-3 text-sm text-zinc-500">
-            Detected region pricing: {pricing.currencyCode}
           </p>
         </div>
 
@@ -224,8 +264,8 @@ export function PricingClient() {
               <div className="mt-4 flex items-end gap-1">
                 <p className="text-4xl font-bold">
                   {plan.price === 0
-                    ? `${pricing.currencySymbol}0`
-                    : `${pricing.currencySymbol}${plan.price}`}
+                    ? `${PRICING.currencySymbol}0`
+                    : `${PRICING.currencySymbol}${plan.price}`}
                 </p>
                 <p
                   className={`mb-1 text-sm ${

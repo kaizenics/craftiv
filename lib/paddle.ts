@@ -16,7 +16,10 @@ type PaddleInstance = {
   Environment: {
     set: (env: PaddleEnvironment) => void;
   };
-  Initialize: (options: { token: string }) => void;
+  Initialize: (options: {
+    token: string;
+    eventCallback?: (event: unknown) => void;
+  }) => void;
   Checkout: {
     open: (options: { items: PaddleCheckoutItem[]; settings?: PaddleCheckoutSettings }) => void;
   };
@@ -34,7 +37,8 @@ let initializedEnv: PaddleEnvironment | null = null;
 
 export async function loadAndInitPaddle(
   token: string,
-  env: PaddleEnvironment
+  env: PaddleEnvironment,
+  eventCallback?: (event: unknown) => void
 ): Promise<PaddleInstance> {
   if (!paddleScriptPromise) {
     paddleScriptPromise = new Promise((resolve, reject) => {
@@ -71,10 +75,9 @@ export async function loadAndInitPaddle(
   }
 
   if (initializedToken !== token) {
-    paddle.Initialize({ token });
+    paddle.Initialize({ token, eventCallback });
     initializedToken = token;
   }
 
   return paddle;
 }
-

@@ -35,6 +35,7 @@ export default function Settings() {
   const [showResumeScore, setShowResumeScore] = useState(true);
   const [subscriptionPlan, setSubscriptionPlan] = useState<"free" | "plus" | "pro">("free");
   const [subscriptionStatus, setSubscriptionStatus] = useState<"inactive" | "active">("inactive");
+  const [isCancellingPlan, setIsCancellingPlan] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -168,6 +169,20 @@ export default function Settings() {
     }
   };
 
+  const onCancelPlan = async () => {
+    setIsCancellingPlan(true);
+    try {
+      // Current billing state is client-side mocked. Downgrade immediately in app state.
+      localStorage.setItem("craftiv.subscription.plan", "free");
+      localStorage.setItem("craftiv.subscription.status", "inactive");
+      setSubscriptionPlan("free");
+      setSubscriptionStatus("inactive");
+      alert("Your plan has been cancelled. You are now on the Free plan.");
+    } finally {
+      setIsCancellingPlan(false);
+    }
+  };
+
   return (
     <div className="py-8">
       <h1 className="font-display text-3xl font-bold text-foreground">Settings</h1>
@@ -270,7 +285,13 @@ export default function Settings() {
         <section>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
 
-          <div className="mb-6 rounded-xl border border-border bg-muted/30 p-4">
+          <div
+            className={`mb-6 rounded-xl border p-4 ${
+              subscriptionPlan === "free"
+                ? "border-border bg-muted/30"
+                : "border-primary/30 bg-primary/5"
+            }`}
+          >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Current subscription</p>
@@ -286,12 +307,48 @@ export default function Settings() {
                   </span>
                 </p>
               </div>
-              <Link
-                href="/pricing"
-                className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                Manage plan
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/pricing"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Manage plan
+                </Link>
+                {subscriptionPlan !== "free" && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isCancellingPlan}
+                        className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 px-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isCancellingPlan ? "Cancelling..." : "Cancel plan"}
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel current plan?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will downgrade your account to the Free plan immediately in the app.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isCancellingPlan}>Keep plan</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={(e) => {
+                            e.preventDefault();
+                            void onCancelPlan();
+                          }}
+                          disabled={isCancellingPlan}
+                          className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+                        >
+                          Yes, cancel plan
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             </div>
           </div>
           
