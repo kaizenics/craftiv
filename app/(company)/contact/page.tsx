@@ -3,35 +3,20 @@ import Link from "next/link";
 export const metadata = {
 	title: "Contact Support | Craftiv",
 	description:
-		"Reach Craftiv customer support for account, billing, and technical questions.",
+		"Reach Craftiv support through our official Facebook page for account, billing, and technical questions.",
 };
 
 const SUPPORT_HOURS = "Monday to Friday, 9:00 AM - 6:00 PM (UTC)";
+const FACEBOOK_SUPPORT_URL = "https://facebook.com/gocraftiv";
 
 const supportChannels = [
 	{
-		title: "Customer Support",
-		email: "support@gocraftiv.com",
-		detail: "Questions about resumes, templates, exports, and app usage.",
+		title: "Craftiv Facebook Support",
+		link: FACEBOOK_SUPPORT_URL,
+		detail:
+			"For now, all customer support inquiries are handled via our official Craftiv Facebook page.",
 		response: "Typical response: within 24 hours",
-	},
-	{
-		title: "Billing & Subscriptions",
-		email: "billing@gocraftiv.com",
-		detail: "Help with invoices, renewals, refunds, and payment issues.",
-		response: "Typical response: within 1 business day",
-	},
-	{
-		title: "Privacy Requests",
-		email: "privacy@gocraftiv.com",
-		detail: "Data access, deletion requests, and privacy-related concerns.",
-		response: "Typical response: within 2 business days",
-	},
-	{
-		title: "Legal",
-		email: "legal@gocraftiv.com",
-		detail: "Terms, policy, and legal communication.",
-		response: "Typical response: within 2 business days",
+		cta: "Message Craftiv on Facebook",
 	},
 ];
 
@@ -54,17 +39,19 @@ export default function ContactPage() {
 					<div className="mt-4 grid gap-4 sm:grid-cols-2">
 						{supportChannels.map((channel) => (
 							<article
-								key={channel.email}
+								key={channel.title}
 								className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-5"
 							>
 								<h3 className="text-base font-semibold text-zinc-900">{channel.title}</h3>
 								<p className="mt-2 text-sm text-zinc-600 leading-6">{channel.detail}</p>
 								<p className="mt-3 text-sm text-zinc-500">{channel.response}</p>
 								<a
-									href={`mailto:${channel.email}`}
+									href={channel.link}
+									target="_blank"
+									rel="noreferrer"
 									className="mt-4 inline-block text-sm font-medium text-zinc-900 underline underline-offset-2"
 								>
-									{channel.email}
+									{channel.cta}
 								</a>
 							</article>
 						))}
@@ -76,8 +63,8 @@ export default function ContactPage() {
 						<h2 className="text-lg font-semibold text-zinc-900">Support Hours</h2>
 						<p className="mt-2 text-sm text-zinc-600">{SUPPORT_HOURS}</p>
 						<p className="mt-2 text-sm text-zinc-600">
-							For urgent issues affecting exports or account access, include
-							&quot;Urgent&quot; in your email subject.
+							For urgent issues affecting exports or account access, please include
+							&quot;Urgent&quot; at the start of your Facebook message.
 						</p>
 					</div>
 					<div>

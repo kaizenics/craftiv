@@ -4,7 +4,7 @@ import { ResumeData, TemplateLayout } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Check } from '@/components/ui/icons';
+import { ChevronLeft, ChevronRight, Check, Loader2, AlertCircle } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 
@@ -126,6 +126,7 @@ interface ResumePreviewProps {
   currentPage?: number;
   onPageChange?: (page: number) => void;
   renderAllPages?: boolean; // For PDF export - renders all pages at once
+  saveStatus?: "saving" | "saved" | "error";
 }
 
 export function ResumePreview({ 
@@ -139,7 +140,8 @@ export function ResumePreview({
   showPhoto = false,
   currentPage: controlledPage,
   onPageChange,
-  renderAllPages = false
+  renderAllPages = false,
+  saveStatus = "saved",
 }: ResumePreviewProps) {
   const template = resumeTemplates.find((t) => t.id === data.templateId) || resumeTemplates[0];
   const templateId = template.id;
@@ -2423,8 +2425,24 @@ export function ResumePreview({
       {shouldShowFooter && (
         <div data-preview-footer className="bg-gray-50 px-6 py-3 flex items-center justify-between border-t text-sm text-gray-500">
           <div className="flex items-center gap-1">
-            <Check className="h-4 w-4 text-green-500" />
-            <span>Saved</span>
+            {saveStatus === "saving" && (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Saving...</span>
+              </>
+            )}
+            {saveStatus === "saved" && (
+              <>
+                <Check className="h-4 w-4 text-green-500" />
+                <span>Saved</span>
+              </>
+            )}
+            {saveStatus === "error" && (
+              <>
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <span>Save failed</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {totalPages > 1 && (

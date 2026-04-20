@@ -6,3 +6,4 @@
 export * from "./users";
 export * from "./resumes";
 export * from "./cover-letters";
+export * from "./processed-transactions";

@@ -55,7 +55,7 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="bg-zinc-800 font-sans">
+    <footer className="bg-primary font-sans">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="py-12 lg:py-16">
@@ -66,7 +66,7 @@ export function Footer() {
                 <a href="#" className="font-display text-2xl font-bold text-white">
                   Craftiv
                 </a>
-                <p className="mt-4 max-w-xs text-sm text-zinc-400 leading-relaxed">
+                <p className="mt-4 max-w-xs text-sm text-white/80 leading-relaxed">
                  Build professional resumes that get you noticed by hiring managers. Simple, powerful tools to accelerate your career success.
                 </p>
                 {/* Social Links */}
@@ -75,7 +75,7 @@ export function Footer() {
                     <a
                       key={item.name}
                       href={item.href}
-                      className="text-zinc-500 hover:text-white transition-colors"
+                      className="text-white/80 hover:text-white transition-colors"
                     >
                       <span className="sr-only">{item.name}</span>
                       <item.icon className="h-5 w-5" />
@@ -93,7 +93,7 @@ export function Footer() {
                   <li key={item.name}>
                     <a
                       href={item.href}
-                      className="text-sm text-zinc-400 hover:text-white transition-colors"
+                      className="text-sm text-white/80 hover:text-white transition-colors"
                     >
                       {item.name}
                     </a>
@@ -109,7 +109,7 @@ export function Footer() {
                   <li key={item.name}>
                     <a
                       href={item.href}
-                      className="text-sm text-zinc-400 hover:text-white transition-colors"
+                      className="text-sm text-white/80 hover:text-white transition-colors"
                     >
                       {item.name}
                     </a>
@@ -125,7 +125,7 @@ export function Footer() {
                   <li key={item.name}>
                     <a
                       href={item.href}
-                      className="text-sm text-zinc-400 hover:text-white transition-colors"
+                      className="text-sm text-white/80 hover:text-white transition-colors"
                     >
                       {item.name}
                     </a>
@@ -137,8 +137,8 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-zinc-700 py-6">
-          <p className="text-center text-xs text-zinc-500">
+        <div className="border-t border-white/20 py-6">
+          <p className="text-center text-xs text-white/80">
             © {new Date().getFullYear()} Craftiv. All rights reserved.
           </p>
         </div>
