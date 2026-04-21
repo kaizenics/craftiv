@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { TRPCProvider } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
+import { Chatbot } from "@/components/chatbot/ai-chatbot";
 
 const loraHeading = Lora({subsets:['latin'],variable:'--font-heading'});
 
@@ -52,6 +53,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Montserrat:wght@400;600;700&family=Poppins:wght@400;500;600;700&family=Source+Sans+Pro:wght@400;600;700&family=Nunito:wght@400;600;700&family=Raleway:wght@400;500;700&family=Merriweather:wght@400;700&family=Lora:wght@400;500;600;700&family=EB+Garamond:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&display=swap"
           rel="stylesheet"
         />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6660601826429035"
+          crossOrigin="anonymous"
+        ></script>
       </head>
       <body
         className={`${manrope.variable} ${lora.variable} antialiased font-sans`}
@@ -67,6 +73,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               {children}
+              <Chatbot />
               <Toaster richColors position="bottom-right" />
             </ThemeProvider>
           </AuthProvider>

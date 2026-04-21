@@ -65,7 +65,7 @@ export function PricingClient() {
       name: "Free",
       price: 0,
       cadence: "/month",
-      description: "Get started and test the builder.",
+      description: "Get started and create your first resume.",
       features: [
         "Unlimited PDF/DOCX downloads",
         "1 resume and cover letter template",
@@ -87,7 +87,11 @@ export function PricingClient() {
       features: [
         "Unlimited PDF/DOCX downloads",
         "20 resume and cover letter templates",
-        "AI-powered features",
+        "ATS Checker",
+        "AI Resume Assistant",
+        "Spell Checker",
+        "Cover Letter AI Generation",
+        "AI Chatbot Prompt-to-Layout",
         "ATS optimization tools",
       ],
       cta: "Get Plus",
@@ -245,11 +249,11 @@ export function PricingClient() {
           </p>
         </div>
 
-        <section className="mt-10 grid gap-5 md:grid-cols-3">
+        <section className="mt-10 grid items-start gap-5 md:grid-cols-3">
           {plans.map((plan) => (
             <article
               key={plan.name}
-              className={`relative flex h-full flex-col rounded-2xl border p-6 transition-all hover:-translate-y-0.5 ${
+              className={`relative flex flex-col rounded-2xl border p-6 transition-all hover:-translate-y-0.5 ${
                 plan.featured
                   ? "border bg-primary text-white shadow-lg shadow-primary/25"
                   : "border-zinc-200 bg-zinc-50/70 text-zinc-900 hover:border-zinc-300"
@@ -308,11 +312,11 @@ export function PricingClient() {
                 </p>
               </div>
 
-              <ul className="mt-6 space-y-2.5">
+              <ul className="mt-6">
                 {plan.features.map((feature) => (
                   <li
                     key={feature}
-                    className={`flex items-start gap-2.5 text-sm ${
+                    className={`mb-2.5 flex items-start gap-2.5 text-sm last:mb-0 ${
                       plan.featured ? "text-zinc-100" : "text-zinc-700"
                     }`}
                   >
