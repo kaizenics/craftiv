@@ -18,6 +18,12 @@ import {
   buildAchievementBuilderPrompt,
   buildCoverLetterPrompt,
 } from "@/lib/ai";
+import {
+  CHATBOT_NO_CODE_REPLY,
+  CHATBOT_SYSTEM_PROMPT,
+  isProgrammingRelated,
+  looksLikeCodeOutput,
+} from "@/lib/chatbot-policy";
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -123,6 +129,19 @@ const coverLetterInput = z.object({
   jobDescription: z.string().min(1).max(5000),
   companyName: z.string().max(200).default(""),
   tone: z.enum(["professional", "confident", "enthusiastic"]).default("professional"),
+});
+
+const chatbotReplyInput = z.object({
+  message: z.string().min(1).max(2000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1).max(2000),
+      }),
+    )
+    .max(12)
+    .optional(),
 });
 
 // ── Router ──────────────────────────────────────────────────────────────────
@@ -322,6 +341,39 @@ export const aiRouter = createTRPCRouter({
 
       console.log(`[AI] achievementBuilder done — model: ${model}`);
       return { bullets };
+    }),
+
+  chatbotReply: protectedProcedure
+    .input(chatbotReplyInput)
+    .mutation(async ({ ctx, input }) => {
+      await requirePremiumPlan(ctx.db, ctx.user.id);
+
+      if (isProgrammingRelated(input.message)) {
+        return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
+      }
+
+      const historyMessages = (input.history ?? []).map((item) => ({
+        role: item.role,
+        content: item.content,
+      }));
+
+      const { content, model } = await callWithFallback({
+        messages: [
+          { role: "system", content: CHATBOT_SYSTEM_PROMPT },
+          ...historyMessages,
+          { role: "user", content: input.message },
+        ],
+        maxTokens: 900,
+        temperature: 0.7,
+      });
+
+      console.log(`[AI] chatbotReply done - model: ${model}`);
+
+      if (looksLikeCodeOutput(content)) {
+        return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
+      }
+
+      return { reply: content, blocked: false };
     }),
 
   coverLetter: protectedProcedure
