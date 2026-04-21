@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, ChevronDown, MessageCircle, Send, X } from "lucide-react";
+import { Bot, ChevronDown, Loader2, MessageCircle, Send, X } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
@@ -11,11 +11,7 @@ import { Input } from "@/components/ui/input";
 const starterMessages = [
   {
     role: "assistant",
-    text: "Hi! I am your AI resume helper. Tell me your target role and I can suggest a layout.",
-  },
-  {
-    role: "assistant",
-    text: "Mockup mode is active. Responses are for UI preview only.",
+    text: "Hi! I'm Crafty, your general-use AI assistant. How can I help today?",
   },
 ];
 
@@ -27,6 +23,7 @@ export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState(starterMessages);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,20 +43,108 @@ export function Chatbot() {
     setShowScrollToBottom(distanceFromBottom > 80);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = inputValue.trim();
-    if (!trimmed) return;
+    if (!trimmed || isStreaming) return;
+
+    const history = messages.slice(-10).map((message) => ({
+      role: message.role as "user" | "assistant",
+      content: message.text,
+    }));
 
     setMessages((prev) => [
       ...prev,
       { role: "user", text: trimmed },
-      {
-        role: "assistant",
-        text: "Crafty mock reply: message received. AI responses will be enabled soon.",
-      },
+      { role: "assistant", text: "" },
     ]);
     setInputValue("");
+    setIsStreaming(true);
+
+    try {
+      const response = await fetch("/api/chatbot/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: trimmed,
+          history,
+        }),
+      });
+
+      if (!response.body) {
+        throw new Error("Streaming response is unavailable.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const setAssistantText = (text: string) => {
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role !== "assistant") return prev;
+          next[next.length - 1] = { ...last, text };
+          return next;
+        });
+      };
+
+      const appendAssistantText = (token: string) => {
+        setMessages((prev) => {
+          if (prev.length === 0) return prev;
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role !== "assistant") return prev;
+          next[next.length - 1] = { ...last, text: `${last.text}${token}` };
+          return next;
+        });
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const eventChunk of events) {
+          const dataLine = eventChunk
+            .split("\n")
+            .find((line) => line.startsWith("data: "));
+          if (!dataLine) continue;
+
+          const payload = JSON.parse(dataLine.slice(6)) as {
+            type: "start" | "delta" | "done" | "error";
+            token?: string;
+            error?: string;
+          };
+
+          if (payload.type === "delta" && payload.token) {
+            appendAssistantText(payload.token);
+          }
+
+          if (payload.type === "error") {
+            setAssistantText(payload.error || "I ran into an issue. Please try again in a moment.");
+          }
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "I ran into an issue. Please try again in a moment.";
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role !== "assistant") return prev;
+        next[next.length - 1] = { ...last, text: errorMessage };
+        return next;
+      });
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   useEffect(() => {
@@ -87,7 +172,7 @@ export function Chatbot() {
               </span>
               <div>
                 <p className="text-sm font-semibold text-zinc-900">Crafty</p>
-                <p className="text-xs text-zinc-500">Prompt-to-Layout Mockup</p>
+                <p className="text-xs text-zinc-500">General AI Assistant</p>
               </div>
             </div>
             <Button
@@ -108,6 +193,7 @@ export function Chatbot() {
               className="h-[26rem] space-y-3 overflow-y-auto p-4"
             >
               {messages.map((message, index) => (
+                message.role === "assistant" && !message.text ? null : (
                 <div
                   key={`${message.role}-${index}-${message.text}`}
                   className={`w-fit max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
@@ -118,7 +204,14 @@ export function Chatbot() {
                 >
                   {message.text}
                 </div>
+                )
               ))}
+              {isStreaming ? (
+                <div className="flex w-fit max-w-[90%] items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Crafty is thinking...</span>
+                </div>
+              ) : null}
               <div ref={messagesEndRef} />
             </div>
 
@@ -141,9 +234,15 @@ export function Chatbot() {
               placeholder="Type your prompt..."
               aria-label="Type your prompt"
               value={inputValue}
+              disabled={isStreaming}
               onChange={(event) => setInputValue(event.target.value)}
             />
-            <Button type="submit" size="icon" aria-label="Send message">
+            <Button
+              type="submit"
+              size="icon"
+              aria-label="Send message"
+              disabled={isStreaming || !inputValue.trim()}
+            >
               <Send className="h-4 w-4" />
             </Button>
           </form>
