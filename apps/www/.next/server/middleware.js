@@ -1,0 +1,10 @@
+var R=require("./chunks/[turbopack]_runtime.js")("server/middleware.js")
+R.c("server/chunks/[root-of-the-server]__07~m6q1._.js")
+R.c("server/chunks/node_modules_next_dist_0955q9p._.js")
+R.c("server/chunks/node_modules_@better-auth_0m6wfde._.js")
+R.c("server/chunks/node_modules_kysely_dist_esm_0gsxe9u._.js")
+R.c("server/chunks/node_modules_@better-auth_kysely-adapter_dist_index_mjs_05fsyz7._.js")
+R.c("server/chunks/[root-of-the-server]__0n.mq9a._.js")
+R.c("server/chunks/node_modules_kysely_dist_esm_0az_i3n._.js")
+R.m(62395)
+module.exports=R.m(62395).exports
