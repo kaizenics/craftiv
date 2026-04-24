@@ -1,0 +1,12 @@
+{
+  "/(company)/contact/page": "app/(company)/contact/page.js",
+  "/(company)/data-deletion/page": "app/(company)/data-deletion/page.js",
+  "/(company)/privacy/page": "app/(company)/privacy/page.js",
+  "/(company)/refund-policy/page": "app/(company)/refund-policy/page.js",
+  "/(company)/terms/page": "app/(company)/terms/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/coming-soon/page": "app/coming-soon/page.js",
+  "/page": "app/page.js",
+  "/pricing/page": "app/pricing/page.js"
+}

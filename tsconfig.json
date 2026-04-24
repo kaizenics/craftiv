@@ -19,7 +19,15 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@/components/ui/*": ["./packages/ui/*"],
+      "@/db": ["./packages/db/index.ts"],
+      "@/db/*": ["./packages/db/*"],
+      "@/trpc": ["./packages/trpc/index.ts"],
+      "@/trpc/*": ["./packages/trpc/*"],
+      "@/lib/auth": ["./packages/auth.ts"],
+      "@/lib/auth-client": ["./packages/auth-client.ts"],
+      "@/lib/types/*": ["./packages/types/*"]
     }
   },
   "include": [

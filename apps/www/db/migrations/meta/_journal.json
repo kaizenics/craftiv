@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1767326749136,
+      "tag": "0000_clever_sprite",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1774475194424,
+      "tag": "0001_cover_letters",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776207600000,
+      "tag": "0002_user_subscription",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1776208600000,
+      "tag": "0003_resume_creation_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1776210600000,
+      "tag": "0004_cover_letter_creation_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1776212600000,
+      "tag": "0005_processed_transactions",
+      "breakpoints": true
+    }
+  ]
+}

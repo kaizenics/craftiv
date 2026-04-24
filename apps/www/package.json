@@ -1,0 +1,9 @@
+{
+  "name": "@craftiv/www",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001"
+  }
+}
