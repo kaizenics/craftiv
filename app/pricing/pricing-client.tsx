@@ -2,6 +2,8 @@
 
 import { useState, type ComponentType } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
 import { NavbarComponent } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { loadAndInitPaddle } from "@/lib/paddle";
@@ -39,6 +41,8 @@ const PRICING = {
 };
 
 export function PricingClient() {
+  const router = useRouter();
+  const { isLoading: isAuthLoading } = useAuth();
   const { data: session } = authClient.useSession();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
   const confirmCheckout = trpc.user.confirmCheckout.useMutation();
@@ -123,6 +127,11 @@ export function PricingClient() {
 
   const openPaddleCheckout = async (plan: Plan) => {
     if (plan.name === "Free") return;
+    if (isAuthLoading) return;
+    if (!session?.user) {
+      router.push(`/sign-in?redirect=${encodeURIComponent("/pricing")}`);
+      return;
+    }
     if (!plan.paddlePriceId) {
       alert("This plan is not configured yet. Please set Paddle price IDs.");
       return;
@@ -357,14 +366,24 @@ export function PricingClient() {
                   type="button"
                   data-paddle-price-id={plan.paddlePriceId}
                   onClick={() => void openPaddleCheckout(plan)}
-                  disabled={activeCheckoutPlan === plan.name}
+                  disabled={
+                    isAuthLoading ||
+                    activeCheckoutPlan === plan.name ||
+                    confirmCheckout.isPending
+                  }
                   className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
                     plan.featured
                       ? "bg-white text-zinc-900 hover:bg-zinc-100"
                       : "bg-primary text-white hover:bg-primary/90"
                   }`}
                 >
-                  {activeCheckoutPlan === plan.name ? "Opening checkout..." : plan.cta}
+                  {isAuthLoading
+                    ? "Checking account..."
+                    : !session?.user
+                      ? `Sign in for ${plan.name}`
+                      : activeCheckoutPlan === plan.name
+                        ? "Opening checkout..."
+                        : plan.cta}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               )}
