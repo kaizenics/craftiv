@@ -1019,6 +1019,8 @@ export default function FinalResumePage() {
         customColor={selectedColor}
         showPhoto={showPhoto}
         onDownloadComplete={handleDownloadComplete}
+        secondaryActionLabel="Dashboard"
+        onSecondaryAction={() => router.push("/dashboard")}
       />
     </div>
   );
