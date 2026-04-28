@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -15,7 +14,7 @@ import {
 import { ResumeData } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { ResumePreview } from '@/components/resume/resume-preview';
-import { Download, FileText, File, ArrowRight } from '@/components/ui/icons';
+import { Download, FileText, File } from '@/components/ui/icons';
 import { 
   generatePDF, 
   generateDOCX, 
@@ -32,12 +31,24 @@ interface DownloadDialogProps {
   customColor?: string;
   showPhoto?: boolean;
   onDownloadComplete?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }
 
 type DownloadFormat = 'pdf' | 'docx';
 
-export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultDesignOptions, customFileName, customColor, showPhoto = false, onDownloadComplete }: DownloadDialogProps) {
-  const router = useRouter();
+export function DownloadDialog({
+  data,
+  isOpen,
+  onClose,
+  designOptions = defaultDesignOptions,
+  customFileName,
+  customColor,
+  showPhoto = false,
+  onDownloadComplete,
+  secondaryActionLabel = 'Cancel',
+  onSecondaryAction,
+}: DownloadDialogProps) {
   const [format, setFormat] = useState<DownloadFormat>('pdf');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadComplete, setDownloadComplete] = useState(false);
@@ -46,11 +57,6 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
   const fileName = customFileName || `${data.contact.firstName || 'Resume'}_${data.contact.lastName || 'CV'}`;
 
   const handleDownload = async () => {
-    if (downloadComplete) {
-      router.push('/dashboard');
-      return;
-    }
-
     setIsDownloading(true);
     
     try {
@@ -186,8 +192,8 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={onClose} className="flex-1">
-              Cancel
+            <Button variant="outline" onClick={onSecondaryAction ?? onClose} className="flex-1">
+              {secondaryActionLabel}
             </Button>
             <Button onClick={handleDownload} disabled={isDownloading} className="flex-1">
               {isDownloading ? (
@@ -197,8 +203,8 @@ export function DownloadDialog({ data, isOpen, onClose, designOptions = defaultD
                 </>
               ) : downloadComplete ? (
                 <>
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Go To Dashboard
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Again
                 </>
               ) : (
                 <>
