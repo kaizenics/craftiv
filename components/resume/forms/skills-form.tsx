@@ -18,9 +18,10 @@ import { Plus, Trash2, X, Check } from '@/components/ui/icons';
 interface SkillsFormProps {
   data: Skill[];
   onChange: (data: Skill[]) => void;
+  showLevelControls?: boolean;
 }
 
-export function SkillsForm({ data, onChange }: SkillsFormProps) {
+export function SkillsForm({ data, onChange, showLevelControls = true }: SkillsFormProps) {
   const addSkill = () => {
     const newSkill: Skill = {
       id: generateId(),
@@ -76,19 +77,21 @@ export function SkillsForm({ data, onChange }: SkillsFormProps) {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={skill.showLevel}
-                onCheckedChange={(checked) =>
-                  updateSkill(skill.id, 'showLevel', checked)
-                }
-              />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                Show level
-              </span>
-            </div>
+            {showLevelControls && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={skill.showLevel}
+                  onCheckedChange={(checked) =>
+                    updateSkill(skill.id, 'showLevel', checked)
+                  }
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  Show level
+                </span>
+              </div>
+            )}
 
-            {skill.showLevel && (
+            {showLevelControls && skill.showLevel && (
               <Select
                 value={skill.level}
                 onValueChange={(value) => updateSkill(skill.id, 'level', value)}

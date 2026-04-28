@@ -172,13 +172,17 @@ export default function ResumeSectionDynamicPage() {
             onChange={(educations) => handleDataUpdate({ educations })}
           />
         );
-      case "skills":
+      case "skills": {
+        const selectedTemplate = resumeTemplates.find((t) => t.id === resumeData.templateId);
+        const showSkillLevelControls = selectedTemplate?.layout === "classic";
         return (
           <SkillsForm
             data={resumeData.skills}
             onChange={(skills) => handleDataUpdate({ skills })}
+            showLevelControls={showSkillLevelControls}
           />
         );
+      }
       case "summary":
         return (
           <SummaryForm
