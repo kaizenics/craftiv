@@ -214,13 +214,17 @@ export default function ResumeSectionPage() {
             }
           />
         );
-      case "skills":
+      case "skills": {
+        const selectedTemplate = resumeTemplates.find((t) => t.id === resumeData.templateId);
+        const showSkillLevelControls = selectedTemplate?.layout === "classic";
         return (
           <SkillsForm
             data={resumeData.skills}
             onChange={(skills) => setResumeData({ ...resumeData, skills })}
+            showLevelControls={showSkillLevelControls}
           />
         );
+      }
       case "summary":
         return (
           <SummaryForm
