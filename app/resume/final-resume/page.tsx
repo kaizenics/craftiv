@@ -88,6 +88,7 @@ const templateColors = [
   "#f472b6",
 ];
 const BOARDROOM_FIXED_COLOR = "#fbfbfa";
+const COLOR_LOCKED_TEMPLATE_IDS = new Set(["orbit", "boardroom", "harvard"]);
 
 export default function FinalResumePage() {
   const router = useRouter();
@@ -187,10 +188,9 @@ export default function FinalResumePage() {
         const savedSelectedColor = localStorage.getItem("selectedColor");
         const defaultColor =
           template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
+        const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
         const preferredColor =
-          template.id === "boardroom"
-            ? BOARDROOM_FIXED_COLOR
-            : savedSelectedColor || defaultColor;
+          isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
         initialSelectedColor = preferredColor;
         setSelectedColor(preferredColor);
       }
@@ -430,15 +430,21 @@ export default function FinalResumePage() {
     // Update color to match new template
     const template = resumeTemplates.find((t) => t.id === templateId);
     if (template) {
-      setSelectedColor(
-        template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor
-      );
+      const defaultColor =
+        template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
+      const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
+      setSelectedColor(isColorLocked ? defaultColor : template.primaryColor);
     }
   };
 
   const handleColorChange = (color: string) => {
-    if (resumeData.templateId === "boardroom") {
-      setSelectedColor(BOARDROOM_FIXED_COLOR);
+    if (COLOR_LOCKED_TEMPLATE_IDS.has(resumeData.templateId)) {
+      const template = resumeTemplates.find((t) => t.id === resumeData.templateId);
+      setSelectedColor(
+        template?.id === "boardroom"
+          ? BOARDROOM_FIXED_COLOR
+          : template?.primaryColor || selectedColor
+      );
       return;
     }
     setSelectedColor(color);
@@ -502,9 +508,14 @@ export default function FinalResumePage() {
     },
   ];
 
-  const isBoardroomTemplate = resumeData.templateId === "boardroom";
-  const availableTemplateColors = isBoardroomTemplate
-    ? [BOARDROOM_FIXED_COLOR]
+  const activeTemplate = resumeTemplates.find((t) => t.id === resumeData.templateId);
+  const isColorLockedTemplate = COLOR_LOCKED_TEMPLATE_IDS.has(resumeData.templateId);
+  const lockedTemplateColor =
+    activeTemplate?.id === "boardroom"
+      ? BOARDROOM_FIXED_COLOR
+      : activeTemplate?.primaryColor || selectedColor;
+  const availableTemplateColors = isColorLockedTemplate
+    ? [lockedTemplateColor]
     : templateColors;
 
   return (
@@ -616,7 +627,7 @@ export default function FinalResumePage() {
                         title={color}
                       />
                     ))}
-                    {!isBoardroomTemplate && (
+                    {!isColorLockedTemplate && (
                       <div className="relative group">
                         <label
                           className={cn(

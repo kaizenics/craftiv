@@ -213,7 +213,7 @@ export const templates: TemplateData[] = [
     name: "Orbit",
     description: "Modern layout with creative elements that stand out while remaining professional.",
     thumbnail: "/templates/orbit.png",
-    primaryColor: "#dc2626",
+    primaryColor: "#3f3f46",
     category: ["all", "modern", "creative"],
     layout: "bold",
   },

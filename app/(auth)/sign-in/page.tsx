@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -55,26 +56,45 @@ export default function SignInPage() {
     setIsLoading(true);
     setError(null);
 
-    const { error: signInError } = await authClient.signIn.email(
-      {
-        email: data.email,
-        password: data.password,
-        rememberMe,
-        callbackURL: redirectTo,
-      },
-      {
-        onSuccess: () => {
-          router.push(redirectTo);
-          router.refresh();
+    try {
+      let didSucceed = false;
+      const { error: signInError } = await authClient.signIn.email(
+        {
+          email: data.email,
+          password: data.password,
+          rememberMe,
+          callbackURL: redirectTo,
         },
-        onError: (ctx) => {
-          setError(ctx.error.message || "Failed to sign in. Please try again.");
-          setIsLoading(false);
-        },
-      }
-    );
+        {
+          onSuccess: () => {
+            didSucceed = true;
+            toast.success("Signed in successfully.");
+            router.push(redirectTo);
+            router.refresh();
+          },
+          onError: (ctx) => {
+            const authError =
+              ctx.error.message || "Failed to sign in. Please try again.";
+            setError(authError);
+            toast.error(authError);
+          },
+        }
+      );
 
-    if (signInError) {
+      if (signInError && !didSucceed) {
+        const authError =
+          signInError.message || "Failed to sign in. Please try again.";
+        setError(authError);
+        toast.error(authError);
+      }
+    } catch (err) {
+      const authError =
+        err instanceof Error
+          ? err.message
+          : "Authentication failed. Please try again.";
+      setError(authError);
+      toast.error(authError);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -82,10 +102,30 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError(null);
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: redirectTo,
-    });
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: redirectTo,
+      });
+
+      if (result?.error) {
+        const authError =
+          result.error.message || "Google sign-in failed. Please try again.";
+        setError(authError);
+        toast.error(authError);
+      } else {
+        toast.success("Redirecting to Google sign in...");
+      }
+    } catch (err) {
+      const authError =
+        err instanceof Error
+          ? err.message
+          : "Google sign-in failed. Please try again.";
+      setError(authError);
+      toast.error(authError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

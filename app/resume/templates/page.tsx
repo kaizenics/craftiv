@@ -32,8 +32,10 @@ const categories = [
   { id: "ats", name: "ATS Friendly", shortLabel: "ATS", icon: Shield },
   { id: "creative", name: "Creative", shortLabel: "Creative", icon: Image },
 ];
+const FIXED_COLOR_TEMPLATE_IDS = new Set(["orbit", "boardroom", "harvard"]);
 
 function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: typeof templates[0]; onUseTemplate: (templateId: string) => void; showPhoto: boolean }) {
+  const isFixedColorTemplate = FIXED_COLOR_TEMPLATE_IDS.has(template.id);
 
   return (
     <motion.div
@@ -70,7 +72,14 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
           <span className="text-xs font-medium text-zinc-700">{template.name}</span>
           <div 
             className="h-4 w-4 rounded-full border border-zinc-200" 
-            style={{ backgroundColor: template.primaryColor }}
+            style={
+              isFixedColorTemplate
+                ? { backgroundColor: template.primaryColor }
+                : {
+                    backgroundImage:
+                      "conic-gradient(from 90deg, #ef4444, #f59e0b, #84cc16, #06b6d4, #3b82f6, #d946ef, #ef4444)",
+                  }
+            }
           />
         </div>
       </div>
