@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CoverLetterPreview } from "@/components/cover-letter/cover-letter-preview";
-import type { CoverLetterData } from "@/lib/types/cover-letter";
+import {
+  createEmptyCoverLetterData,
+  type CoverLetterData,
+} from "@/lib/types/cover-letter";
 
 const A4_WIDTH_PX = (210 / 25.4) * 96;
 const A4_HEIGHT_PX = (297 / 25.4) * 96;
 
 interface CoverLetterCardPreviewProps {
-  data: CoverLetterData;
+  data?: CoverLetterData | null;
 }
 
 export function CoverLetterCardPreview({ data }: CoverLetterCardPreviewProps) {
@@ -51,7 +54,7 @@ export function CoverLetterCardPreview({ data }: CoverLetterCardPreviewProps) {
           }}
         >
           <CoverLetterPreview
-            data={data}
+            data={data ?? createEmptyCoverLetterData()}
             className="h-full max-w-none rounded-none border-0 shadow-none"
           />
         </div>

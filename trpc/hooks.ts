@@ -7,27 +7,27 @@ import { trpc } from "./client";
 export function useResumes() {
   const utils = trpc.useUtils();
 
-  const list = trpc.resume.list.useQuery();
+  const list = trpc.resume.listSummary.useQuery();
   const create = trpc.resume.create.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
   const update = trpc.resume.update.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
     },
   });
   const deleteResume = trpc.resume.delete.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
   const duplicate = trpc.resume.duplicate.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
@@ -57,7 +57,7 @@ export function useResume(id: string | null) {
   const update = trpc.resume.update.useMutation({
     onSuccess: () => {
       utils.resume.getById.invalidate({ id: id! });
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
     },
   });
 
@@ -130,7 +130,7 @@ export function useOptimisticResumeUpdate(resumeId: string) {
     },
     onSettled: () => {
       utils.resume.getById.invalidate({ id: resumeId });
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
     },
   });
 }

@@ -33,8 +33,10 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 1000,
+            staleTime: 60 * 1000,
+            gcTime: 10 * 60 * 1000,
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
           },
         },
       })

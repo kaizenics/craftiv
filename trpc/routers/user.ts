@@ -113,6 +113,9 @@ export const userRouter = createTRPCRouter({
    */
   stats: protectedProcedure.query(async ({ ctx }) => {
     const userResumes = await ctx.db.query.resumes.findMany({
+      columns: {
+        status: true,
+      },
       where: (resumes, { eq }) => eq(resumes.userId, ctx.user.id),
     });
 
@@ -133,6 +136,13 @@ export const userRouter = createTRPCRouter({
 
   subscription: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.query.users.findFirst({
+      columns: {
+        id: true,
+        plan: true,
+        isPaid: true,
+        resumeCreatedCount: true,
+        coverLetterCreatedCount: true,
+      },
       where: eq(users.id, ctx.user.id),
     });
 

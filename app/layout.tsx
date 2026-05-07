@@ -6,8 +6,8 @@ import { AuthProvider } from "@/components/auth-provider";
 import { TRPCProvider } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
-import { Chatbot } from "@/components/chatbot/ai-chatbot";
 import { siteConfig } from "@/lib/seo";
+import { ChatbotLoader } from "@/components/chatbot/chatbot-loader";
 
 const loraHeading = Lora({subsets:['latin'],variable:'--font-heading'});
 
@@ -119,7 +119,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               {children}
-              <Chatbot />
+              <ChatbotLoader />
               <Toaster richColors position="bottom-right" />
             </ThemeProvider>
           </AuthProvider>

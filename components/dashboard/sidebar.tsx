@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/static-components */
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -126,7 +127,7 @@ export function DashboardSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/craftiv.png" alt="logo" width={30} height={30} />
+          <Image src="/craftiv.png" alt="logo" width={30} height={30} sizes="30px" />
           <span className="font-display text-lg font-bold">Craftiv</span>
         </Link>
         {isMobile && (

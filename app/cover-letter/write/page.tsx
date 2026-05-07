@@ -118,12 +118,12 @@ function WriteCoverLetterPageContent() {
   );
   const saveCoverLetter = trpc.coverLetter.create.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
   const updateCoverLetter = trpc.coverLetter.update.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
       if (coverLetterId) {
         utils.coverLetter.getById.invalidate({ id: coverLetterId });
       }

@@ -100,9 +100,6 @@ function ResumeTemplatesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
-  const { data: resumes = [] } = trpc.resume.list.useQuery(undefined, {
-    enabled: !!session?.user,
-  });
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
   });
@@ -114,7 +111,7 @@ function ResumeTemplatesPageContent() {
   
   const createResume = trpc.resume.create.useMutation();
   const updateResume = trpc.resume.update.useMutation();
-  const effectiveCreatedCount = subscription?.resumeCreatedCount ?? resumes.length;
+  const effectiveCreatedCount = subscription?.resumeCreatedCount ?? 0;
 
   const createAndNavigate = async (templateId: string) => {
     setIsCreating(true);

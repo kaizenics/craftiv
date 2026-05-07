@@ -37,19 +37,19 @@ export function ResumeCard({ id, title, updatedAt, template, data }: ResumeCardP
   const utils = trpc.useUtils();
   const updateResume = trpc.resume.update.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
   const deleteResume = trpc.resume.delete.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
   const duplicateResume = trpc.resume.duplicate.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
     },
   });
 

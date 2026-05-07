@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -25,6 +25,10 @@ async function getUniqueResumeTitle(args: {
   const requested = args.requestedTitle.trim() || "Resume_1";
 
   const existingResumes = await args.db.query.resumes.findMany({
+    columns: {
+      id: true,
+      title: true,
+    },
     where: eq(resumes.userId, args.userId),
   });
 
@@ -50,6 +54,12 @@ async function getUniqueResumeTitle(args: {
 
 async function assertCanCreateResume(db: any, userId: string) {
   const user = await db.query.users.findFirst({
+    columns: {
+      id: true,
+      plan: true,
+      isPaid: true,
+      resumeCreatedCount: true,
+    },
     where: eq(users.id, userId),
   });
 
@@ -208,27 +218,39 @@ export const resumeRouter = createTRPCRouter({
   }),
 
   /**
+   * Lightweight list for dashboards and selectors.
+   * Avoids selecting the full resume JSON payload on every page load.
+   */
+  listSummary: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.resumes.findMany({
+      columns: {
+        id: true,
+        title: true,
+        templateId: true,
+        status: true,
+        lastEditedSection: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      where: eq(resumes.userId, ctx.user.id),
+      orderBy: [desc(resumes.updatedAt)],
+    });
+  }),
+
+  /**
    * Get a single resume by ID
    */
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const resume = await ctx.db.query.resumes.findFirst({
-        where: eq(resumes.id, input.id),
+        where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
       });
 
       if (!resume) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Resume not found",
-        });
-      }
-
-      // Ensure user owns this resume
-      if (resume.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this resume",
         });
       }
 
@@ -301,20 +323,16 @@ export const resumeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       // First, verify the resume exists and belongs to user
       const existingResume = await ctx.db.query.resumes.findFirst({
-        where: eq(resumes.id, input.id),
+        columns: {
+          id: true,
+        },
+        where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
       });
 
       if (!existingResume) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Resume not found",
-        });
-      }
-
-      if (existingResume.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this resume",
         });
       }
 
@@ -341,9 +359,9 @@ export const resumeRouter = createTRPCRouter({
       await ctx.db
         .update(resumes)
         .set(updateData)
-        .where(eq(resumes.id, input.id));
+        .where(and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)));
 
-      return { success: true, title: updateData.title ?? existingResume.title };
+      return { success: true, title: updateData.title ?? input.title };
     }),
 
   /**
@@ -353,7 +371,10 @@ export const resumeRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existingResume = await ctx.db.query.resumes.findFirst({
-        where: eq(resumes.id, input.id),
+        columns: {
+          id: true,
+        },
+        where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
       });
 
       if (!existingResume) {
@@ -363,14 +384,9 @@ export const resumeRouter = createTRPCRouter({
         });
       }
 
-      if (existingResume.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this resume",
-        });
-      }
-
-      await ctx.db.delete(resumes).where(eq(resumes.id, input.id));
+      await ctx.db
+        .delete(resumes)
+        .where(and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)));
 
       return { success: true };
     }),
@@ -384,20 +400,13 @@ export const resumeRouter = createTRPCRouter({
       const user = await assertCanCreateResume(ctx.db, ctx.user.id);
 
       const existingResume = await ctx.db.query.resumes.findFirst({
-        where: eq(resumes.id, input.id),
+        where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
       });
 
       if (!existingResume) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Resume not found",
-        });
-      }
-
-      if (existingResume.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this resume",
         });
       }
 
