@@ -119,7 +119,7 @@ export default function AIAssistantPage() {
   const [copied, setCopied] = useState(false);
 
   // Data
-  const { data: resumes = [], isLoading: resumesLoading } = trpc.resume.list.useQuery();
+  const { data: resumes = [], isLoading: resumesLoading } = trpc.resume.listSummary.useQuery();
   const activeResumeId = selectedResumeId ?? resumes[0]?.id ?? null;
   const activeResume = resumes.find((r) => r.id === activeResumeId);
   const filteredResumes = useMemo(() => {
@@ -143,7 +143,7 @@ export default function AIAssistantPage() {
   const updateResume = trpc.resume.update.useMutation({
     onSuccess: () => {
       utils.resume.getById.invalidate({ id: activeResumeId! });
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
     },
   });
 

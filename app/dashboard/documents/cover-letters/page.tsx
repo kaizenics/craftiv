@@ -19,14 +19,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/trpc/client";
-import type { CoverLetterData } from "@/lib/types/cover-letter";
 import { Spinner } from "@/components/ui/spinner";
 
 type CoverLetterListItem = {
   id: string;
   title: string;
   updatedAt: Date;
-  data: CoverLetterData;
 };
 
 function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
@@ -40,17 +38,17 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
 
   const updateCoverLetter = trpc.coverLetter.update.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
   const deleteCoverLetter = trpc.coverLetter.delete.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
   const duplicateCoverLetter = trpc.coverLetter.duplicate.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
 
@@ -68,7 +66,6 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
     await updateCoverLetter.mutateAsync({
       id: letter.id,
       title: trimmed,
-      data: letter.data,
     });
     setShowRenameDialog(false);
     setShowMenu(false);
@@ -93,18 +90,10 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
       >
         <div className="flex items-center gap-3 pr-8">
           <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
-            <CoverLetterCardPreview data={letter.data} />
+            <CoverLetterCardPreview />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>
-            {letter.data.employer.jobTitle && (
-              <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
-                {letter.data.employer.jobTitle}
-                {letter.data.employer.companyName
-                  ? ` - ${letter.data.employer.companyName}`
-                  : ""}
-              </p>
-            )}
             <p className="mt-2 text-xs text-muted-foreground">
               Updated {format(new Date(letter.updatedAt), "MMM d, yyyy")}
             </p>
@@ -231,7 +220,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
 }
 
 export default function CoverLettersPage() {
-  const { data: letters = [], isLoading } = trpc.coverLetter.list.useQuery();
+  const { data: letters = [], isLoading } = trpc.coverLetter.listSummary.useQuery();
 
   if (isLoading) {
     return (

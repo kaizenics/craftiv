@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   BadgeInfo,
@@ -62,7 +62,7 @@ type ResumeListItem = {
   id: string;
   title: string;
   templateId: string;
-  data?: ResumeDataJSON | null;
+  status: "draft" | "completed";
   createdAt: Date | string;
   updatedAt: Date | string;
 };
@@ -72,10 +72,11 @@ type CoverLetterListItem = {
   title: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-  data: CoverLetterData;
 };
 
-function buildResumeDataForDownload(resume: ResumeListItem): ResumeData {
+function buildResumeDataForDownload(
+  resume: ResumeListItem & { data?: ResumeDataJSON | null },
+): ResumeData {
   const data = resume.data ?? ({} as ResumeDataJSON);
 
   return {
@@ -111,27 +112,38 @@ function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-
-  const downloadData = useMemo(() => buildResumeDataForDownload(resume), [resume]);
+  const [downloadData, setDownloadData] = useState<ResumeData | null>(null);
+  const [isPreparingDownload, setIsPreparingDownload] = useState(false);
 
   const updateResume = trpc.resume.update.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
   const deleteResume = trpc.resume.delete.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
   const duplicateResume = trpc.resume.duplicate.useMutation({
     onSuccess: () => {
-      utils.resume.list.invalidate();
+      utils.resume.listSummary.invalidate();
       utils.user.stats.invalidate();
     },
   });
+
+  const handlePrepareDownload = async () => {
+    setIsPreparingDownload(true);
+    try {
+      const fullResume = await utils.resume.getById.fetch({ id: resume.id });
+      setDownloadData(buildResumeDataForDownload(fullResume));
+      setShowDownloadDialog(true);
+    } finally {
+      setIsPreparingDownload(false);
+    }
+  };
 
   const handleRename = async () => {
     const trimmed = newTitle.trim();
@@ -154,7 +166,8 @@ function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
       <div className="flex items-center gap-1.5 md:justify-end">
         <button
           type="button"
-          onClick={() => setShowDownloadDialog(true)}
+          onClick={() => void handlePrepareDownload()}
+          disabled={isPreparingDownload}
           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
           aria-label="Download resume"
         >
@@ -230,12 +243,14 @@ function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
         </DropdownMenu>
       </div>
 
-      <DownloadDialog
-        data={downloadData}
-        isOpen={showDownloadDialog}
-        onClose={() => setShowDownloadDialog(false)}
-        customFileName={resume.title}
-      />
+      {downloadData && (
+        <DownloadDialog
+          data={downloadData}
+          isOpen={showDownloadDialog}
+          onClose={() => setShowDownloadDialog(false)}
+          customFileName={resume.title}
+        />
+      )}
 
       <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <AlertDialogContent>
@@ -292,20 +307,22 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [downloadData, setDownloadData] = useState<CoverLetterData | null>(null);
+  const [isPreparingDownload, setIsPreparingDownload] = useState(false);
 
   const updateCoverLetter = trpc.coverLetter.update.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
   const deleteCoverLetter = trpc.coverLetter.delete.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
   const duplicateCoverLetter = trpc.coverLetter.duplicate.useMutation({
     onSuccess: () => {
-      utils.coverLetter.list.invalidate();
+      utils.coverLetter.listSummary.invalidate();
     },
   });
 
@@ -315,9 +332,19 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
     await updateCoverLetter.mutateAsync({
       id: letter.id,
       title: trimmed,
-      data: letter.data,
     });
     setShowRenameDialog(false);
+  };
+
+  const handlePrepareDownload = async () => {
+    setIsPreparingDownload(true);
+    try {
+      const fullLetter = await utils.coverLetter.getById.fetch({ id: letter.id });
+      setDownloadData(fullLetter.data);
+      setShowDownloadDialog(true);
+    } finally {
+      setIsPreparingDownload(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -334,7 +361,8 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
       <div className="flex items-center gap-1.5 md:justify-end">
         <button
           type="button"
-          onClick={() => setShowDownloadDialog(true)}
+          onClick={() => void handlePrepareDownload()}
+          disabled={isPreparingDownload}
           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-primary transition-colors hover:border-primary/20 hover:bg-primary/10"
           aria-label="Download cover letter"
         >
@@ -410,12 +438,14 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
         </DropdownMenu>
       </div>
 
-      <CoverLetterDownloadDialog
-        data={letter.data}
-        fileName={letter.title}
-        isOpen={showDownloadDialog}
-        onClose={() => setShowDownloadDialog(false)}
-      />
+      {downloadData && (
+        <CoverLetterDownloadDialog
+          data={downloadData}
+          fileName={letter.title}
+          isOpen={showDownloadDialog}
+          onClose={() => setShowDownloadDialog(false)}
+        />
+      )}
 
       <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <AlertDialogContent>
@@ -475,10 +505,12 @@ export default function Dashboard() {
   const subscriptionPlan = subscription?.plan ?? "free";
 
   // Replace mock data with real tRPC query
-  const { data: resumes = [], isLoading } = trpc.resume.list.useQuery();
+  const { data: resumes = [], isLoading } = trpc.resume.listSummary.useQuery();
   const hasResumes = resumes.length > 0;
   const { data: coverLetters = [], isLoading: isCoverLettersLoading } =
-    trpc.coverLetter.list.useQuery(undefined, { enabled: hasResumes });
+    trpc.coverLetter.listSummary.useQuery(undefined, {
+      enabled: hasResumes && recentDocumentsTab === "cover-letter",
+    });
 
   const checklistItems = [
     {
@@ -737,7 +769,7 @@ export default function Dashboard() {
                           onClick={() => router.push(`/resume/section/${resume.id}`)}
                           className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02]"
                         >
-                          <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
+                          <ResumeCardPreview templateId={resume.templateId} />
                         </button>
                         <div className="min-w-0">
                           <button
@@ -834,7 +866,7 @@ export default function Dashboard() {
                             onClick={() => router.push(`/cover-letter/write?id=${letter.id}`)}
                             className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02]"
                           >
-                            <CoverLetterCardPreview data={letter.data} />
+                            <CoverLetterCardPreview />
                           </button>
                           <div className="min-w-0">
                             <button
@@ -856,11 +888,11 @@ export default function Dashboard() {
                         </div>
 
                         <p className="line-clamp-1 text-sm font-medium text-foreground">
-                          {letter.data.employer.jobTitle || "Not set"}
+                          Open to view
                         </p>
 
                         <p className="line-clamp-1 text-sm text-foreground/90">
-                          {letter.data.employer.companyName || "Not set"}
+                          Open to view
                         </p>
 
                         <p className="text-sm text-muted-foreground">

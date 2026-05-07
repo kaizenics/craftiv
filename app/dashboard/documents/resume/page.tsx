@@ -24,7 +24,7 @@ type SortType = "date-desc" | "date-asc" | "name-asc" | "name-desc";
 
 export default function DocumentsPage() {
   // Replace mock data with real tRPC query
-  const { data: resumes = [], isLoading } = trpc.resume.list.useQuery();
+  const { data: resumes = [], isLoading } = trpc.resume.listSummary.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [filterType, setFilterType] = useState<FilterType>("all");
@@ -208,7 +208,6 @@ export default function DocumentsPage() {
                     title={resume.title}
                     updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
                     template={resume.templateId}
-                    data={resume.data}
                   />
                 ) : (
                   <div
@@ -216,7 +215,7 @@ export default function DocumentsPage() {
                     className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/10"
                   >
                     <div className="h-16 w-12 shrink-0 overflow-hidden rounded border border-zinc-100 bg-white">
-                      <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
+                      <ResumeCardPreview templateId={resume.templateId} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">
@@ -227,7 +226,7 @@ export default function DocumentsPage() {
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/resume/${resume.id}`}>Edit</Link>
+                      <Link href={`/resume/section/${resume.id}`}>Edit</Link>
                     </Button>
                   </div>
                 )

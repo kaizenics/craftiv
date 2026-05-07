@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
@@ -36,12 +36,18 @@ const coverLetterDataSchema = z.object({
 
 const updateCoverLetterSchema = z.object({
   id: z.string(),
-  data: coverLetterDataSchema,
+  data: coverLetterDataSchema.optional(),
   title: z.string().min(1).optional(),
 });
 
 async function assertCanCreateCoverLetter(db: any, userId: string) {
   const user = await db.query.users.findFirst({
+    columns: {
+      id: true,
+      plan: true,
+      isPaid: true,
+      coverLetterCreatedCount: true,
+    },
     where: eq(users.id, userId),
   });
 
@@ -79,17 +85,27 @@ export const coverLetterRouter = createTRPCRouter({
     }));
   }),
 
+  listSummary: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.coverLetters.findMany({
+      columns: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      where: eq(coverLetters.userId, ctx.user.id),
+      orderBy: [desc(coverLetters.updatedAt)],
+    });
+  }),
+
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.coverLetters.findFirst({
-        where: eq(coverLetters.id, input.id),
+        where: and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)),
       });
       if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cover letter not found" });
-      }
-      if (row.userId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "You don't have access to this cover letter" });
       }
 
       return {
@@ -112,9 +128,9 @@ export const coverLetterRouter = createTRPCRouter({
 
       const derivedTitle =
         input.title?.trim() ||
-        (data.employer.jobTitle.trim()
+        (data?.employer.jobTitle.trim()
           ? `Cover letter — ${data.employer.jobTitle.trim()}`
-          : data.employer.companyName.trim()
+          : data?.employer.companyName.trim()
             ? `Cover letter — ${data.employer.companyName.trim()}`
             : `Cover letter — ${new Date().toLocaleDateString()}`);
 
@@ -141,25 +157,23 @@ export const coverLetterRouter = createTRPCRouter({
     .input(updateCoverLetterSchema)
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.query.coverLetters.findFirst({
-        where: eq(coverLetters.id, input.id),
+        columns: {
+          id: true,
+        },
+        where: and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)),
       });
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cover letter not found" });
       }
-      if (existing.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this cover letter",
-        });
-      }
-
-      const data = normalizeCoverLetterData(input.data as Partial<CoverLetterData>);
+      const data = input.data
+        ? normalizeCoverLetterData(input.data as Partial<CoverLetterData>)
+        : null;
       const derivedTitle =
         input.title?.trim() ||
-        (data.employer.jobTitle.trim()
+        (data?.employer.jobTitle.trim()
           ? `Cover letter — ${data.employer.jobTitle.trim()}`
-          : data.employer.companyName.trim()
+          : data?.employer.companyName.trim()
             ? `Cover letter — ${data.employer.companyName.trim()}`
             : `Cover letter — ${new Date().toLocaleDateString()}`);
 
@@ -167,10 +181,10 @@ export const coverLetterRouter = createTRPCRouter({
         .update(coverLetters)
         .set({
           title: derivedTitle,
-          data,
+          ...(data ? { data } : {}),
           updatedAt: new Date(),
         })
-        .where(eq(coverLetters.id, input.id));
+        .where(and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)));
 
       return { success: true, id: input.id };
     }),
@@ -179,20 +193,18 @@ export const coverLetterRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.query.coverLetters.findFirst({
-        where: eq(coverLetters.id, input.id),
+        columns: {
+          id: true,
+        },
+        where: and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)),
       });
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cover letter not found" });
       }
-      if (existing.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this cover letter",
-        });
-      }
-
-      await ctx.db.delete(coverLetters).where(eq(coverLetters.id, input.id));
+      await ctx.db
+        .delete(coverLetters)
+        .where(and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)));
       return { success: true };
     }),
 
@@ -201,19 +213,12 @@ export const coverLetterRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const user = await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
       const existing = await ctx.db.query.coverLetters.findFirst({
-        where: eq(coverLetters.id, input.id),
+        where: and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)),
       });
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cover letter not found" });
       }
-      if (existing.userId !== ctx.user.id) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You don't have access to this cover letter",
-        });
-      }
-
       const id = crypto.randomUUID();
       const normalizedData = normalizeCoverLetterData(
         existing.data as Partial<CoverLetterData>
