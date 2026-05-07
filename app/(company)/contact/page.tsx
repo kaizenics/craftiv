@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-	title: "Contact Support | Craftiv",
+export const metadata = createPageMetadata({
+	title: "Contact Support",
 	description:
 		"Reach Craftiv support through our official Facebook page for account, billing, and technical questions.",
-};
+	path: "/contact",
+});
 
 const SUPPORT_HOURS = "Monday to Friday, 9:00 AM - 6:00 PM (UTC)";
 const FACEBOOK_SUPPORT_URL = "https://facebook.com/gocraftiv";

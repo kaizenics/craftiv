@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Privacy Policy | Craftiv",
+export const metadata = createPageMetadata({
+  title: "Privacy Policy",
   description: "Learn how Craftiv collects, uses, and protects your information.",
-};
+  path: "/privacy",
+});
 
 const LAST_UPDATED = "March 15, 2026";
 
