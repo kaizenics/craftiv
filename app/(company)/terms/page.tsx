@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Terms of Service | Craftiv",
+export const metadata = createPageMetadata({
+  title: "Terms of Service",
   description: "Read the terms that govern your use of Craftiv.",
-};
+  path: "/terms",
+});
 
 const LAST_UPDATED = "March 15, 2026";
 

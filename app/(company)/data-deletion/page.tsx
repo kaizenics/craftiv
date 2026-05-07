@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-	title: "Data Deletion | Craftiv",
+export const metadata = createPageMetadata({
+	title: "Data Deletion",
 	description:
 		"Learn how to request deletion of your Craftiv account and associated data.",
-};
+	path: "/data-deletion",
+});
 
 const LAST_UPDATED = "April 1, 2026";
 

@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Dashboard | Craftiv',
-  description: 'Create ATS-optimized, professionally designed resumes that land interviews. No credit card, no hidden fees—just free, forever.',
-};
+export const metadata: Metadata = createPageMetadata({
+  title: 'Dashboard',
+  description: 'Manage resumes, cover letters, AI tools, and account settings in Craftiv.',
+  path: '/dashboard',
+  noIndex: true,
+});
 
 export default function DashboardLayout({
   children,

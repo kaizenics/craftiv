@@ -1,3 +1,12 @@
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+	title: "Coming Soon",
+	description: "New Craftiv tools are coming soon.",
+	path: "/coming-soon",
+	noIndex: true,
+});
+
 export default function ComingSoonPage() {
 	return (
 		<main className="flex min-h-screen items-center justify-center px-4">

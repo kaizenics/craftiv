@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Refund Policy | Craftiv",
+export const metadata = createPageMetadata({
+  title: "Refund Policy",
   description:
     "Review Craftiv's refund eligibility, timelines, and how to request support for billing concerns.",
-};
+  path: "/refund-policy",
+});
 
 const LAST_UPDATED = "April 20, 2026";
 

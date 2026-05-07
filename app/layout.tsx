@@ -7,6 +7,7 @@ import { TRPCProvider } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { Chatbot } from "@/components/chatbot/ai-chatbot";
+import { siteConfig } from "@/lib/seo";
 
 const loraHeading = Lora({subsets:['latin'],variable:'--font-heading'});
 
@@ -25,13 +26,58 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Craftiv",
-  description:
-    "Create ATS-optimized, professionally designed resumes that land interviews. No credit card, no hidden fees—just free, forever.",
+  metadataBase: new URL(siteConfig.url),
+  applicationName: siteConfig.name,
+  title: {
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  keywords: siteConfig.keywords,
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  category: "career tools",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/craftiv.png",
     shortcut: "/craftiv.png",
     apple: "/craftiv.png",
+  },
+  openGraph: {
+    title: siteConfig.title,
+    description: siteConfig.description,
+    url: "/",
+    siteName: siteConfig.name,
+    images: [
+      {
+        url: "/craftiv.png",
+        width: 1200,
+        height: 630,
+        alt: "Craftiv AI resume builder and resume templates",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: ["/craftiv.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
