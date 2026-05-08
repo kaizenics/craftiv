@@ -469,7 +469,7 @@ export default function AIAssistantPage() {
                 </Button>
               </div>
               {improverApplied && (
-                <p className="text-sm text-muted-foreground">Changes saved. View in <Link href="/dashboard/documents" className="underline text-foreground">Documents</Link>.</p>
+                <p className="text-sm text-muted-foreground">Changes saved. View in <Link href="/dashboard/documents/resume" className="underline text-foreground">Documents</Link>.</p>
               )}
             </div>
           )}
@@ -631,7 +631,7 @@ export default function AIAssistantPage() {
                 </Button>
               </div>
               {achievementApplied && (
-                <p className="text-sm text-muted-foreground">Bullets applied. View in <Link href="/dashboard/documents" className="underline text-foreground">Documents</Link>.</p>
+                <p className="text-sm text-muted-foreground">Bullets applied. View in <Link href="/dashboard/documents/resume" className="underline text-foreground">Documents</Link>.</p>
               )}
             </div>
           )}

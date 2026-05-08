@@ -13,7 +13,7 @@ import {
 } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
-  title: "AI Resume Builder and ATS-Friendly Resume Templates",
+  title: "AI Resume Builder and ATS-Friendly Resume Templates - Go with Craftiv",
   description:
     "Create professional resumes with Craftiv's AI resume builder, ATS-friendly templates, resume upload tools, and cover letter templates built for job seekers.",
 });
