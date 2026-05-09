@@ -17,8 +17,8 @@ import {
   ChevronDown,
   ScrollText,
   Mail,
-  MessageCircle,
 } from "@/components/ui/icons";
+import { MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PremiumUpgradeVisual } from "@/components/dashboard/premium-upgrade-visual";
@@ -67,11 +67,6 @@ const sidebarItems: SidebarItem[] = [
     icon: Sparkles,
   },
   {
-    name: "Chat",
-    href: "/chat",
-    icon: MessageCircle,
-  },
-  {
     name: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
@@ -84,7 +79,7 @@ export function DashboardSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: subscription } = trpc.user.subscription.useQuery();
   const subscriptionPlan = subscription?.plan ?? "free";
-  const [lockedFeature, setLockedFeature] = useState<"ATS Checker" | "AI Resume Assistant" | "Chat" | null>(null);
+  const [lockedFeature, setLockedFeature] = useState<"ATS Checker" | "AI Resume Assistant" | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (const item of sidebarItems) {
@@ -216,10 +211,9 @@ export function DashboardSidebar() {
               onClick={() => {
                 const isLockedFeature =
                   item.href === "/dashboard/ats-checker" ||
-                  item.href === "/dashboard/ai-resume" ||
-                  item.href === "/chat";
+                  item.href === "/dashboard/ai-resume";
                 if (isLockedFeature && subscriptionPlan === "free") {
-                  setLockedFeature(item.name as "ATS Checker" | "AI Resume Assistant" | "Chat");
+                  setLockedFeature(item.name as "ATS Checker" | "AI Resume Assistant");
                   return;
                 }
                 router.push(item.href);
