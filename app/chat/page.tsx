@@ -142,10 +142,15 @@ function readStoredChatState(): { sessions: ChatSession[]; activeSessionId: stri
 
 export default function ChatPage() {
   const initialState = useMemo(() => readStoredChatState(), []);
-  const { data: session } = authClient.useSession();
-  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
-    enabled: !!session?.user,
-  });
+  const sessionQuery = authClient.useSession();
+  const session = sessionQuery.data;
+  const { data: subscription, isLoading: isSubscriptionLoading, isPending: isSubscriptionPending } =
+    trpc.user.subscription.useQuery(undefined, {
+      enabled: !!session?.user,
+    });
+  const isSessionLoading = typeof session === "undefined";
+  const isCheckingAccess =
+    isSessionLoading || (!!session?.user && (isSubscriptionLoading || isSubscriptionPending));
   const currentPlan = session?.user ? (subscription?.plan ?? "free") : "free";
   const canAccessChatbot = currentPlan === "plus" || currentPlan === "pro";
 
@@ -400,6 +405,17 @@ export default function ChatPage() {
       event.preventDefault();
       void sendMessage();
     }
+  }
+
+  if (isCheckingAccess) {
+    return (
+      <main className="mx-auto flex min-h-[100svh] max-w-4xl items-center justify-center px-4 py-10">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm">Checking your access...</span>
+        </div>
+      </main>
+    );
   }
 
   if (!canAccessChatbot) {

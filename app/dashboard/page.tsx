@@ -625,7 +625,7 @@ export default function Dashboard() {
                 <AccordionItem
                   key={item.title}
                   value={`item-${index}`}
-                  className="overflow-hidden rounded-2xl border border-sky-200/70 bg-white/90 shadow-[0_10px_30px_-20px_rgba(2,132,199,0.65)] backdrop-blur-sm transition-colors data-[state=open]:border-sky-400/80 data-[state=open]:bg-white"
+                  className="overflow-hidden rounded-2xl border border-sky-200/70 bg-white/90 shadow-[0_10px_30px_-20px_rgba(2,132,199,0.65)] backdrop-blur-sm transition-colors data-[state=open]:bg-white"
                 >
                   <AccordionTrigger className="px-4 py-4 text-md text-foreground hover:no-underline sm:px-5 [&>svg]:text-sky-700/70">
                     <span className="flex items-center gap-3 sm:gap-4">
@@ -652,7 +652,7 @@ export default function Dashboard() {
                         }
                         router.push(item.href);
                       }}
-                      className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-sky-200/80 bg-gradient-to-r from-sky-50 to-white px-4 py-3 text-left transition-all hover:border-sky-300 hover:from-sky-100 hover:to-cyan-50"
+                      className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-sky-50 to-white px-4 py-3 text-left transition-all hover:border-sky-300 hover:from-sky-100 hover:to-cyan-50"
                     >
                       <div className="space-y-2">
                         <p className="text-sm leading-relaxed text-slate-700 sm:text-[15px]">
