@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  ChangeEvent,
   FormEvent,
   KeyboardEvent,
   useCallback,
@@ -16,6 +17,7 @@ import {
   Loader2,
   Menu,
   MessageCircle,
+  MoreHorizontal,
   Paperclip,
   PencilLine,
   Plus,
@@ -29,6 +31,12 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ChatRole = "user" | "assistant";
 
@@ -42,6 +50,29 @@ interface ChatSession {
   title: string;
   messages: ChatMessage[];
   updatedAt: number;
+  pinned?: boolean;
+}
+
+interface ResumeParseResponse {
+  data?: {
+    contact?: {
+      firstName?: string;
+      lastName?: string;
+      desiredJobTitle?: string;
+      email?: string;
+    };
+    summary?: string;
+    experiences?: Array<{
+      jobTitle?: string;
+      employer?: string;
+      description?: string;
+    }>;
+    skills?: Array<{
+      name?: string;
+      level?: string;
+    }>;
+  };
+  error?: string;
 }
 
 const LEGACY_CHAT_STORAGE_KEY = "crafty-chat-session-v1";
@@ -64,6 +95,7 @@ function createEmptySession(): ChatSession {
     title: "New Chat",
     messages: [],
     updatedAt: Date.now(),
+    pinned: false,
   };
 }
 
@@ -82,6 +114,33 @@ function getSessionTitle(messages: ChatMessage[]) {
 
   const trimmed = firstUserMessage.text.trim();
   return trimmed.length > 48 ? `${trimmed.slice(0, 48)}...` : trimmed;
+}
+
+function buildResumeAttachmentContext(parsed: NonNullable<ResumeParseResponse["data"]>): string {
+  const fullName = `${parsed.contact?.firstName ?? ""} ${parsed.contact?.lastName ?? ""}`.trim();
+  const desiredTitle = parsed.contact?.desiredJobTitle?.trim() ?? "";
+  const summary = parsed.summary?.trim() ?? "";
+  const skills = (parsed.skills ?? [])
+    .map((skill) => skill.name?.trim())
+    .filter((skill): skill is string => Boolean(skill))
+    .slice(0, 20);
+  const experiences = (parsed.experiences ?? [])
+    .map((experience) =>
+      [experience.jobTitle?.trim(), experience.employer?.trim(), experience.description?.trim()]
+        .filter(Boolean)
+        .join(" | "),
+    )
+    .filter((item) => item.length > 0)
+    .slice(0, 8);
+
+  const sections: string[] = [];
+  if (fullName) sections.push(`Name: ${fullName}`);
+  if (desiredTitle) sections.push(`Target role: ${desiredTitle}`);
+  if (summary) sections.push(`Summary: ${summary}`);
+  if (skills.length > 0) sections.push(`Skills: ${skills.join(", ")}`);
+  if (experiences.length > 0) sections.push(`Experience:\n- ${experiences.join("\n- ")}`);
+
+  return sections.join("\n\n").slice(0, 6000);
 }
 
 function readStoredChatState(): { sessions: ChatSession[]; activeSessionId: string } {
@@ -107,6 +166,7 @@ function readStoredChatState(): { sessions: ChatSession[]; activeSessionId: stri
               title: session?.title?.trim() || getSessionTitle(messages),
               messages,
               updatedAt: typeof session?.updatedAt === "number" ? session.updatedAt : Date.now(),
+              pinned: Boolean(session?.pinned),
             };
           })
           .filter((session) => session.id);
@@ -161,12 +221,23 @@ export default function ChatPage() {
   const [isBackreading, setIsBackreading] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [chatSearch, setChatSearch] = useState("");
+  const [attachedResumeName, setAttachedResumeName] = useState<string | null>(null);
+  const [attachedResumeContext, setAttachedResumeContext] = useState<string | null>(null);
+  const [isParsingAttachment, setIsParsingAttachment] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sortedSessions = useMemo(
-    () => [...chatSessions].sort((a, b) => b.updatedAt - a.updatedAt),
+    () =>
+      [...chatSessions].sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+          return a.pinned ? -1 : 1;
+        }
+        return b.updatedAt - a.updatedAt;
+      }),
     [chatSessions],
   );
   const filteredSessions = useMemo(() => {
@@ -217,6 +288,55 @@ export default function ChatPage() {
     setIsBackreading(false);
     setMobileSidebarOpen(false);
   }, []);
+
+  const renameSession = useCallback((sessionId: string) => {
+    const target = chatSessions.find((session) => session.id === sessionId);
+    if (!target) return;
+    const nextTitle = window.prompt("Rename chat", target.title);
+    if (nextTitle === null) return;
+    const normalized = nextTitle.trim() || "New Chat";
+
+    setChatSessions((prev) =>
+      prev.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              title: normalized,
+              updatedAt: Date.now(),
+            }
+          : session,
+      ),
+    );
+  }, [chatSessions]);
+
+  const togglePinSession = useCallback((sessionId: string) => {
+    setChatSessions((prev) =>
+      prev.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              pinned: !session.pinned,
+              updatedAt: Date.now(),
+            }
+          : session,
+      ),
+    );
+  }, []);
+
+  const deleteSession = useCallback((sessionId: string) => {
+    setChatSessions((prev) => {
+      const next = prev.filter((session) => session.id !== sessionId);
+      if (next.length === 0) {
+        const fallback = createEmptySession();
+        setActiveSessionId(fallback.id);
+        return [fallback];
+      }
+      if (activeSessionId === sessionId) {
+        setActiveSessionId(next[0].id);
+      }
+      return next;
+    });
+  }, [activeSessionId]);
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
     const container = messagesContainerRef.current;
@@ -285,7 +405,7 @@ export default function ChatPage() {
 
   async function sendMessage() {
     const trimmed = inputValue.trim();
-    if (!trimmed || isStreaming) return;
+    if ((!trimmed && !attachedResumeContext) || isStreaming || isParsingAttachment) return;
 
     const nextMessages = [...messages, { role: "user", text: trimmed }, { role: "assistant", text: "" }] as ChatMessage[];
 
@@ -304,8 +424,17 @@ export default function ChatPage() {
       const response = await fetch("/api/chatbot/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, history }),
+        body: JSON.stringify({
+          message: trimmed || "Please review my attached resume and help improve it.",
+          history,
+          resumeContext: attachedResumeContext ?? undefined,
+          resumeFileName: attachedResumeName ?? undefined,
+        }),
       });
+
+      setAttachedResumeName(null);
+      setAttachedResumeContext(null);
+      setAttachmentError(null);
 
       if (!response.body) {
         throw new Error("Streaming response is unavailable.");
@@ -407,6 +536,60 @@ export default function ChatPage() {
     }
   }
 
+  function openFilePicker() {
+    if (isParsingAttachment || isStreaming) return;
+    fileInputRef.current?.click();
+  }
+
+  async function handleAttachResume(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isSupported = fileName.endsWith(".pdf") || fileName.endsWith(".docx");
+    if (!isSupported) {
+      setAttachmentError("Only PDF and DOCX files are supported.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAttachmentError("File size exceeds 10MB limit.");
+      return;
+    }
+
+    setIsParsingAttachment(true);
+    setAttachmentError(null);
+    setAttachedResumeName(null);
+    setAttachedResumeContext(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/resume/parse", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json()) as ResumeParseResponse;
+      if (!response.ok || !payload.data) {
+        throw new Error(payload.error || "Failed to parse file.");
+      }
+
+      const context = buildResumeAttachmentContext(payload.data);
+      if (!context.trim()) {
+        throw new Error("Could not extract meaningful resume content from this file.");
+      }
+
+      setAttachedResumeName(file.name);
+      setAttachedResumeContext(context);
+    } catch (error) {
+      setAttachmentError(error instanceof Error ? error.message : "Failed to process attachment.");
+    } finally {
+      setIsParsingAttachment(false);
+    }
+  }
+
   if (isCheckingAccess) {
     return (
       <main className="mx-auto flex min-h-[100svh] max-w-4xl items-center justify-center px-4 py-10">
@@ -435,7 +618,7 @@ export default function ChatPage() {
   const renderSidebarContent = (mobile = false) => (
     <div className="flex h-full flex-col bg-sidebar">
       <div className="flex h-16 items-center justify-between border-b border-border px-4">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/chat" className="flex items-center gap-2">
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <MessageCircle className="h-4 w-4" />
           </div>
@@ -485,24 +668,50 @@ export default function ChatPage() {
             const isActive = chatSession.id === activeSessionId;
 
             return (
-              <button
+              <div
                 key={chatSession.id}
-                type="button"
-                onClick={() => selectSession(chatSession.id)}
                 className={cn(
-                  "w-full rounded-lg px-3 py-2.5 text-left transition-colors",
+                  "group flex items-center gap-1 rounded-lg px-2 py-1 transition-colors",
                   isActive
                     ? "bg-muted/20 text-foreground"
                     : "text-sidebar-foreground hover:bg-muted/10 hover:text-foreground",
                 )}
               >
-                <div className="flex items-start gap-3">
-                  <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{chatSession.title}</p>
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => selectSession(chatSession.id)}
+                  className="min-w-0 flex-1 rounded-md px-1 py-1.5 text-left"
+                >
+                  <p className="truncate text-sm font-medium">{chatSession.title}</p>
+                </button>
+                <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Chat actions"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/20 hover:text-foreground"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={() => renameSession(chatSession.id)}>
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => togglePinSession(chatSession.id)}>
+                        {chatSession.pinned ? "Unpin Chat" : "Pin Chat"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => deleteSession(chatSession.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -526,6 +735,13 @@ export default function ChatPage() {
 
   return (
     <div className="bg-background">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="hidden"
+        onChange={handleAttachResume}
+      />
       {mobileSidebarOpen ? (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -596,9 +812,15 @@ export default function ChatPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
+                          onClick={openFilePicker}
+                          disabled={isParsingAttachment || isStreaming}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/50"
                         >
-                          <Plus className="h-4 w-4" />
+                          {isParsingAttachment ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="h-4 w-4" />
+                          )}
                         </button>
                         <textarea
                           ref={textareaRef}
@@ -615,12 +837,32 @@ export default function ChatPage() {
                           size="icon"
                           className="h-8 w-8 rounded-full"
                           aria-label="Send message"
-                          disabled={isStreaming || !inputValue.trim()}
+                          disabled={isStreaming || isParsingAttachment || (!inputValue.trim() && !attachedResumeContext)}
                         >
                           <SendHorizontal className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
+                    {attachedResumeName ? (
+                      <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground">
+                        <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{attachedResumeName}</span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setAttachedResumeName(null);
+                            setAttachedResumeContext(null);
+                            setAttachmentError(null);
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : null}
+                    {attachmentError ? (
+                      <p className="mt-2 text-xs text-destructive">{attachmentError}</p>
+                    ) : null}
 
                     <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                       <button
@@ -720,9 +962,35 @@ export default function ChatPage() {
 
               <div className="mt-2 flex items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground">
-                    <Paperclip className="h-3.5 w-3.5" />
+                  <button
+                    type="button"
+                    onClick={openFilePicker}
+                    disabled={isParsingAttachment || isStreaming}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground"
+                  >
+                    {isParsingAttachment ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Paperclip className="h-3.5 w-3.5" />
+                    )}
                   </button>
+                  {attachedResumeName ? (
+                    <span className="inline-flex max-w-[200px] items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
+                      <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{attachedResumeName}</span>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setAttachedResumeName(null);
+                          setAttachedResumeContext(null);
+                          setAttachmentError(null);
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setInputValue("Improve my resume content for stronger impact and ATS compatibility.")}
@@ -762,11 +1030,14 @@ export default function ChatPage() {
                   size="icon"
                   className="h-9 w-9 rounded-lg"
                   aria-label="Send message"
-                  disabled={isStreaming || !inputValue.trim()}
+                  disabled={isStreaming || isParsingAttachment || (!inputValue.trim() && !attachedResumeContext)}
                 >
                   <SendHorizontal className="h-4 w-4" />
                 </Button>
               </div>
+              {attachmentError ? (
+                <p className="mt-2 text-xs text-destructive">{attachmentError}</p>
+              ) : null}
             </div>
           </form>
         ) : null}
