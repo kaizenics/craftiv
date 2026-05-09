@@ -12,6 +12,11 @@ import {
   CHATBOT_SYSTEM_PROMPT,
   isProgrammingRelated,
 } from "@/lib/chatbot-policy";
+import {
+  formatResumeLayoutResponseForChat,
+  generateResumeLayoutResponse,
+  isLikelyResumeLayoutPrompt,
+} from "@/lib/resume-layout-assistant";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -154,6 +159,19 @@ export async function POST(request: NextRequest) {
           if (isProgrammingRelated(message)) {
             send({ type: "delta", token: CHATBOT_NO_CODE_REPLY });
             send({ type: "done", blocked: true });
+            closeSafely();
+            return;
+          }
+
+          if (isLikelyResumeLayoutPrompt(message)) {
+            const { reply } = await generateResumeLayoutResponse({
+              message,
+              history,
+            });
+            const formatted = formatResumeLayoutResponseForChat(reply);
+            send({ type: "start", model: "resume-layout-assistant" });
+            send({ type: "delta", token: formatted });
+            send({ type: "done", blocked: false, model: "resume-layout-assistant" });
             closeSafely();
             return;
           }

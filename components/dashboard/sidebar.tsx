@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ScrollText,
   Mail,
+  MessageCircle,
 } from "@/components/ui/icons";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,11 @@ const sidebarItems: SidebarItem[] = [
     icon: Sparkles,
   },
   {
+    name: "Chat",
+    href: "/chat",
+    icon: MessageCircle,
+  },
+  {
     name: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
@@ -78,7 +84,7 @@ export function DashboardSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: subscription } = trpc.user.subscription.useQuery();
   const subscriptionPlan = subscription?.plan ?? "free";
-  const [lockedFeature, setLockedFeature] = useState<"ATS Checker" | "AI Resume Assistant" | null>(null);
+  const [lockedFeature, setLockedFeature] = useState<"ATS Checker" | "AI Resume Assistant" | "Chat" | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (const item of sidebarItems) {
@@ -210,9 +216,10 @@ export function DashboardSidebar() {
               onClick={() => {
                 const isLockedFeature =
                   item.href === "/dashboard/ats-checker" ||
-                  item.href === "/dashboard/ai-resume";
+                  item.href === "/dashboard/ai-resume" ||
+                  item.href === "/chat";
                 if (isLockedFeature && subscriptionPlan === "free") {
-                  setLockedFeature(item.name as "ATS Checker" | "AI Resume Assistant");
+                  setLockedFeature(item.name as "ATS Checker" | "AI Resume Assistant" | "Chat");
                   return;
                 }
                 router.push(item.href);
@@ -230,6 +237,20 @@ export function DashboardSidebar() {
           );
         })}
       </nav>
+
+      <div className="px-3 pb-2">
+        <Button
+          type="button"
+          onClick={() => {
+            router.push("/chat");
+            if (isMobile) setMobileOpen(false);
+          }}
+          className="w-full justify-start gap-3 rounded-full shadow-sm"
+        >
+          <MessageCircle className="h-5 w-5" />
+          <span>Chat with Crafty</span>
+        </Button>
+      </div>
 
       {/* Footer */}
       <div className="border-t border-border p-3">
