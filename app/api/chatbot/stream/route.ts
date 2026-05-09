@@ -26,6 +26,8 @@ interface ChatMessage {
 interface StreamBody {
   message?: string;
   history?: ChatMessage[];
+  resumeContext?: string;
+  resumeFileName?: string;
 }
 
 interface OpenRouterErrorLike {
@@ -123,6 +125,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as StreamBody;
     const message = body.message?.trim() ?? "";
     const history = (body.history ?? []).slice(-12);
+    const resumeContext = body.resumeContext?.trim() ?? "";
+    const resumeFileName = body.resumeFileName?.trim() ?? "";
 
     if (!message) {
       return new Response(
@@ -184,7 +188,12 @@ export async function POST(request: NextRequest) {
           const messages: ChatCompletionMessageParam[] = [
             { role: "system", content: CHATBOT_SYSTEM_PROMPT },
             ...historyMessages,
-            { role: "user", content: message },
+            {
+              role: "user",
+              content: resumeContext
+                ? `Attached resume${resumeFileName ? ` (${resumeFileName})` : ""}:\n${resumeContext}\n\nUser request:\n${message}`
+                : message,
+            },
           ];
 
           const models = getChatbotModels();
