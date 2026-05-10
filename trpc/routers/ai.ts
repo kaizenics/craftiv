@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { resumes, users } from "@/db/schema";
+import { resumes } from "@/db/schema";
 import {
   callWithFallback,
   extractJsonObject,
@@ -74,20 +74,6 @@ function isIgnoredSpellCheckField(field: string): boolean {
   return ignoredLabels.some((label) => normalized.includes(label));
 }
 
-async function requirePremiumPlan(db: any, userId: string) {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
-
-  const plan = user?.plan ?? "free";
-  if (plan === "free") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "This feature is available on Plus and Pro plans.",
-    });
-  }
-}
-
 // ── Input schemas ───────────────────────────────────────────────────────────
 
 const improveSectionInput = z.object({
@@ -150,7 +136,6 @@ export const aiRouter = createTRPCRouter({
   improveSection: protectedProcedure
     .input(improveSectionInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
 
       const prompt = buildImproveSectionPrompt(input.section, input.content, input.targetRole);
@@ -170,7 +155,6 @@ export const aiRouter = createTRPCRouter({
   improveFullResume: protectedProcedure
     .input(improveFullResumeInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume);
 
@@ -200,7 +184,6 @@ export const aiRouter = createTRPCRouter({
   spellCheck: protectedProcedure
     .input(spellCheckInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume);
 
@@ -249,7 +232,6 @@ export const aiRouter = createTRPCRouter({
   generateSuggestion: protectedProcedure
     .input(generateSuggestionInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const d = resume.data as any;
       const jobTitle = d?.contact?.desiredJobTitle || "";
@@ -271,7 +253,6 @@ export const aiRouter = createTRPCRouter({
   keywordBooster: protectedProcedure
     .input(keywordBoosterInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume);
 
@@ -310,7 +291,6 @@ export const aiRouter = createTRPCRouter({
   achievementBuilder: protectedProcedure
     .input(achievementBuilderInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume) as any;
 
@@ -345,8 +325,7 @@ export const aiRouter = createTRPCRouter({
 
   chatbotReply: protectedProcedure
     .input(chatbotReplyInput)
-    .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
+    .mutation(async ({ input }) => {
 
       if (isProgrammingRelated(input.message)) {
         return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
@@ -379,7 +358,6 @@ export const aiRouter = createTRPCRouter({
   coverLetter: protectedProcedure
     .input(coverLetterInput)
     .mutation(async ({ ctx, input }) => {
-      await requirePremiumPlan(ctx.db, ctx.user.id);
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume);
 

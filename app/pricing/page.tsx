@@ -4,7 +4,7 @@ import { PricingClient } from "./pricing-client";
 export const metadata = createPageMetadata({
   title: "Pricing",
   description:
-    "Compare Craftiv pricing plans for resume templates, AI resume tools, ATS checking, and cover letter generation.",
+    "Compare Craftiv credit packs for resume optimization, ATS matching, AI bullet rewrites, and cover letter support.",
   path: "/pricing",
 });
 
@@ -17,22 +17,22 @@ const pricingJsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free",
-      price: "0",
+      name: "Active",
+      price: "1.95",
       priceCurrency: "USD",
       availability: "https://schema.org/InStock",
     },
     {
       "@type": "Offer",
       name: "Plus",
-      price: "2",
+      price: "3.95",
       priceCurrency: "USD",
       availability: "https://schema.org/InStock",
     },
     {
       "@type": "Offer",
       name: "Pro",
-      price: "5",
+      price: "7.20",
       priceCurrency: "USD",
       availability: "https://schema.org/InStock",
     },

@@ -1,7 +1,7 @@
 CREATE TABLE `processed_transactions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
-	`provider` text DEFAULT 'paddle' NOT NULL,
+	`provider` text DEFAULT 'internal' NOT NULL,
 	`transaction_id` text NOT NULL,
 	`plan` text NOT NULL,
 	`status` text DEFAULT 'completed' NOT NULL,

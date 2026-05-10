@@ -29,7 +29,6 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -204,15 +203,8 @@ export default function ChatPage() {
   const initialState = useMemo(() => readStoredChatState(), []);
   const sessionQuery = authClient.useSession();
   const session = sessionQuery.data;
-  const { data: subscription, isLoading: isSubscriptionLoading, isPending: isSubscriptionPending } =
-    trpc.user.subscription.useQuery(undefined, {
-      enabled: !!session?.user,
-    });
   const isSessionLoading = typeof session === "undefined";
-  const isCheckingAccess =
-    isSessionLoading || (!!session?.user && (isSubscriptionLoading || isSubscriptionPending));
-  const currentPlan = session?.user ? (subscription?.plan ?? "free") : "free";
-  const canAccessChatbot = currentPlan === "plus" || currentPlan === "pro";
+  const isCheckingAccess = isSessionLoading;
 
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialState.sessions);
   const [activeSessionId, setActiveSessionId] = useState(initialState.activeSessionId);
@@ -596,20 +588,6 @@ export default function ChatPage() {
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Checking your access...</span>
-        </div>
-      </main>
-    );
-  }
-
-  if (!canAccessChatbot) {
-    return (
-      <main className="mx-auto flex min-h-[100svh] max-w-4xl items-center justify-center px-4 py-10">
-        <div className="w-full rounded-2xl border border-border bg-card p-7 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">Chat</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Chat is available on Plus and Pro plans.</p>
-          <Button asChild className="mt-5">
-            <Link href="/pricing">Upgrade to unlock Chat</Link>
-          </Button>
         </div>
       </main>
     );

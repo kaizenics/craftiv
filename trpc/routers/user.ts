@@ -12,71 +12,26 @@ import {
   sessions,
   resumes,
   coverLetters,
-  processedTransactions,
 } from "@/db/schema";
+import {
+  createLemonSqueezyCheckout,
+  type CheckoutPlan,
+  validateLemonSqueezyConfig,
+} from "@/lib/lemon-squeezy";
 
 function getEffectivePlan(user: {
-  plan: "free" | "plus" | "pro" | null;
+  plan: "free" | "active" | "plus" | "pro" | null;
   isPaid: boolean | null;
 }) {
   if (!user.isPaid) return "free" as const;
   return user.plan ?? "free";
 }
 
-function findValueDeep(
-  value: unknown,
-  predicate: (key: string, val: unknown) => boolean
-): boolean {
-  if (Array.isArray(value)) {
-    return value.some((entry) => findValueDeep(entry, predicate));
-  }
-  if (value && typeof value === "object") {
-    return Object.entries(value as Record<string, unknown>).some(
-      ([key, val]) => predicate(key, val) || findValueDeep(val, predicate)
-    );
-  }
-  return false;
-}
-
-function extractPaddleTransaction(data: unknown): Record<string, unknown> {
-  if (!data || typeof data !== "object") return {};
-  const root = data as Record<string, unknown>;
-  if (root.data && typeof root.data === "object") return root.data as Record<string, unknown>;
-  return root;
-}
-
-function collectPriceIds(value: unknown): string[] {
-  const found = new Set<string>();
-  const visit = (node: unknown) => {
-    if (Array.isArray(node)) {
-      for (const item of node) visit(item);
-      return;
-    }
-    if (!node || typeof node !== "object") return;
-    for (const [key, nested] of Object.entries(node as Record<string, unknown>)) {
-      if (typeof nested === "string") {
-        const normalizedKey = key.toLowerCase();
-        if (
-          nested.startsWith("pri_") &&
-          (normalizedKey === "price_id" ||
-            normalizedKey === "priceid" ||
-            normalizedKey === "id")
-        ) {
-          found.add(nested);
-        }
-      } else {
-        visit(nested);
-      }
-    }
-  };
-  visit(value);
-  return [...found];
-}
-
-function isTransactionUniqueConstraintError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const message = "message" in error ? String((error as { message?: unknown }).message) : "";
-  return message.includes("processed_transactions.transaction_id");
+function getPlanLimit(plan: "free" | "active" | "plus" | "pro") {
+  if (plan === "free") return 1;
+  if (plan === "active") return 2;
+  if (plan === "plus") return 6;
+  return 12;
 }
 
 /**
@@ -140,6 +95,7 @@ export const userRouter = createTRPCRouter({
         id: true,
         plan: true,
         isPaid: true,
+        creditBalance: true,
         resumeCreatedCount: true,
         coverLetterCreatedCount: true,
       },
@@ -154,14 +110,16 @@ export const userRouter = createTRPCRouter({
     }
 
     const plan = getEffectivePlan(user);
+    const creditBalance = user.creditBalance ?? 0;
     const resumeCreated = user.resumeCreatedCount ?? 0;
     const coverLetterCreated = user.coverLetterCreatedCount ?? 0;
-    const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
+    const limit = getPlanLimit(plan);
 
     return {
       plan,
       isPaid: !!user.isPaid,
       status: user.isPaid ? "active" : "inactive",
+      creditBalance,
       resumeCreatedCount: resumeCreated,
       resumeCreationLimit: limit,
       coverLetterCreatedCount: coverLetterCreated,
@@ -169,179 +127,49 @@ export const userRouter = createTRPCRouter({
     };
   }),
 
-  confirmCheckout: protectedProcedure
+  createCheckout: protectedProcedure
     .input(
       z.object({
-        plan: z.enum(["plus", "pro"]),
-        transactionId: z.string().min(3),
+        plan: z.enum(["active", "plus", "pro"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const alreadyProcessed = await ctx.db.query.processedTransactions.findFirst({
-        where: eq(processedTransactions.transactionId, input.transactionId),
-      });
-      if (alreadyProcessed) {
-        if (alreadyProcessed.userId !== ctx.user.id) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "This transaction is already linked to another account.",
-          });
-        }
-        return {
-          success: true,
-          plan: alreadyProcessed.plan as "plus" | "pro",
-          alreadyProcessed: true,
-        };
-      }
-
-      const paddleApiKey = process.env.PADDLE_API_KEY;
-      const paddleEnv =
-        (process.env.NEXT_PUBLIC_PADDLE_ENV as "sandbox" | "production" | undefined) ??
-        "sandbox";
-      const expectedPriceId =
-        input.plan === "plus"
-          ? process.env.NEXT_PUBLIC_PADDLE_PRICE_PLUS_USD
-          : process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_USD;
-
-      if (!paddleApiKey) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Missing PADDLE_API_KEY on server.",
-        });
-      }
-
-      if (!expectedPriceId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `Missing Paddle price ID for ${input.plan}.`,
-        });
-      }
-
-      const baseUrl =
-        paddleEnv === "production"
-          ? "https://api.paddle.com"
-          : "https://sandbox-api.paddle.com";
-
-      const fetchPaddleTransaction = async () => {
-        let lastStatus = 0;
-        for (let attempt = 0; attempt < 3; attempt += 1) {
-          const response = await fetch(`${baseUrl}/transactions/${input.transactionId}`, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${paddleApiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
-          lastStatus = response.status;
-          if (response.ok) {
-            return (await response.json()) as unknown;
-          }
-          // Paddle can be eventually consistent right after checkout.complete
-          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-        }
+      if (!ctx.user.email) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Unable to verify Paddle transaction (status ${lastStatus}).`,
-        });
-      };
-
-      const payload = await fetchPaddleTransaction();
-      const tx = extractPaddleTransaction(payload);
-
-      const statusMatches = findValueDeep(tx, (key, val) => {
-        if (typeof val !== "string") return false;
-        const normalizedKey = key.toLowerCase();
-        const normalizedVal = val.toLowerCase();
-        if (normalizedKey !== "status" && normalizedKey !== "transaction_status") return false;
-        return (
-          normalizedVal.includes("complete") ||
-          normalizedVal.includes("paid") ||
-          normalizedVal.includes("billed")
-        );
-      });
-
-      const priceIds = collectPriceIds(tx);
-      const priceMatches = priceIds.includes(expectedPriceId);
-
-      if (!statusMatches || !priceMatches) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Paddle transaction did not match the selected plan. expected=${expectedPriceId} found=${priceIds.join(",") || "none"}`,
+          message: "User email is required to start checkout",
         });
       }
 
-      const applyPlanUpgrade = async () => {
-        return ctx.db.transaction(async (tx) => {
-          const existing = await tx.query.processedTransactions.findFirst({
-            where: eq(processedTransactions.transactionId, input.transactionId),
-          });
+      const origin =
+        process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+        process.env.BETTER_AUTH_URL?.trim() ||
+        "http://localhost:3000";
 
-          if (existing) {
-            if (existing.userId !== ctx.user.id) {
-              throw new TRPCError({
-                code: "FORBIDDEN",
-                message: "This transaction is already linked to another account.",
-              });
-            }
-            return {
-              success: true,
-              plan: existing.plan as "plus" | "pro",
-              alreadyProcessed: true,
-            };
-          }
-
-          await tx.insert(processedTransactions).values({
-            id: crypto.randomUUID(),
-            userId: ctx.user.id,
-            provider: "paddle",
-            transactionId: input.transactionId,
-            plan: input.plan,
-            status: "completed",
-          });
-
-          await tx
-            .update(users)
-            .set({
-              plan: input.plan,
-              isPaid: true,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, ctx.user.id));
-
-          return {
-            success: true,
-            plan: input.plan as "plus" | "pro",
-            alreadyProcessed: false,
-          };
-        });
-      };
+      const successUrl =
+        process.env.LEMON_SQUEEZY_SUCCESS_URL?.trim() ||
+        `${origin.replace(/\/$/, "")}/dashboard/settings`;
 
       try {
-        return await applyPlanUpgrade();
-      } catch (error) {
-        if (!isTransactionUniqueConstraintError(error)) {
-          throw error;
-        }
-
-        const existing = await ctx.db.query.processedTransactions.findFirst({
-          where: eq(processedTransactions.transactionId, input.transactionId),
+        validateLemonSqueezyConfig();
+        const checkoutUrl = await createLemonSqueezyCheckout({
+          userId: ctx.user.id,
+          userEmail: ctx.user.email,
+          plan: input.plan as CheckoutPlan,
+          successUrl,
         });
 
-        if (!existing) {
-          throw error;
-        }
-        if (existing.userId !== ctx.user.id) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "This transaction is already linked to another account.",
-          });
-        }
-
-        return {
-          success: true,
-          plan: existing.plan as "plus" | "pro",
-          alreadyProcessed: true,
-        };
+        return { checkoutUrl };
+      } catch (error) {
+        console.error("Failed to create Lemon Squeezy checkout:", error);
+        const details =
+          error instanceof Error
+            ? error.message
+            : "Unknown checkout error";
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Unable to start checkout right now. ${details}`,
+        });
       }
     }),
 

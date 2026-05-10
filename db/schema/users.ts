@@ -10,7 +10,7 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  plan: text("plan", { enum: ["free", "plus", "pro"] })
+  plan: text("plan", { enum: ["free", "active", "plus", "pro"] })
     .notNull()
     .default("free"),
   isPaid: integer("is_paid", { mode: "boolean" })
@@ -22,6 +22,9 @@ export const users = sqliteTable("users", {
   coverLetterCreatedCount: integer("cover_letter_created_count")
     .notNull()
     .default(0),
+  creditBalance: integer("credit_balance")
+    .notNull()
+    .default(1),
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),

@@ -17,7 +17,7 @@ const faqs = [
   {
     question: "Is Craftiv free to use?",
     answer:
-      "We offer a free plan that lets you create and download one resume. Premium plans unlock unlimited resumes, additional templates, and advanced features like AI optimization and cover letter generation.",
+      "Yes. You can start with a free credit, then buy one-time credit packs when you need more optimizations. There is no monthly subscription and credits do not expire.",
   },
   {
     question: "Are the resumes ATS-friendly?",

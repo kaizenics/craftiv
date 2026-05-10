@@ -10,7 +10,6 @@ import {
   FileText,
   ScanSearch,
   Sparkles,
-  CheckCircle2,
   Settings,
   Menu,
   X,
@@ -21,18 +20,6 @@ import {
 import { MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { PremiumUpgradeVisual } from "@/components/dashboard/premium-upgrade-visual";
-import { trpc } from "@/trpc/client";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface SidebarItem {
   name: string;
@@ -77,9 +64,6 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { data: subscription } = trpc.user.subscription.useQuery();
-  const subscriptionPlan = subscription?.plan ?? "free";
-  const [lockedFeature, setLockedFeature] = useState<"ATS Checker" | "AI Resume Assistant" | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (const item of sidebarItems) {
@@ -209,13 +193,6 @@ export function DashboardSidebar() {
               key={item.name}
               type="button"
               onClick={() => {
-                const isLockedFeature =
-                  item.href === "/dashboard/ats-checker" ||
-                  item.href === "/dashboard/ai-resume";
-                if (isLockedFeature && subscriptionPlan === "free") {
-                  setLockedFeature(item.name as "ATS Checker" | "AI Resume Assistant");
-                  return;
-                }
                 router.push(item.href);
               }}
               className={cn(
@@ -297,44 +274,6 @@ export function DashboardSidebar() {
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-border bg-sidebar lg:block">
         <SidebarContent />
       </aside>
-
-      <AlertDialog open={lockedFeature !== null} onOpenChange={(open) => !open && setLockedFeature(null)}>
-        <AlertDialogContent className="max-h-[92vh] w-[calc(100vw-1.25rem)] max-w-xl overflow-y-auto overflow-x-hidden p-0 xl:max-h-[92vh] xl:overflow-y-auto">
-          <PremiumUpgradeVisual />
-          <div className="space-y-2 px-4 pb-3 sm:px-5 sm:pb-4">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="font-display text-[2.1rem] leading-tight text-slate-800 xl:text-3xl">
-                Boost your career
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-sm text-slate-600">
-                <span className="xl:hidden">
-                  {lockedFeature} is premium. Upgrade to Plus or Pro.
-                </span>
-                <span className="hidden xl:inline">
-                  {lockedFeature} is available on Plus and Pro. Upgrade to unlock AI-driven optimization and better application outcomes.
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="hidden text-xs font-semibold uppercase tracking-wide text-slate-700 xl:block">
-                You will get access to
-              </p>
-              <div className="mt-1 grid gap-1.5 text-sm text-slate-700 sm:grid-cols-2">
-                <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />ATS Checker</span>
-                <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />AI Resume Assistant</span>
-                <span className="hidden items-center gap-2 xl:flex"><CheckCircle2 className="h-4 w-4 text-primary" />AI-powered features</span>
-                <span className="hidden items-center gap-2 xl:flex"><CheckCircle2 className="h-4 w-4 text-primary" />Advanced AI optimization</span>
-              </div>
-            </div>
-            <AlertDialogFooter className="gap-2 sm:gap-0">
-              <AlertDialogCancel onClick={() => setLockedFeature(null)}>Maybe later</AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <Link href="/pricing">Upgrade Now</Link>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

@@ -60,7 +60,8 @@ async function assertCanCreateCoverLetter(db: any, userId: string) {
 
   const plan = user.plan ?? "free";
   const createdCount = user.coverLetterCreatedCount ?? 0;
-  const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
+  const limit =
+    plan === "free" ? 1 : plan === "active" ? 2 : plan === "plus" ? 6 : 12;
 
   if (limit !== null && createdCount >= limit) {
     throw new TRPCError({
