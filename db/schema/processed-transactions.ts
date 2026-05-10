@@ -8,7 +8,7 @@ export const processedTransactions = sqliteTable("processed_transactions", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  provider: text("provider").notNull().default("paddle"),
+  provider: text("provider").notNull().default("internal"),
   transactionId: text("transaction_id").notNull().unique(),
   plan: text("plan", { enum: ["plus", "pro"] }).notNull(),
   status: text("status").notNull().default("completed"),

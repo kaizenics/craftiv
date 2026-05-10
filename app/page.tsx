@@ -35,7 +35,7 @@ const faqJsonLd = {
       name: "Is Craftiv free to use?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Craftiv has a free plan for creating and downloading a resume. Premium plans unlock more templates, AI optimization, and cover letter generation.",
+        text: "Craftiv has a free starter credit, and paid features are unlocked through one-time credit packs. Credits never expire and there is no subscription.",
       },
     },
     {
