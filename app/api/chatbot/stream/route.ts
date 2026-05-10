@@ -1,11 +1,8 @@
 import { NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 import { auth } from "@/lib/auth";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 import { AI_MODEL, AI_MODEL_FALLBACK, openrouter } from "@/lib/ai";
 import {
   CHATBOT_NO_CODE_REPLY,
@@ -90,29 +87,6 @@ export async function POST(request: NextRequest) {
         encoder.encode(sseData({ type: "error", error: "Authentication required" })),
         {
           status: 401,
-          headers: {
-            "Content-Type": "text/event-stream; charset=utf-8",
-            "Cache-Control": "no-cache, no-transform",
-            Connection: "keep-alive",
-          },
-        },
-      );
-    }
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-    });
-    const plan = user?.plan ?? "free";
-    if (plan === "free") {
-      return new Response(
-        encoder.encode(
-          sseData({
-            type: "error",
-            error: "This feature is available on Plus and Pro plans.",
-          }),
-        ),
-        {
-          status: 403,
           headers: {
             "Content-Type": "text/event-stream; charset=utf-8",
             "Cache-Control": "no-cache, no-transform",

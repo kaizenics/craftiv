@@ -13,6 +13,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useAuth } from "@/components/auth-provider";
+import { trpc } from "@/trpc/client";
 import {
   ArrowRight,
   Briefcase,
@@ -33,6 +34,8 @@ type HashNavItem = {
   link: string;
   isHash: true;
 };
+
+type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
 type MegaFeature = {
   tab?: "resume" | "coverLetter";
@@ -110,6 +113,20 @@ const templatesMenuData: MegaMenuData = {
     links: coverLetterTemplateLinks,
   },
 };
+
+function getCreditsByPlan(plan: SubscriptionPlan): number {
+  if (plan === "free") return 1;
+  if (plan === "active") return 5;
+  if (plan === "plus") return 12;
+  return 25;
+}
+
+function getPlanLabel(plan: SubscriptionPlan): string {
+  if (plan === "free") return "Free";
+  if (plan === "active") return "Active";
+  if (plan === "plus") return "Plus";
+  return "Pro";
+}
 
 function MegaMenuDropdown({
   itemKey,
@@ -346,9 +363,14 @@ function MegaMenuDropdown({
 
 export function NavbarComponent() {
   const { session } = useAuth();
+  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
+    enabled: !!session,
+  });
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
+  const currentPlan = ((subscription?.plan as SubscriptionPlan | undefined) ?? "free");
+  const credits = getCreditsByPlan(currentPlan);
 
   const handleNavClick = (item: HashNavItem, e?: React.MouseEvent) => {
     if (item.isHash) {
@@ -437,6 +459,13 @@ export function NavbarComponent() {
         
           </div>
           <div className="flex items-center gap-4">
+            {session ? (
+              <div className="hidden rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700 md:inline-flex md:items-center md:gap-2">
+                <span>{getPlanLabel(currentPlan)}</span>
+                <span className="h-1 w-1 rounded-full bg-zinc-300" />
+                <span>{credits} credits</span>
+              </div>
+            ) : null}
             <NavbarButton
               as={Link}
               href="/contact"
@@ -537,6 +566,12 @@ export function NavbarComponent() {
               <span className="block">Pricing</span>
             </Link>
             <div className="flex w-full flex-col gap-4">
+              {session ? (
+                <div className="inline-flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
+                  <span>{getPlanLabel(currentPlan)} plan</span>
+                  <span>{credits} credits</span>
+                </div>
+              ) : null}
               {session ? (
                 <NavbarButton
                   as={Link}

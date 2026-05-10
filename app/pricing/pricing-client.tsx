@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { type ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { NavbarComponent } from "@/components/navbar";
@@ -14,7 +14,7 @@ import {
   Sparkles,
 } from "@/components/ui/icons";
 
-type SubscriptionPlan = "free" | "plus" | "pro";
+type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
 type Plan = {
   name: string;
@@ -22,7 +22,7 @@ type Plan = {
   originalPrice?: number;
   discountLabel?: string;
   creditLabel: string;
-  upgradeKey: string;
+  upgradeKey: "active" | "plus" | "pro";
   subscriptionMatch?: SubscriptionPlan;
   description: string;
   features: string[];
@@ -45,6 +45,8 @@ export function PricingClient() {
   const router = useRouter();
   const { isLoading: isAuthLoading } = useAuth();
   const { data: session } = authClient.useSession();
+  const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
+  const createCheckout = trpc.user.createCheckout.useMutation();
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
   });
@@ -62,6 +64,7 @@ export function PricingClient() {
       price: PRICING.activePrice,
       creditLabel: "5 credits",
       upgradeKey: "active",
+      subscriptionMatch: "active",
       description: "Great for active job seekers.",
       features: [
         "2 fully optimized resumes + 1 leftover Review credit",
@@ -102,13 +105,13 @@ export function PricingClient() {
       creditLabel: "25 credits",
       upgradeKey: "pro",
       subscriptionMatch: "pro",
-      description: "For daily applicants, career switchers, and OFWs.",
+      description: "Designed for high-volume applicants and career switchers.",
       features: [
         "12 fully optimized resumes + 1 leftover Review credit",
         "Job match score before and after with missing keywords",
         "AI-rewritten bullets tailored to the job description",
         "Choose from ATS Optimized Templates",
-        "Best for daily applicants, career switchers, and OFWs",
+        "Best for frequent applicants and career switchers",
         "No subscription, credits never expire",
       ],
       cta: "Get Pro",
@@ -118,14 +121,25 @@ export function PricingClient() {
     },
   ];
 
-  const startPlanUpgrade = (plan: Plan) => {
-    if (plan.name === "Free") return;
+  const startPlanUpgrade = async (plan: Plan) => {
     if (isAuthLoading) return;
     if (!session?.user) {
       router.push(`/sign-in?redirect=${encodeURIComponent("/pricing")}`);
       return;
     }
-    router.push(`/dashboard/settings?upgrade=${encodeURIComponent(plan.upgradeKey)}`);
+
+    try {
+      setActiveCheckoutPlan(plan.upgradeKey);
+      const { checkoutUrl } = await createCheckout.mutateAsync({
+        plan: plan.upgradeKey,
+      });
+      window.location.assign(checkoutUrl);
+    } catch (error) {
+      console.error("Failed to open Lemon Squeezy checkout:", error);
+      alert("Unable to start checkout right now. Please try again.");
+    } finally {
+      setActiveCheckoutPlan(null);
+    }
   };
 
   return (
@@ -263,8 +277,8 @@ export function PricingClient() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => startPlanUpgrade(plan)}
-                    disabled={isAuthLoading}
+                    onClick={() => void startPlanUpgrade(plan)}
+                    disabled={isAuthLoading || activeCheckoutPlan === plan.upgradeKey || createCheckout.isPending}
                     className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
                       plan.featured
                         ? "bg-white text-zinc-900 hover:bg-zinc-100"
@@ -275,6 +289,8 @@ export function PricingClient() {
                       ? "Checking account..."
                       : !session?.user
                         ? `Sign in for ${plan.name}`
+                        : activeCheckoutPlan === plan.upgradeKey
+                          ? "Opening checkout..."
                         : plan.cta}
                     <ArrowRight className="h-4 w-4" />
                   </button>
@@ -296,7 +312,7 @@ export function PricingClient() {
             <div>
               <p className="font-semibold text-zinc-900">What payment provider do you use?</p>
               <p className="mt-1 text-zinc-600">
-                We provide secure checkout for all credit pack purchases.
+                We use Lemon Squeezy for secure checkout and payment processing.
               </p>
             </div>
             <div>

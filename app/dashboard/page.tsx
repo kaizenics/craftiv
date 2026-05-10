@@ -11,7 +11,6 @@ import {
   FileText,
   MoreVertical,
   ScanSearch,
-  CheckCircle2,
   Sparkles,
   SpellCheck,
   Trash2,
@@ -24,7 +23,6 @@ import { CoverLetterDownloadDialog } from "@/components/dashboard/cover-letter-d
 import { DownloadDialog } from "@/components/resume/download-dialog";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { TipsCard } from "@/components/dashboard/tips-card";
-import { PremiumUpgradeVisual } from "@/components/dashboard/premium-upgrade-visual";
 import {
   Accordion,
   AccordionContent,
@@ -500,9 +498,6 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
 export default function Dashboard() {
   const router = useRouter();
   const [recentDocumentsTab, setRecentDocumentsTab] = useState<"resume" | "cover-letter">("resume");
-  const [lockedFeature, setLockedFeature] = useState<"ATS Checker" | "AI Resume Assistant" | null>(null);
-  const { data: subscription } = trpc.user.subscription.useQuery();
-  const subscriptionPlan = subscription?.plan ?? "free";
 
   // Replace mock data with real tRPC query
   const { data: resumes = [], isLoading } = trpc.resume.listSummary.useQuery();
@@ -556,17 +551,6 @@ export default function Dashboard() {
     },
   ];
 
-  const handlePremiumNavigation = (
-    href: string,
-    featureName: "ATS Checker" | "AI Resume Assistant"
-  ) => {
-    if (subscriptionPlan === "free") {
-      setLockedFeature(featureName);
-      return;
-    }
-    router.push(href);
-  };
-  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -647,7 +631,7 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => {
                         if (item.premiumFeature) {
-                          handlePremiumNavigation(item.href, item.premiumFeature);
+                          router.push(item.href);
                           return;
                         }
                         router.push(item.href);
@@ -793,9 +777,7 @@ export default function Dashboard() {
                       <div className="flex items-center">
                         <button
                           type="button"
-                          onClick={() =>
-                            handlePremiumNavigation("/dashboard/ats-checker", "ATS Checker")
-                          }
+                          onClick={() => router.push("/dashboard/ats-checker")}
                           className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                         >
                           <ScanSearch className="h-4 w-4" />
@@ -806,12 +788,7 @@ export default function Dashboard() {
                       <div className="flex items-center">
                         <button
                           type="button"
-                          onClick={() =>
-                            handlePremiumNavigation(
-                              "/dashboard/ai-resume",
-                              "AI Resume Assistant"
-                            )
-                          }
+                          onClick={() => router.push("/dashboard/ai-resume")}
                           className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                         >
                           <SpellCheck className="h-4 w-4" />
@@ -961,41 +938,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
-    <AlertDialog open={lockedFeature !== null} onOpenChange={(open) => !open && setLockedFeature(null)}>
-      <AlertDialogContent className="max-h-[92vh] w-[calc(100vw-1.25rem)] max-w-xl overflow-y-auto overflow-x-hidden p-0 xl:max-h-[92vh] xl:overflow-y-auto">
-        <PremiumUpgradeVisual />
-        <div className="space-y-2 px-4 pb-3 sm:px-5 sm:pb-4">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-[2.1rem] leading-tight text-slate-800 xl:text-3xl">
-              Boost your career
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-slate-600">
-              <span className="xl:hidden">
-                {lockedFeature} is premium. Upgrade to Plus or Pro.
-              </span>
-              <span className="hidden xl:inline">
-                {lockedFeature} is available on Plus and Pro. Upgrade to unlock AI-driven optimization and better application outcomes.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="rounded-xl bg-slate-50 p-3">
-            <p className="hidden text-xs font-semibold uppercase tracking-wide text-slate-700 xl:block">
-              You will get access to
-            </p>
-            <div className="mt-1 grid gap-1.5 text-sm text-slate-700 sm:grid-cols-2">
-              <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />ATS Checker</span>
-              <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />AI Resume Assistant</span>
-              <span className="hidden items-center gap-2 xl:flex"><CheckCircle2 className="h-4 w-4 text-primary" />AI-powered features</span>
-              <span className="hidden items-center gap-2 xl:flex"><CheckCircle2 className="h-4 w-4 text-primary" />Advanced AI optimization</span>
-            </div>
-          </div>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel onClick={() => setLockedFeature(null)}>Maybe later</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.push("/pricing")}>Upgrade Now</AlertDialogAction>
-          </AlertDialogFooter>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
     </TooltipProvider>
   );
 }

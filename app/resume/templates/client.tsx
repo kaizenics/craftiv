@@ -15,12 +15,13 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type SubscriptionPlan = "free" | "plus" | "pro";
+type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
 function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
   if (plan === "free") return 1;
-  if (plan === "plus") return 20;
-  return null;
+  if (plan === "active") return 2;
+  if (plan === "plus") return 6;
+  return 12;
 }
 
 // Template categories with their icons (shortLabel used on narrow mobile chips)

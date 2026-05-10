@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import {
   createTRPCRouter,
@@ -12,13 +13,21 @@ import {
   resumes,
   coverLetters,
 } from "@/db/schema";
+import { createLemonSqueezyCheckout, type CheckoutPlan } from "@/lib/lemon-squeezy";
 
 function getEffectivePlan(user: {
-  plan: "free" | "plus" | "pro" | null;
+  plan: "free" | "active" | "plus" | "pro" | null;
   isPaid: boolean | null;
 }) {
   if (!user.isPaid) return "free" as const;
   return user.plan ?? "free";
+}
+
+function getPlanLimit(plan: "free" | "active" | "plus" | "pro") {
+  if (plan === "free") return 1;
+  if (plan === "active") return 2;
+  if (plan === "plus") return 6;
+  return 12;
 }
 
 /**
@@ -82,6 +91,7 @@ export const userRouter = createTRPCRouter({
         id: true,
         plan: true,
         isPaid: true,
+        creditBalance: true,
         resumeCreatedCount: true,
         coverLetterCreatedCount: true,
       },
@@ -96,20 +106,63 @@ export const userRouter = createTRPCRouter({
     }
 
     const plan = getEffectivePlan(user);
+    const creditBalance = user.creditBalance ?? 0;
     const resumeCreated = user.resumeCreatedCount ?? 0;
     const coverLetterCreated = user.coverLetterCreatedCount ?? 0;
-    const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
+    const limit = getPlanLimit(plan);
 
     return {
       plan,
       isPaid: !!user.isPaid,
       status: user.isPaid ? "active" : "inactive",
+      creditBalance,
       resumeCreatedCount: resumeCreated,
       resumeCreationLimit: limit,
       coverLetterCreatedCount: coverLetterCreated,
       coverLetterCreationLimit: limit,
     };
   }),
+
+  createCheckout: protectedProcedure
+    .input(
+      z.object({
+        plan: z.enum(["active", "plus", "pro"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.email) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User email is required to start checkout",
+        });
+      }
+
+      const origin =
+        process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+        process.env.BETTER_AUTH_URL?.trim() ||
+        "http://localhost:3000";
+
+      const successUrl =
+        process.env.LEMON_SQUEEZY_SUCCESS_URL?.trim() ||
+        `${origin.replace(/\/$/, "")}/dashboard/settings`;
+
+      try {
+        const checkoutUrl = await createLemonSqueezyCheckout({
+          userId: ctx.user.id,
+          userEmail: ctx.user.email,
+          plan: input.plan as CheckoutPlan,
+          successUrl,
+        });
+
+        return { checkoutUrl };
+      } catch (error) {
+        console.error("Failed to create Lemon Squeezy checkout:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Unable to start checkout right now. Please try again.",
+        });
+      }
+    }),
 
   cancelPlan: protectedProcedure.mutation(async ({ ctx }) => {
     await ctx.db
