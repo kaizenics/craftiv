@@ -15,6 +15,14 @@ const REQUIRED_ENV = {
   proVariantId: "LEMON_SQUEEZY_VARIANT_ID_PRO",
 } as const;
 
+export function validateLemonSqueezyConfig(): void {
+  readEnv(REQUIRED_ENV.apiKey);
+  readEnv(REQUIRED_ENV.storeId);
+  parseVariantId(readEnv(REQUIRED_ENV.activeVariantId), REQUIRED_ENV.activeVariantId);
+  parseVariantId(readEnv(REQUIRED_ENV.plusVariantId), REQUIRED_ENV.plusVariantId);
+  parseVariantId(readEnv(REQUIRED_ENV.proVariantId), REQUIRED_ENV.proVariantId);
+}
+
 function readEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -31,27 +39,27 @@ function parseVariantId(value: string, envName: string): number {
   return parsed;
 }
 
+function getVariantEnvNameForPlan(plan: CheckoutPlan): string {
+  if (plan === "active") return REQUIRED_ENV.activeVariantId;
+  if (plan === "plus") return REQUIRED_ENV.plusVariantId;
+  return REQUIRED_ENV.proVariantId;
+}
+
+function getVariantIdForPlanInternal(plan: CheckoutPlan): {
+  id: number;
+  envName: string;
+} {
+  const envName = getVariantEnvNameForPlan(plan);
+  const id = parseVariantId(readEnv(envName), envName);
+  return { id, envName };
+}
+
 export function toInternalPlan(plan: CheckoutPlan): InternalPlan {
   return PLAN_TO_INTERNAL[plan];
 }
 
 export function getVariantIdForPlan(plan: CheckoutPlan): number {
-  if (plan === "active") {
-    return parseVariantId(
-      readEnv(REQUIRED_ENV.activeVariantId),
-      REQUIRED_ENV.activeVariantId
-    );
-  }
-  if (plan === "plus") {
-    return parseVariantId(
-      readEnv(REQUIRED_ENV.plusVariantId),
-      REQUIRED_ENV.plusVariantId
-    );
-  }
-  return parseVariantId(
-    readEnv(REQUIRED_ENV.proVariantId),
-    REQUIRED_ENV.proVariantId
-  );
+  return getVariantIdForPlanInternal(plan).id;
 }
 
 export function getVariantPlanMap(): Map<number, InternalPlan> {
@@ -74,8 +82,30 @@ export async function createLemonSqueezyCheckout(
 ): Promise<string> {
   const apiKey = readEnv(REQUIRED_ENV.apiKey);
   const storeId = readEnv(REQUIRED_ENV.storeId);
-  const variantId = getVariantIdForPlan(input.plan);
+  const { id: variantId, envName: variantEnvName } =
+    getVariantIdForPlanInternal(input.plan);
   const internalPlan = toInternalPlan(input.plan);
+
+  const variantCheck = await fetch(
+    `https://api.lemonsqueezy.com/v1/variants/${variantId}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+    },
+  );
+
+  if (!variantCheck.ok) {
+    const errorText = await variantCheck.text();
+    throw new Error(
+      `Invalid Lemon Squeezy variant for ${input.plan} (${variantEnvName}=${variantId}). ` +
+        `Check that this variant exists and belongs to your current API key/store context. ` +
+        `Variant lookup failed (${variantCheck.status}): ${errorText}`,
+    );
+  }
 
   const payload = {
     data: {
@@ -129,6 +159,12 @@ export async function createLemonSqueezyCheckout(
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 404 && errorText.includes("/data/relationships/variant")) {
+      throw new Error(
+        `Checkout variant relation failed for ${input.plan} (${variantEnvName}=${variantId}). ` +
+          `This usually means the variant ID is wrong or from a different store/mode.`,
+      );
+    }
     throw new Error(
       `Lemon Squeezy checkout creation failed (${response.status}): ${errorText}`
     );

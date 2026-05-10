@@ -13,7 +13,11 @@ import {
   resumes,
   coverLetters,
 } from "@/db/schema";
-import { createLemonSqueezyCheckout, type CheckoutPlan } from "@/lib/lemon-squeezy";
+import {
+  createLemonSqueezyCheckout,
+  type CheckoutPlan,
+  validateLemonSqueezyConfig,
+} from "@/lib/lemon-squeezy";
 
 function getEffectivePlan(user: {
   plan: "free" | "active" | "plus" | "pro" | null;
@@ -147,6 +151,7 @@ export const userRouter = createTRPCRouter({
         `${origin.replace(/\/$/, "")}/dashboard/settings`;
 
       try {
+        validateLemonSqueezyConfig();
         const checkoutUrl = await createLemonSqueezyCheckout({
           userId: ctx.user.id,
           userEmail: ctx.user.email,
@@ -157,9 +162,13 @@ export const userRouter = createTRPCRouter({
         return { checkoutUrl };
       } catch (error) {
         console.error("Failed to create Lemon Squeezy checkout:", error);
+        const details =
+          error instanceof Error
+            ? error.message
+            : "Unknown checkout error";
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Unable to start checkout right now. Please try again.",
+          message: `Unable to start checkout right now. ${details}`,
         });
       }
     }),
