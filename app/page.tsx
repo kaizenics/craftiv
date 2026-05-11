@@ -5,6 +5,7 @@ import { About } from "@/components/about";
 import { FAQ } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Testimonials } from "@/components/testimonials";
+import { CompanyMarquee } from "@/components/company-marquee";
 import {
   organizationJsonLd,
   softwareApplicationJsonLd,
@@ -73,6 +74,7 @@ export default function Home() {
       />
       <NavbarComponent />
       <Hero />
+      <CompanyMarquee />
       <About />
       <Testimonials />
       <FAQ />
