@@ -22,7 +22,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex flex-col justify-center"
+            className="flex flex-col items-center text-center lg:items-start lg:text-left"
           >
             {/* Main Heading */}
             <motion.h1
@@ -32,7 +32,7 @@ export function Hero() {
               className="font-display text-3xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-4xl md:text-5xl lg:text-6xl"
             >
               Professional resumes.{" "}
-              <span className="text-primary dark:text-white">
+              <span className="block text-primary dark:text-white lg:inline">
                 Built to get interviews.
               </span>
             </motion.h1>
@@ -42,7 +42,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mt-4 sm:mt-6 max-w-xl text-base sm:text-md leading-tight text-zinc-600 dark:text-zinc-400"
+              className="mx-auto mt-4 max-w-xl text-base leading-tight text-zinc-600 sm:mt-6 sm:text-md dark:text-zinc-400 lg:mx-0"
             >
               Create standout, ATS-friendly resumes in minutes with tools
               designed to highlight your strengths and help you land more
@@ -54,7 +54,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="mt-8 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4"
+              className="mt-8 flex flex-col flex-wrap items-center gap-3 sm:flex-row sm:items-center sm:gap-4"
             >
               <Link href="/resume/templates">
                 <button className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 sm:px-8 sm:py-3 text-sm sm:text-base font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:bg-primary/90 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100">
@@ -75,13 +75,13 @@ export function Hero() {
               transition={{ delay: 0.6 }}
               className="mt-6 w-full max-w-2xl rounded-2xl border border-indigo-100 bg-gradient-to-r from-[#f2f4ff] via-[#e9edff] to-[#dde4ff] px-6 py-4 shadow-sm dark:border-zinc-800 dark:bg-gradient-to-r dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800"
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-white">
                     <Sparkles className="h-5 w-5 text-zinc-900 dark:text-white" />
                     <span>Let AI do the work!</span>
                   </div>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                  <p className="mt-2 max-w-xl text-left text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                     Describe your role in a few words, and we&apos;ll generate
                     tailored content for your work experience section.
                   </p>
