@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2 } from "@/components/ui/icons";
 import {
@@ -314,14 +315,14 @@ export default function Settings() {
           </div>
         </section>
 
-        <div className="border-t border-border" />
+        <Separator />
 
         {/* Profile Section */}
         <section>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Profile</h2>
           
           {isOAuthUser && providerInfo && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 pb-4 border-b border-border">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
               {providerInfo.icon}
               <span>Connected with {providerInfo.name}</span>
             </div>
@@ -361,7 +362,7 @@ export default function Settings() {
           </div>
         </section>
 
-        <div className="border-t border-border" />
+        <Separator />
 
         {/* Preferences Section */}
         <section>
@@ -406,13 +407,14 @@ export default function Settings() {
           </div>
         </section>
 
-        <div className="border-t border-border pt-6">
+        <div>
           <Button type="submit" disabled={saving} className="w-full sm:w-auto">
             {saving ? "Saving..." : "Save changes"}
           </Button>
         </div>
 
-        <div className="border-t border-border pt-6">
+        <div>
+          <Separator className="mb-6" />
           <div className="space-y-3">
             <button
               type="button"

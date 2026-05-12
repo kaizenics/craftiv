@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { trpc } from "@/trpc/client";
 import { NavbarLogo, NavbarButton } from "@/components/ui/resizable-navbar";
-import { Sparkles } from "lucide-react";
+import { Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
@@ -45,12 +45,13 @@ function NavLink({
   onClick?: () => void;
 }) {
   const isActive = !isHash && pathname === href;
+  const resolvedHref = isHash && pathname !== "/" ? `/${href}` : href;
 
   return (
     <Link
-      href={href}
+      href={resolvedHref}
       onClick={(e) => {
-        if (isHash) {
+        if (isHash && pathname === "/") {
           e.preventDefault();
           const element = document.querySelector(href);
           if (element) {
@@ -78,8 +79,7 @@ export function NavbarComponent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const currentPlan = ((subscription?.plan as SubscriptionPlan | undefined) ?? "free");
-  const credits = getCreditsByPlan(currentPlan);
-  const creditsLabel = `${credits} ${credits === 1 ? "credit" : "credits"}`;
+  const credits = subscription?.creditBalance ?? getCreditsByPlan(currentPlan);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-zinc-200 bg-white/95 backdrop-blur">
@@ -95,9 +95,18 @@ export function NavbarComponent() {
 
           <div className="hidden items-center gap-3 lg:flex">
             {session ? (
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
-                <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-                <span>{creditsLabel}</span>
+              <div className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+                <Coins className="h-3.5 w-3.5 text-amber-700" />
+                <span>{credits}</span>
+                {credits === 0 ? (
+                  <span className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-amber-900 transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 group-hover:max-w-[220px] max-w-0 opacity-0">
+                    <span className="text-amber-700">Insufficient credits</span>
+                    <span className="text-amber-500">·</span>
+                    <Link href="/pricing" className="underline underline-offset-2">
+                      Top Up
+                    </Link>
+                  </span>
+                ) : null}
               </div>
             ) : null}
 
@@ -171,9 +180,18 @@ export function NavbarComponent() {
             </div>
 
             {session ? (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
-                <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-                <span>{creditsLabel}</span>
+              <div className="group mt-3 inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+                <Coins className="h-3.5 w-3.5 text-amber-700" />
+                <span>{credits}</span>
+                {credits === 0 ? (
+                  <span className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-amber-900 transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 group-hover:max-w-[220px] max-w-0 opacity-0">
+                    <span className="text-amber-700">Insufficient credits</span>
+                    <span className="text-amber-500">·</span>
+                    <Link href="/pricing" className="underline underline-offset-2">
+                      Top Up
+                    </Link>
+                  </span>
+                ) : null}
               </div>
             ) : null}
 
