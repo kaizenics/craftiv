@@ -2,7 +2,7 @@
 
 import { authClient } from "@/lib/auth-client";
 import { Session } from "better-auth";
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
 
 interface AuthContextType {
   session: Session | null;
@@ -12,24 +12,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const getSession = async () => {
-      try {
-        const { data } = await authClient.getSession();
-        setSession(data?.session || null);
-      } catch (error) {
-        console.error("Failed to get session:", error);
-        setSession(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getSession();
-  }, []);
+  const sessionQuery = authClient.useSession();
+  const session = (sessionQuery.data as Session | null) ?? null;
+  const isLoading = Boolean(
+    (sessionQuery as { isPending?: boolean }).isPending ??
+      (sessionQuery as { isLoading?: boolean }).isLoading
+  );
 
   return (
     <AuthContext.Provider value={{ session, isLoading }}>
