@@ -19,8 +19,16 @@ const nextConfig: NextConfig = {
     ];
   },
   outputFileTracingIncludes: {
-    "/api/resume/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
-    "/api/cover-letter/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+    "/api/resume/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/**/*",
+    ],
+    "/api/cover-letter/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/**/*",
+    ],
   },
 };
 
