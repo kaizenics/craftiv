@@ -367,7 +367,7 @@ export default function ResumeUploadPageClient() {
               <Button
                 variant="outline"
                 onClick={handleReset}
-                className="h-auto py-3.5"
+                className="h-auto py-2"
               >
                 Reset
               </Button>
