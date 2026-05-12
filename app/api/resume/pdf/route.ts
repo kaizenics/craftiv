@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth';
 import { launchPdfBrowser } from '@/lib/server/launch-pdf-browser';
 
 export const runtime = 'nodejs';
@@ -13,6 +15,14 @@ export async function POST(request: NextRequest) {
   let browser: Awaited<ReturnType<typeof launchPdfBrowser>> | null = null;
 
   try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body = (await request.json()) as PDFRequestBody;
     const html = body?.html;
     const fileName = (body?.fileName || 'resume').replace(/[^\w.-]/g, '_');

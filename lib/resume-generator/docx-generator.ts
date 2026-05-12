@@ -109,7 +109,7 @@ function buildWordHtml(content: string): string {
   `;
 }
 
-export async function generateDOCX({ data, template, fileName, designOptions, customColor }: DOCXGeneratorOptions) {
+export async function generateDOCX({ data, template, fileName, designOptions, customColor }: DOCXGeneratorOptions): Promise<Blob> {
   const previewElement = document.querySelector('[data-resume-export-preview] [data-resume-preview]') as HTMLElement | null;
 
   let htmlContent: string;
@@ -156,13 +156,6 @@ export async function generateDOCX({ data, template, fileName, designOptions, cu
   const blob = new Blob([htmlContent], {
     type: 'application/msword',
   });
-  
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${fileName}.doc`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+
+  return blob;
 }

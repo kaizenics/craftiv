@@ -81,11 +81,13 @@ const improveSectionInput = z.object({
   section: z.enum(["summary", "experience", "education"]),
   content: z.string().min(1).max(3000),
   targetRole: z.string().optional(),
+  jobDescription: z.string().max(5000).optional(),
 });
 
 const improveFullResumeInput = z.object({
   resumeId: z.string(),
   targetRole: z.string().optional(),
+  jobDescription: z.string().max(5000).optional(),
 });
 
 const spellCheckInput = z.object({
@@ -138,7 +140,12 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
 
-      const prompt = buildImproveSectionPrompt(input.section, input.content, input.targetRole);
+      const prompt = buildImproveSectionPrompt(
+        input.section,
+        input.content,
+        input.targetRole,
+        input.jobDescription,
+      );
 
       console.log(`[AI] improveSection — section: ${input.section}, length: ${input.content.length}`);
 
@@ -158,7 +165,11 @@ export const aiRouter = createTRPCRouter({
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       const data = getResumeData(resume);
 
-      const prompt = buildImproveFullResumePrompt(data, input.targetRole);
+      const prompt = buildImproveFullResumePrompt(
+        data,
+        input.targetRole,
+        input.jobDescription,
+      );
 
       console.log(`[AI] improveFullResume — resumeId: ${input.resumeId}`);
 

@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth-provider";
+import { trpc } from "@/trpc/client";
 import {
   LayoutDashboard,
   FileText,
@@ -17,7 +19,7 @@ import {
   ScrollText,
   Mail,
 } from "@/components/ui/icons";
-import { MessageCircle } from "lucide-react";
+import { Coins, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +29,8 @@ interface SidebarItem {
   icon: typeof LayoutDashboard;
   children?: { name: string; href: string; icon: typeof LayoutDashboard }[];
 }
+
+type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -60,9 +64,20 @@ const sidebarItems: SidebarItem[] = [
   },
 ];
 
+function getCreditsByPlan(plan: SubscriptionPlan): number {
+  if (plan === "free") return 1;
+  if (plan === "active") return 5;
+  if (plan === "plus") return 12;
+  return 25;
+}
+
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { session } = useAuth();
+  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
+    enabled: !!session,
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -106,6 +121,9 @@ export function DashboardSidebar() {
       return next;
     });
   }
+
+  const currentPlan = ((subscription?.plan as SubscriptionPlan | undefined) ?? "free");
+  const credits = subscription?.creditBalance ?? getCreditsByPlan(currentPlan);
 
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="flex h-full flex-col">
@@ -208,6 +226,24 @@ export function DashboardSidebar() {
           );
         })}
       </nav>
+
+      {session ? (
+        <div className="px-3 pb-2">
+          <div className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+            <Coins className="h-3.5 w-3.5 text-amber-700" />
+            <span>{credits}</span>
+            {credits === 0 ? (
+              <span className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-amber-900 transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 group-hover:max-w-[220px] max-w-0 opacity-0">
+                <span className="text-amber-700">Insufficient credits</span>
+                <span className="text-amber-500">·</span>
+                <Link href="/pricing" className="underline underline-offset-2">
+                  Top Up
+                </Link>
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="px-3 pb-2">
         <Button

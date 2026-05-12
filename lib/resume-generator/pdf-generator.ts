@@ -50,7 +50,7 @@ export async function generatePDF({
   fileName, 
   designOptions,
   customColor 
-}: PDFGeneratorOptions) {
+}: PDFGeneratorOptions): Promise<Blob> {
   // Keep signature compatibility with existing call sites.
   void data;
   void template;
@@ -140,13 +140,6 @@ export async function generatePDF({
   }
 
   const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${fileName}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  return blob;
 }
  
