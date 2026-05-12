@@ -19,7 +19,7 @@ import {
   ScrollText,
   Mail,
 } from "@/components/ui/icons";
-import { Coins, MessageCircle } from "lucide-react";
+import { Coins } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -244,20 +244,6 @@ export function DashboardSidebar() {
           </div>
         </div>
       ) : null}
-
-      <div className="px-3 pb-2">
-        <Button
-          type="button"
-          onClick={() => {
-            router.push("/chat");
-            if (isMobile) setMobileOpen(false);
-          }}
-          className="w-full justify-start gap-3 rounded-full shadow-sm"
-        >
-          <MessageCircle className="h-5 w-5" />
-          <span>Chat with Crafty</span>
-        </Button>
-      </div>
 
       {/* Footer */}
       <div className="border-t border-border p-3">
