@@ -1,5 +1,5 @@
 allowBuilds:
-  esbuild: false
-  msw: false
-  sharp: false
-  unrs-resolver: false
+  esbuild: true
+  msw: true
+  sharp: true
+  unrs-resolver: true
