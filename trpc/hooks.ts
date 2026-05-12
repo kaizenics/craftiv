@@ -95,10 +95,11 @@ export function useResumeAI(resumeId: string) {
       section: "summary" | "experience" | "education",
       content: string,
       targetRole?: string,
+      jobDescription?: string,
     ) =>
-      improveSection.mutateAsync({ resumeId, section, content, targetRole }),
-    improveFullResume: (targetRole?: string) =>
-      improveFullResume.mutateAsync({ resumeId, targetRole }),
+      improveSection.mutateAsync({ resumeId, section, content, targetRole, jobDescription }),
+    improveFullResume: (targetRole?: string, jobDescription?: string) =>
+      improveFullResume.mutateAsync({ resumeId, targetRole, jobDescription }),
     isImproving: improveSection.isPending || improveFullResume.isPending,
     error: improveSection.error || improveFullResume.error,
   };

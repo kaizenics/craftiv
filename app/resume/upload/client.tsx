@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { NavbarComponent } from "@/components/navbar";
 
 type UploadState = "idle" | "dragging" | "scanning" | "success" | "error";
 
@@ -152,33 +153,9 @@ export default function ResumeUploadPageClient() {
 
   return (
     <div className="min-h-screen bg-white font-sans">
-      {/* Stepper */}
-      <div className="border-b border-zinc-100 bg-white py-4">
-        <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
-              1
-            </span>
-            <span className="text-sm font-medium text-zinc-900">Upload resume</span>
-          </div>
-          <div className="h-px w-8 bg-zinc-200" />
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-xs font-medium text-zinc-500">
-              2
-            </span>
-            <span className="text-sm text-zinc-500">Choose template</span>
-          </div>
-          <div className="h-px w-8 bg-zinc-200" />
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-xs font-medium text-zinc-500">
-              3
-            </span>
-            <span className="text-sm text-zinc-500">Edit & download</span>
-          </div>
-        </div>
-      </div>
+      <NavbarComponent />
 
-      <div className="mx-auto max-w-2xl px-4 py-12 sm:py-16">
+      <div className="mx-auto max-w-2xl px-4 pt-28 pb-12 sm:pt-32 sm:pb-16">
         {/* Header */}
         <div className="mb-8 text-center">
           <motion.div
@@ -381,7 +358,7 @@ export default function ResumeUploadPageClient() {
             <Button
               onClick={handleUploadAndScan}
               disabled={!selectedFile}
-              className="flex-1 h-12"
+              className="flex-1 h-auto py-2"
             >
               {session?.user ? "Upload Resume" : "Continue to Sign Up"}
             </Button>
@@ -390,7 +367,7 @@ export default function ResumeUploadPageClient() {
               <Button
                 variant="outline"
                 onClick={handleReset}
-                className="h-12"
+                className="h-auto py-2"
               >
                 Reset
               </Button>

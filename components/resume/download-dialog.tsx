@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { trpc } from '@/trpc/client';
 import {
   Dialog,
   DialogContent,
@@ -52,19 +54,49 @@ export function DownloadDialog({
   const [format, setFormat] = useState<DownloadFormat>('pdf');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadComplete, setDownloadComplete] = useState(false);
+  const utils = trpc.useUtils();
 
   const template = resumeTemplates.find((t) => t.id === data.templateId) || resumeTemplates[0];
   const fileName = customFileName || `${data.contact.firstName || 'Resume'}_${data.contact.lastName || 'CV'}`;
 
+  const triggerDownload = (blob: Blob, extension: 'pdf' | 'docx') => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const consumeResumeCredit = async () => {
+    const response = await fetch('/api/credits/consume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType: 'resume_download', cost: 1 }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      const message = payload?.message || payload?.error || 'Unable to use credits for download.';
+      throw new Error(message);
+    }
+
+    await utils.user.subscription.invalidate();
+  };
+
   const handleDownload = async () => {
     setIsDownloading(true);
-    
+
     try {
+      let blob: Blob;
+
       if (format === 'pdf') {
         // Small delay to ensure UI updates before heavy operation
         await new Promise(resolve => setTimeout(resolve, 100));
-        
-        await generatePDF({
+
+        blob = await generatePDF({
           data,
           template,
           fileName,
@@ -72,7 +104,7 @@ export function DownloadDialog({
           customColor
         });
       } else {
-        await generateDOCX({
+        blob = await generateDOCX({
           data,
           template,
           fileName,
@@ -80,15 +112,19 @@ export function DownloadDialog({
           customColor
         });
       }
+
+      await consumeResumeCredit();
+      triggerDownload(blob, format === 'pdf' ? 'pdf' : 'docx');
       setDownloadComplete(true);
-      
+
       // Call the completion callback
       if (onDownloadComplete) {
         onDownloadComplete();
       }
     } catch (error) {
       console.error('Download failed:', error);
-      alert('Failed to generate resume. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to generate resume. Please try again.';
+      alert(message);
     } finally {
       setIsDownloading(false);
     }
@@ -190,6 +226,13 @@ export function DownloadDialog({
               Template: {template.name}
             </p>
           </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            Resume downloads uses 1 credit &middot;{' '}
+            <Link href="/pricing" className="text-foreground underline underline-offset-2">
+              Get more credits
+            </Link>
+          </p>
 
           <div className="flex gap-3 pt-2">
             <Button variant="outline" onClick={onSecondaryAction ?? onClose} className="flex-1">

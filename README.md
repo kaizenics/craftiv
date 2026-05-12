@@ -48,6 +48,22 @@ npm run dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+### Environment Variables
+
+Set these variables for Lemon Squeezy checkout and webhook handling:
+
+- `LEMON_SQUEEZY_API_KEY`
+- `LEMON_SQUEEZY_STORE_ID`
+- `LEMON_SQUEEZY_VARIANT_ID_ACTIVE`
+- `LEMON_SQUEEZY_VARIANT_ID_PLUS`
+- `LEMON_SQUEEZY_VARIANT_ID_PRO`
+- `LEMON_SQUEEZY_SUCCESS_URL` (optional, defaults to `/dashboard/settings`)
+- `NEXT_PUBLIC_APP_URL` (optional fallback for URL generation)
+
+Configure your Lemon Squeezy webhook callback URL to:
+
+- `/api/payments/lemonsqueezy/webhook`
+
 ## 📝 Scripts
 
 - `npm run dev` - Start development server

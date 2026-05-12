@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { CheckCircle2 } from "@/components/ui/icons";
 import {
   AlertDialog,
@@ -22,49 +24,65 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 
-type SubscriptionPlan = "free" | "plus" | "pro";
+type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
 function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
   if (plan === "free") return 1;
-  if (plan === "plus") return 20;
-  return null;
+  if (plan === "active") return 2;
+  if (plan === "plus") return 6;
+  return 12;
 }
 
 function getPlanBenefits(plan: SubscriptionPlan): string[] {
   if (plan === "free") {
     return [
-      "Unlimited PDF/DOCX downloads",
-      "1 resume and cover letter template",
-      "Manual editing tools",
-      "Community email support",
+      "1 starter credit to try Craftiv",
+      "Create and download your first resume",
+      "Access to ATS-optimized templates",
+      "No subscription required",
+    ];
+  }
+  if (plan === "active") {
+    return [
+      "2 fully optimized resumes + 1 leftover review credit",
+      "Job match score before and after with missing keywords",
+      "AI-rewritten bullets tailored to job descriptions",
+      "No subscription, credits never expire",
     ];
   }
   if (plan === "plus") {
     return [
-      "Unlimited PDF/DOCX downloads",
-      "20 resume and cover letter templates",
-      "AI-powered features",
-      "ATS optimization tools",
+      "6 fully optimized resumes",
+      "Credits-based access to premium optimization tools",
+      "Job match scoring with missing keyword insights",
+      "AI-rewritten bullets tailored to job descriptions",
+      "No subscription, credits never expire",
     ];
   }
   return [
-    "Everything in Plus",
-    "Advanced AI optimization",
-    "Priority support",
-    "Early access to new features",
+    "Everything in Plus with the highest output capacity",
+    "Built for frequent applicants and career switchers",
+    "Advanced AI optimization support",
+    "No subscription, credits never expire",
   ];
 }
 
 function isAIBenefit(benefit: string): boolean {
   const normalized = benefit.toLowerCase();
-  return normalized.includes("ai-powered") || normalized.includes("advanced ai optimization");
+  return normalized.includes("ai-");
+}
+
+function getCreditTierLabel(plan: SubscriptionPlan): string {
+  if (plan === "free") return "Free Starter";
+  if (plan === "active") return "Active Credits";
+  if (plan === "plus") return "Plus Credits";
+  return "Pro Credits";
 }
 
 export default function Settings() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const { data: providers } = trpc.user.getProviders.useQuery();
-  const utils = trpc.useUtils();
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
   });
@@ -76,7 +94,6 @@ export default function Settings() {
   const [defaultSpellCheck, setDefaultSpellCheck] = useState(true);
   const [compactEditor, setCompactEditor] = useState(false);
   const [showResumeScore, setShowResumeScore] = useState(true);
-  const [isCancellingPlan, setIsCancellingPlan] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -86,12 +103,6 @@ export default function Settings() {
   const [noticeDialogMessage, setNoticeDialogMessage] = useState("");
 
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
-  const cancelPlanMutation = trpc.user.cancelPlan.useMutation({
-    onSuccess: () => {
-      utils.user.subscription.invalidate();
-    },
-  });
-
   const openNotice = (title: string, message: string) => {
     setNoticeDialogTitle(title);
     setNoticeDialogMessage(message);
@@ -198,33 +209,26 @@ export default function Settings() {
     }
   };
 
-  const onCancelPlan = async () => {
-    setIsCancellingPlan(true);
-    try {
-      await cancelPlanMutation.mutateAsync();
-      openNotice("Plan Cancelled", "Your plan has been cancelled. You are now on the Free plan.");
-    } finally {
-      setIsCancellingPlan(false);
-    }
-  };
-
   const subscriptionPlan = (subscription?.plan as SubscriptionPlan | undefined) ?? "free";
-  const subscriptionStatus = subscription?.status ?? "inactive";
+  const hasPaidCredits = subscriptionPlan !== "free" && subscription?.status === "active";
+  const creditStatusLabel = hasPaidCredits ? "active credits" : "starter access";
   const resumeLimit = subscription?.resumeCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
   const resumeUsageCount = subscription?.resumeCreatedCount ?? 0;
   const coverLetterLimit =
     subscription?.coverLetterCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
   const coverLetterUsageCount = subscription?.coverLetterCreatedCount ?? 0;
-  const resumeUsageLabel = resumeLimit ? `${Math.min(resumeUsageCount, resumeLimit)}/${resumeLimit}` : "Unlimited";
   const resumeUsagePercent = resumeLimit
     ? Math.min((resumeUsageCount / resumeLimit) * 100, 100)
     : 100;
-  const coverLetterUsageLabel = coverLetterLimit
-    ? `${Math.min(coverLetterUsageCount, coverLetterLimit)}/${coverLetterLimit}`
-    : "Unlimited";
   const coverLetterUsagePercent = coverLetterLimit
     ? Math.min((coverLetterUsageCount / coverLetterLimit) * 100, 100)
     : 100;
+  const creditsUsageCount = Math.max(resumeUsageCount, coverLetterUsageCount);
+  const creditsUsageLimit = Math.max(resumeLimit ?? 0, coverLetterLimit ?? 0);
+  const creditsUsageLabel = creditsUsageLimit
+    ? `${Math.min(creditsUsageCount, creditsUsageLimit)}/${creditsUsageLimit}`
+    : "Unlimited";
+  const creditsUsagePercent = Math.max(resumeUsagePercent, coverLetterUsagePercent);
   const currentPlanBenefits = getPlanBenefits(subscriptionPlan);
 
   return (
@@ -233,12 +237,92 @@ export default function Settings() {
       <p className="text-muted-foreground mt-1 mb-8">Manage your account preferences</p>
 
       <form onSubmit={onSave} className="space-y-8">
+        {/* Account Section */}
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
+
+          <div
+            className={`mb-6 rounded-xl border p-4 ${
+              subscriptionPlan === "free"
+                ? "border-border bg-muted/30"
+                : "border-primary/30 bg-primary/5"
+            }`}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Current credits access</p>
+                <p className="text-lg font-semibold text-foreground capitalize">
+                  {getCreditTierLabel(subscriptionPlan)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Access status:{" "}
+                  <span
+                    className={hasPaidCredits ? "text-green-600 font-medium" : "text-muted-foreground"}
+                  >
+                    {creditStatusLabel}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Billing model: one-time credit packs, no recurring subscription.
+                </p>
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Credits: {creditsUsageLabel}
+                  </p>
+                  <Progress value={creditsUsagePercent} className="mt-1 h-2 w-full max-w-xs" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/pricing"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Buy credits
+                </Link>
+              </div>
+            </div>
+            <div className="mt-4 border-t border-border/60 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Credit pack benefits
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your current perks and feature access under the credit system.
+              </p>
+              <div className="mt-3 space-y-2">
+                {currentPlanBenefits.map((benefit) => (
+                  <div
+                    key={benefit}
+                    className={`flex items-center gap-2.5 px-1 py-1.5 text-xs ${
+                      isAIBenefit(benefit)
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">{benefit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {!isOAuthUser && (
+              <Link href="/dashboard/change-password" className="block text-sm text-foreground hover:text-muted-foreground transition-colors">
+                Change password
+              </Link>
+            )}
+          </div>
+        </section>
+
+        <Separator />
+
         {/* Profile Section */}
         <section>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Profile</h2>
           
           {isOAuthUser && providerInfo && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 pb-4 border-b border-border">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
               {providerInfo.icon}
               <span>Connected with {providerInfo.name}</span>
             </div>
@@ -278,7 +362,7 @@ export default function Settings() {
           </div>
         </section>
 
-        <div className="border-t border-border" />
+        <Separator />
 
         {/* Preferences Section */}
         <section>
@@ -323,134 +407,15 @@ export default function Settings() {
           </div>
         </section>
 
-        <div className="border-t border-border" />
+        <div>
+          <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+            {saving ? "Saving..." : "Save changes"}
+          </Button>
+        </div>
 
-        {/* Account Section */}
-        <section>
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
-
-          <div
-            className={`mb-6 rounded-xl border p-4 ${
-              subscriptionPlan === "free"
-                ? "border-border bg-muted/30"
-                : "border-primary/30 bg-primary/5"
-            }`}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Current subscription</p>
-                <p className="text-lg font-semibold text-foreground capitalize">
-                  {subscriptionPlan}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Status:{" "}
-                  <span
-                    className={subscriptionStatus === "active" ? "text-green-600 font-medium" : "text-muted-foreground"}
-                  >
-                    {subscriptionStatus}
-                  </span>
-                </p>
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Resume creation usage: {resumeUsageLabel}
-                  </p>
-                  <div className="mt-1 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-200">
-                    <div
-                      className={`h-full rounded-full ${
-                        subscriptionPlan === "free" ? "bg-zinc-500" : "bg-primary"
-                      }`}
-                      style={{ width: `${resumeUsagePercent}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Cover letter creation usage: {coverLetterUsageLabel}
-                  </p>
-                  <div className="mt-1 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-200">
-                    <div
-                      className={`h-full rounded-full ${
-                        subscriptionPlan === "free" ? "bg-zinc-500" : "bg-primary"
-                      }`}
-                      style={{ width: `${coverLetterUsagePercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/pricing"
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                >
-                  Manage plan
-                </Link>
-                {subscriptionPlan !== "free" && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        type="button"
-                        disabled={isCancellingPlan}
-                        className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 px-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isCancellingPlan ? "Cancelling..." : "Cancel plan"}
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel current plan?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will downgrade your account to the Free plan immediately in the app.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isCancellingPlan}>Keep plan</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={(e) => {
-                            e.preventDefault();
-                            void onCancelPlan();
-                          }}
-                          disabled={isCancellingPlan}
-                          className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
-                        >
-                          Yes, cancel plan
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </div>
-            </div>
-            <div className="mt-4 border-t border-border/60 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Plan benefits
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Your active perks and feature access for this plan.
-              </p>
-              <div className="mt-3 space-y-2">
-                {currentPlanBenefits.map((benefit) => (
-                  <div
-                    key={benefit}
-                    className={`flex items-center gap-2.5 px-1 py-1.5 text-xs ${
-                      isAIBenefit(benefit)
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span className="font-medium">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
+        <div>
+          <Separator className="mb-6" />
           <div className="space-y-3">
-            {!isOAuthUser && (
-              <Link href="/dashboard/change-password" className="block text-sm text-foreground hover:text-muted-foreground transition-colors">
-                Change password
-              </Link>
-            )}
             <button
               type="button"
               onClick={onSignOut}
@@ -459,10 +424,10 @@ export default function Settings() {
             >
               {isSigningOut ? "Signing out..." : "Sign out"}
             </button>
-            
+
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
-                <button 
+                <button
                   type="button"
                   className="text-sm text-red-500 hover:text-red-600 transition-colors cursor-pointer"
                 >
@@ -504,12 +469,6 @@ export default function Settings() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </section>
-
-        <div className="border-t border-border pt-6">
-          <Button type="submit" disabled={saving} className="w-full sm:w-auto">
-            {saving ? "Saving..." : "Save changes"}
-          </Button>
         </div>
       </form>
 

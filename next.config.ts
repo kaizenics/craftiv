@@ -19,8 +19,12 @@ const nextConfig: NextConfig = {
     ];
   },
   outputFileTracingIncludes: {
-    "/api/resume/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
-    "/api/cover-letter/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+    "/api/resume/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/cover-letter/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
   },
 };
 

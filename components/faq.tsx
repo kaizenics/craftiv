@@ -17,7 +17,7 @@ const faqs = [
   {
     question: "Is Craftiv free to use?",
     answer:
-      "We offer a free plan that lets you create and download one resume. Premium plans unlock unlimited resumes, additional templates, and advanced features like AI optimization and cover letter generation.",
+      "Yes. You can start with a free credit, then buy one-time credit packs when you need more optimizations. There is no monthly subscription and credits do not expire.",
   },
   {
     question: "Are the resumes ATS-friendly?",
@@ -43,7 +43,7 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="relative bg-white py-20 lg:py-12 font-sans">
+  <section id="faq" className="relative scroll-mt-24 bg-white py-20 lg:py-12 font-sans">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div

@@ -15,14 +15,6 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type SubscriptionPlan = "free" | "plus" | "pro";
-
-function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
-  if (plan === "free") return 1;
-  if (plan === "plus") return 20;
-  return null;
-}
-
 // Template categories with their icons (shortLabel used on narrow mobile chips)
 const categories = [
   { id: "all", name: "All Templates", shortLabel: "All", icon: LayoutGrid },
@@ -100,10 +92,6 @@ function ResumeTemplatesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
-  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
-    enabled: !!session?.user,
-  });
-  const subscriptionPlan = (subscription?.plan as SubscriptionPlan | undefined) ?? "free";
   const fromUpload =
     searchParams.get("from") === "upload" &&
     typeof window !== "undefined" &&
@@ -111,7 +99,6 @@ function ResumeTemplatesPageContent() {
   
   const createResume = trpc.resume.create.useMutation();
   const updateResume = trpc.resume.update.useMutation();
-  const effectiveCreatedCount = subscription?.resumeCreatedCount ?? 0;
 
   const createAndNavigate = async (templateId: string) => {
     setIsCreating(true);
@@ -122,15 +109,6 @@ function ResumeTemplatesPageContent() {
         localStorage.setItem('showPhoto', JSON.stringify(showPhoto));
         const redirect = fromUpload ? '/resume/templates?from=upload' : '/resume/templates';
         router.push(`/sign-in?redirect=${encodeURIComponent(redirect)}`);
-        return;
-      }
-
-      const resumeLimit = subscription?.resumeCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
-      if (resumeLimit !== null && effectiveCreatedCount >= resumeLimit) {
-        toast.error(
-          `You've reached your ${subscriptionPlan.toUpperCase()} plan limit. Upgrade your plan to create more resume templates.`
-        );
-        setIsCreating(false);
         return;
       }
 
@@ -211,14 +189,16 @@ function ResumeTemplatesPageContent() {
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
               {fromUpload ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden /> : "1"}
             </span>
-            <span className="text-sm font-medium text-zinc-900">{fromUpload ? "Resume uploaded" : "Choose template"}</span>
+            <span className="hidden text-sm font-medium text-zinc-900 sm:inline">
+              {fromUpload ? "Resume uploaded" : "Choose template"}
+            </span>
           </div>
           <div className="h-px w-8 bg-zinc-200" />
           <div className="flex items-center gap-2">
             <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${fromUpload ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-500"}`}>
               2
             </span>
-            <span className={`text-sm ${fromUpload ? "font-medium text-zinc-900" : "text-zinc-500"}`}>
+            <span className={`hidden text-sm sm:inline ${fromUpload ? "font-medium text-zinc-900" : "text-zinc-500"}`}>
               {fromUpload ? "Choose template" : "Enter your details"}
             </span>
           </div>
@@ -227,7 +207,7 @@ function ResumeTemplatesPageContent() {
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-xs font-medium text-zinc-500">
               3
             </span>
-            <span className="text-sm text-zinc-500">{fromUpload ? "Edit & download" : "Download resume"}</span>
+            <span className="hidden text-sm text-zinc-500 sm:inline">{fromUpload ? "Edit & download" : "Download resume"}</span>
           </div>
         </div>
       </div>

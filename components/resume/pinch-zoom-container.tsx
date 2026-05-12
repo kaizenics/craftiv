@@ -31,7 +31,7 @@ type GestureState =
       startOffset: Point;
     };
 
-const MIN_SCALE = 1;
+const DEFAULT_MIN_SCALE = 1;
 const MAX_SCALE = 4;
 
 function getTouchPoint(touch: TouchLike): Point {
@@ -49,8 +49,8 @@ function getMidpoint(a: TouchLike, b: TouchLike): Point {
   };
 }
 
-function clampScale(value: number) {
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+function clampScale(value: number, minScale: number) {
+  return Math.min(MAX_SCALE, Math.max(minScale, value));
 }
 
 interface PinchZoomContainerProps {
@@ -71,6 +71,7 @@ export function PinchZoomContainer({
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [isInteracting, setIsInteracting] = useState(false);
+  const [minScale, setMinScale] = useState(DEFAULT_MIN_SCALE);
 
   const clampOffset = useCallback((next: Point, nextScale: number): Point => {
     const container = containerRef.current;
@@ -154,6 +155,7 @@ export function PinchZoomContainer({
 
       const nextScale = clampScale(
         gesture.startScale * (currentDistance / gesture.startDistance),
+        minScale,
       );
 
       const anchorX =
@@ -201,6 +203,28 @@ export function PinchZoomContainer({
     setIsInteracting(false);
     setOffset((prev) => clampOffset(prev, scale));
   };
+
+  useEffect(() => {
+    const updateScaleToFit = () => {
+      const container = containerRef.current;
+      const content = contentRef.current;
+      if (!container || !content) return;
+
+      const contentWidth = content.scrollWidth;
+      if (!contentWidth) return;
+
+      const nextMinScale = Math.min(
+        DEFAULT_MIN_SCALE,
+        container.clientWidth / contentWidth,
+      );
+      setMinScale(nextMinScale);
+      setScale((prev) => clampScale(prev, nextMinScale));
+    };
+
+    updateScaleToFit();
+    window.addEventListener("resize", updateScaleToFit);
+    return () => window.removeEventListener("resize", updateScaleToFit);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {

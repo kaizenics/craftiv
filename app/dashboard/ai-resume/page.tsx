@@ -99,6 +99,7 @@ export default function AIAssistantPage() {
   // Improver state
   const [goal, setGoal] = useState<Goal>("summary");
   const [targetRole, setTargetRole] = useState("");
+  const [jobDescriptionImprover, setJobDescriptionImprover] = useState("");
   const [improverResult, setImproverResult] = useState<string | null>(null);
   const [fullResumeImproved, setFullResumeImproved] = useState<Record<string, any> | null>(null);
   const [improverOriginal, setImproverOriginal] = useState<string | null>(null);
@@ -178,6 +179,20 @@ export default function AIAssistantPage() {
     return null;
   }, [data, goal]);
 
+  const consumeCredits = async (cost: number, eventType: string) => {
+    const response = await fetch("/api/credits/consume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType, cost }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      const message = payload?.message || payload?.error || "Insufficient credits.";
+      throw new Error(message);
+    }
+  };
+
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function clearResults() {
@@ -199,15 +214,32 @@ export default function AIAssistantPage() {
     setError(null); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false);
     setImproverOriginal(currentContent);
     try {
+      await consumeCredits(0.5, "ai_resume_improver");
       if (goal === "summary") {
-        const res = await improveSection.mutateAsync({ resumeId: activeResumeId, section: "summary", content: data.summary, targetRole: targetRole || undefined });
+        const res = await improveSection.mutateAsync({
+          resumeId: activeResumeId,
+          section: "summary",
+          content: data.summary,
+          targetRole: targetRole || undefined,
+          jobDescription: jobDescriptionImprover.trim() || undefined,
+        });
         setImproverResult(res.improved);
       } else if (goal === "experience") {
         const all = (data.experiences ?? []).filter((e) => e.description?.trim()).map((e) => e.description).join("\n\n---\n\n");
-        const res = await improveSection.mutateAsync({ resumeId: activeResumeId, section: "experience", content: all, targetRole: targetRole || undefined });
+        const res = await improveSection.mutateAsync({
+          resumeId: activeResumeId,
+          section: "experience",
+          content: all,
+          targetRole: targetRole || undefined,
+          jobDescription: jobDescriptionImprover.trim() || undefined,
+        });
         setImproverResult(res.improved);
       } else {
-        const res = await improveFullResume.mutateAsync({ resumeId: activeResumeId, targetRole: targetRole || undefined });
+        const res = await improveFullResume.mutateAsync({
+          resumeId: activeResumeId,
+          targetRole: targetRole || undefined,
+          jobDescription: jobDescriptionImprover.trim() || undefined,
+        });
         setFullResumeImproved(res.improved);
         setImproverResult(formatResumeDataAsText(res.improved));
       }
@@ -238,6 +270,7 @@ export default function AIAssistantPage() {
     if (!activeResumeId || !jobDescriptionKw.trim()) return;
     setError(null); setKeywordResults(null);
     try {
+      await consumeCredits(0.25, "ai_keyword_booster");
       const res = await keywordBooster.mutateAsync({ resumeId: activeResumeId, jobDescription: jobDescriptionKw });
       setKeywordResults(res.keywords);
     } catch (e: any) { setError(e.message || "Something went wrong."); }
@@ -247,6 +280,7 @@ export default function AIAssistantPage() {
     if (!activeResumeId) return;
     setError(null); setAchievementResult(null); setAchievementApplied(false);
     try {
+      await consumeCredits(0.25, "ai_achievement_builder");
       const res = await achievementBuilder.mutateAsync({ resumeId: activeResumeId, experienceIndex: selectedExpIndex, targetRole: achievementTargetRole || undefined });
       setAchievementResult(res.bullets);
     } catch (e: any) { setError(e.message || "Something went wrong."); }
@@ -285,7 +319,7 @@ export default function AIAssistantPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-foreground lg:text-3xl">AI Assistant</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">AI Assistant</h1>
           <p className="mt-1 text-muted-foreground">AI-powered tools to improve your resume and job applications.</p>
         </div>
         <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-12 text-center">
@@ -412,9 +446,27 @@ export default function AIAssistantPage() {
               <label className="text-sm font-medium text-foreground">Target Role <span className="text-muted-foreground font-normal">(optional)</span></label>
               <Input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. Senior Frontend Engineer" />
             </div>
-            <Button onClick={handleImproverGenerate} disabled={!canImprove}>
-              {improveSection.isPending || improveFullResume.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Improving...</> : <><Sparkles className="mr-2 h-4 w-4" /> Improve Resume</>}
-            </Button>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Job Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <textarea
+                value={jobDescriptionImprover}
+                onChange={(e) => setJobDescriptionImprover(e.target.value)}
+                placeholder="Paste the job description to tailor improvements..."
+                rows={5}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={handleImproverGenerate} disabled={!canImprove}>
+                {improveSection.isPending || improveFullResume.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Improving...</> : <><Sparkles className="mr-2 h-4 w-4" /> Improve Resume</>}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Resume Improver uses 0.50 credits &middot;{" "}
+              <Link href="/pricing" className="text-foreground underline underline-offset-2">
+                Get more credits
+              </Link>
+            </p>
           </div>
 
           {/* Current content (hidden when results show) */}
@@ -490,9 +542,17 @@ export default function AIAssistantPage() {
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
               />
             </div>
-            <Button onClick={handleKeywordGenerate} disabled={!canKeyword}>
-              {keywordBooster.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing...</> : <><Target className="mr-2 h-4 w-4" /> Find Missing Keywords</>}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={handleKeywordGenerate} disabled={!canKeyword}>
+                {keywordBooster.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing...</> : <><Target className="mr-2 h-4 w-4" /> Find Missing Keywords</>}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Keyword Booster uses 0.25 credits &middot;{" "}
+              <Link href="/pricing" className="text-foreground underline underline-offset-2">
+                Get more credits
+              </Link>
+            </p>
           </div>
 
           {keywordResults && (
@@ -575,9 +635,17 @@ export default function AIAssistantPage() {
                   <label className="text-sm font-medium text-foreground">Target Role <span className="text-muted-foreground font-normal">(optional)</span></label>
                   <Input value={achievementTargetRole} onChange={(e) => setAchievementTargetRole(e.target.value)} placeholder="e.g. Engineering Manager" />
                 </div>
-                <Button onClick={handleAchievementGenerate} disabled={!canAchievement}>
-                  {achievementBuilder.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Building...</> : <><Trophy className="mr-2 h-4 w-4" /> Build Achievement Bullets</>}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={handleAchievementGenerate} disabled={!canAchievement}>
+                    {achievementBuilder.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Building...</> : <><Trophy className="mr-2 h-4 w-4" /> Build Achievement Bullets</>}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Achievement Builder uses 0.25 credits &middot;{" "}
+                  <Link href="/pricing" className="text-foreground underline underline-offset-2">
+                    Get more credits
+                  </Link>
+                </p>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">No experiences found. Add work experience to your resume first.</p>

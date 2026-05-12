@@ -25,7 +25,7 @@ export default function RefundPolicyPage() {
             <p className="mt-3 leading-7">
               We want you to be confident using Craftiv. This policy explains
               when refunds may be granted for subscriptions and purchases made
-              through our billing provider, Paddle.
+              through our billing system.
             </p>
           </section>
 
@@ -93,8 +93,8 @@ export default function RefundPolicyPage() {
               Processing Time
             </h2>
             <p className="mt-3 leading-7">
-              If approved, refunds are issued through Paddle to the original
-              payment method. Processing times may vary by bank or card provider
+              If approved, refunds are issued to the original payment method.
+              Processing times may vary by bank or card provider
               and can take 5 to 10 business days.
             </p>
           </section>

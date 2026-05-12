@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import {
   callWithFallback,
   extractJsonObject,
@@ -21,17 +18,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
-      );
-    }
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-    });
-    const plan = user?.plan ?? "free";
-    if (plan === "free") {
-      return NextResponse.json(
-        { error: "AI cover letter generation is available on Plus and Pro plans." },
-        { status: 403 }
       );
     }
 

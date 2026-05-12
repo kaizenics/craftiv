@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { AlertCircle, Loader2, ShieldCheck, Upload } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
@@ -51,14 +52,30 @@ export default function AtsCheckerPage() {
 
 	const canAnalyze = !!file && !isInvalidType && !isInvalidSize && !isAnalyzing;
 
+	const consumeCredits = async (cost: number) => {
+		const response = await fetch("/api/credits/consume", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ eventType: "ats_check", cost }),
+		});
+
+		if (!response.ok) {
+			const payload = await response.json().catch(() => null);
+			const message = payload?.message || payload?.error || "Insufficient credits.";
+			throw new Error(message);
+		}
+	};
+
 	const handleAnalyze = async () => {
 		if (!file || !canAnalyze) return;
 
-		setIsAnalyzing(true);
 		setError(null);
 		setReport(null);
 
 		try {
+			await consumeCredits(1);
+			setIsAnalyzing(true);
+
 			const formData = new FormData();
 			formData.append("file", file);
 			if (jobDescription.trim()) {
@@ -147,20 +164,28 @@ export default function AtsCheckerPage() {
 						<p className="text-sm text-red-600">File size must be under {MAX_SIZE_MB}MB.</p>
 					)}
 
-					<Button
-						onClick={handleAnalyze}
-						disabled={!canAnalyze}
-						className="w-full sm:w-auto"
-					>
-						{isAnalyzing ? (
-							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								Analyzing Resume...
-							</>
-						) : (
-							"Run ATS Check"
-						)}
-					</Button>
+					<div className="flex flex-wrap items-center gap-2">
+						<Button
+							onClick={handleAnalyze}
+							disabled={!canAnalyze}
+							className="w-full sm:w-auto"
+						>
+							{isAnalyzing ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Analyzing Resume...
+								</>
+							) : (
+								"Run ATS Check"
+							)}
+						</Button>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						ATS Checker uses 1 credit &middot;{" "}
+						<Link href="/pricing" className="text-foreground underline underline-offset-2">
+							Get more credits
+						</Link>
+					</p>
 
 					{error && (
 						<div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">

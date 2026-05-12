@@ -106,9 +106,14 @@ export function buildImproveSectionPrompt(
   section: string,
   content: string,
   targetRole?: string,
+  jobDescription?: string,
 ): string {
   const roleHint = targetRole ? `The target job role is: ${targetRole}.` : "";
+  const jobHint = jobDescription?.trim()
+    ? `Target job description:\n${jobDescription.trim().slice(0, 2000)}`
+    : "";
   return `You are a professional resume writer. ${roleHint}
+${jobHint}
 Improve the following resume ${section} section to be more impactful, concise, and ATS-friendly.
 Use strong action verbs and quantify achievements where possible.
 Return ONLY the improved text. No explanation, no markdown formatting, no quotes.
@@ -120,9 +125,14 @@ ${content}`;
 export function buildImproveFullResumePrompt(
   data: Record<string, unknown>,
   targetRole?: string,
+  jobDescription?: string,
 ): string {
   const roleHint = targetRole ? `The target job role is: ${targetRole}.` : "";
+  const jobHint = jobDescription?.trim()
+    ? `Target job description:\n${jobDescription.trim().slice(0, 2000)}`
+    : "";
   return `You are a professional resume writer. ${roleHint}
+${jobHint}
 Review the following resume data and return an improved version.
 Improve the summary to be compelling and ATS-friendly.
 Improve each experience description with strong action verbs and quantified achievements.

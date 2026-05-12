@@ -18,9 +18,26 @@ export async function launchPdfBrowser(): Promise<LaunchResult> {
     });
   }
 
-  const { chromium } = await import("playwright");
-  return chromium.launch({
-    headless: true,
-    args: [...SANDBOX_ARGS],
-  });
+  const { chromium } = await import("playwright-core");
+  const localExecutablePath =
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ??
+    process.env.CHROME_EXECUTABLE_PATH;
+
+  try {
+    return await chromium.launch({
+      headless: true,
+      args: [...SANDBOX_ARGS],
+      ...(localExecutablePath ? { executablePath: localExecutablePath } : {}),
+    });
+  } catch {
+    // Keep local DX working when developers use `playwright` package,
+    // while avoiding static tracing of that package into Vercel functions.
+    const playwrightPkg = ["play", "wright"].join("");
+    const { chromium: localChromium } = (await import(playwrightPkg)) as typeof import("playwright");
+
+    return localChromium.launch({
+      headless: true,
+      args: [...SANDBOX_ARGS],
+    });
+  }
 }

@@ -56,8 +56,6 @@ async function assertCanCreateResume(db: any, userId: string) {
   const user = await db.query.users.findFirst({
     columns: {
       id: true,
-      plan: true,
-      isPaid: true,
       resumeCreatedCount: true,
     },
     where: eq(users.id, userId),
@@ -67,17 +65,6 @@ async function assertCanCreateResume(db: any, userId: string) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "User not found",
-    });
-  }
-
-  const plan = user.plan ?? "free";
-  const createdCount = user.resumeCreatedCount ?? 0;
-  const limit = plan === "free" ? 1 : plan === "plus" ? 20 : null;
-
-  if (limit !== null && createdCount >= limit) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: `You've reached your ${plan.toUpperCase()} plan limit. Upgrade your plan to create more resume templates.`,
     });
   }
 

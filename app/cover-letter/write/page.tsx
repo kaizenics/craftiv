@@ -4,16 +4,6 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -45,7 +35,6 @@ import {
 import {
   ArrowLeft,
   Check,
-  CheckCircle2,
   Copy,
   Download,
   Sparkles,
@@ -64,7 +53,6 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
-import { PremiumUpgradeVisual } from "@/components/dashboard/premium-upgrade-visual";
 
 type DialogView = "pick" | "upload";
 
@@ -103,15 +91,8 @@ function WriteCoverLetterPageContent() {
   const [finishError, setFinishError] = useState("");
   const [pdfError, setPdfError] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [lockedFeature, setLockedFeature] = useState<
-    "Generate from resume" | "AI content generation" | null
-  >(null);
 
   const utils = trpc.useUtils();
-  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
-    enabled: !!session,
-  });
-  const isFreePlan = (subscription?.plan ?? "free") === "free";
   const coverLetterQuery = trpc.coverLetter.getById.useQuery(
     { id: coverLetterId! },
     { enabled: !!coverLetterId }
@@ -287,10 +268,6 @@ function WriteCoverLetterPageContent() {
   // ── Generate from resume ───────────────────────────────────────────────
 
   const handleGenerateFromResume = async () => {
-    if (isFreePlan) {
-      setLockedFeature("Generate from resume");
-      return;
-    }
     if (!selectedFile) return;
 
     setIsGenerating(true);
@@ -396,10 +373,6 @@ function WriteCoverLetterPageContent() {
   };
 
   const handleInlineGenerateWithAI = async () => {
-    if (isFreePlan) {
-      setLockedFeature("AI content generation");
-      return;
-    }
     const jobTitle = coverLetterData.employer.jobTitle.trim();
     if (!jobTitle) {
       setInlineGenerateError("Please enter a Job Title in Employer section first.");
@@ -837,7 +810,7 @@ function WriteCoverLetterPageContent() {
       {/* Method picker / Upload dialog */}
       <Dialog open={methodDialogOpen} onOpenChange={() => {}}>
         <DialogContent
-          className="sm:max-w-lg p-8"
+          className="w-[calc(100vw-1.5rem)] max-w-lg p-4 sm:p-6"
           showCloseButton={false}
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
@@ -846,47 +819,43 @@ function WriteCoverLetterPageContent() {
           {/* ─── View: Pick method ─── */}
           {dialogView === "pick" && (
             <>
-              <DialogHeader className="items-center pb-2">
-                <DialogTitle className="text-2xl font-bold text-center">
-                  How will you make your cover letter?
-                </DialogTitle>
-                <p className="text-sm text-muted-foreground text-center mt-1">
-                  Choose a method to get started.
-                </p>
-              </DialogHeader>
+                <DialogHeader className="items-center pb-1 sm:pb-2">
+                  <DialogTitle className="text-center text-xl leading-tight font-bold sm:text-2xl">
+                    How will you make your cover letter?
+                  </DialogTitle>
+                  <p className="mt-1 text-center text-sm text-muted-foreground">
+                    Choose a method to get started.
+                  </p>
+                </DialogHeader>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
                 <button
                   type="button"
                   onClick={() => {
-                    if (isFreePlan) {
-                      setLockedFeature("Generate from resume");
-                      return;
-                    }
                     setDialogView("upload");
                     resetUpload();
                   }}
-                  className="group relative w-full text-left rounded-xl border-2 border-sky-300 bg-sky-50 p-5 transition-all hover:border-sky-400 hover:bg-sky-100/80 hover:shadow-md"
+                  className="group relative w-full rounded-xl border-2 border-sky-300 bg-sky-50 p-4 text-left transition-all hover:border-sky-400 hover:bg-sky-100/80 hover:shadow-md sm:p-5"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-sm">
-                      <Sparkles className="h-7 w-7" />
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-sm sm:h-14 sm:w-14">
+                      <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base font-semibold text-foreground">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-2">
+                        <span className="text-base font-semibold leading-tight text-foreground">
                           Generate from resume
                         </span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-sky-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
                           <Sparkles className="h-3 w-3" />
                           20% faster
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
+                      <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
                         Upload your resume and AI writes it for you.
                       </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-sky-400 transition-transform group-hover:translate-x-1" />
+                    <ChevronRight className="h-5 w-5 shrink-0 text-sky-400 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
                   </div>
                 </button>
 
@@ -895,19 +864,19 @@ function WriteCoverLetterPageContent() {
                   onClick={() => {
                     setMethodDialogOpen(false);
                   }}
-                  className="group w-full text-left rounded-xl border-2 border-border bg-card p-5 transition-all hover:border-muted-foreground/30 hover:bg-muted/10 hover:shadow-md"
+                  className="group w-full rounded-xl border-2 border-border bg-card p-4 text-left transition-all hover:border-muted-foreground/30 hover:bg-muted/10 hover:shadow-md sm:p-5"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted/30 text-foreground">
-                      <PenLine className="h-7 w-7" />
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted/30 text-foreground sm:h-14 sm:w-14">
+                      <PenLine className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-base font-semibold text-foreground">Write from scratch</span>
-                      <p className="text-sm text-muted-foreground mt-0.5">
+                      <span className="text-base font-semibold leading-tight text-foreground">Write from scratch</span>
+                      <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
                         We&apos;ll walk you through it, step by step.
                       </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
                   </div>
                 </button>
               </div>
@@ -1241,43 +1210,6 @@ function WriteCoverLetterPageContent() {
         </div>
       </div>
 
-      <AlertDialog open={lockedFeature !== null} onOpenChange={(open) => !open && setLockedFeature(null)}>
-        <AlertDialogContent className="max-h-[92vh] w-[calc(100vw-1.25rem)] max-w-xl overflow-y-auto overflow-x-hidden p-0 xl:max-h-[92vh] xl:overflow-y-auto">
-          <PremiumUpgradeVisual />
-          <div className="space-y-2 px-4 pb-3 sm:px-5 sm:pb-4">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="font-display text-[2.1rem] leading-tight text-slate-800 xl:text-3xl">
-                Boost your career
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-sm text-slate-600">
-                <span className="xl:hidden">
-                  {lockedFeature} is premium. Upgrade to Plus or Pro.
-                </span>
-                <span className="hidden xl:inline">
-                  {lockedFeature} is available on Plus and Pro. Upgrade to unlock AI-driven optimization and better application outcomes.
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="hidden text-xs font-semibold uppercase tracking-wide text-slate-700 xl:block">
-                You will get access to
-              </p>
-              <div className="mt-1 grid gap-1.5 text-sm text-slate-700 sm:grid-cols-2">
-                <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />ATS Checker</span>
-                <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" />AI Resume Assistant</span>
-                <span className="hidden items-center gap-2 xl:flex"><CheckCircle2 className="h-4 w-4 text-primary" />AI-powered features</span>
-                <span className="hidden items-center gap-2 xl:flex"><CheckCircle2 className="h-4 w-4 text-primary" />Advanced AI optimization</span>
-              </div>
-            </div>
-            <AlertDialogFooter className="gap-2 sm:gap-0">
-              <AlertDialogCancel onClick={() => setLockedFeature(null)}>Maybe later</AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <Link href="/pricing">Upgrade Now</Link>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
