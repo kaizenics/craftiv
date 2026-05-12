@@ -12,8 +12,8 @@ export const openrouter = new OpenAI({
   },
 });
 
-export const AI_MODEL = "google/gemini-2.0-flash-001";
-export const AI_MODEL_FALLBACK = "qwen/qwen3.6-plus-preview:free";
+export const AI_MODEL = "minimax/minimax-m2.7";
+export const AI_MODEL_FALLBACK = "google/gemini-2.0-flash-001";
 
 // ── Response helpers ────────────────────────────────────────────────────────
 

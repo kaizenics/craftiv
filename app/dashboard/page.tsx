@@ -611,7 +611,7 @@ export default function Dashboard() {
                   value={`item-${index}`}
                   className="overflow-hidden rounded-2xl border border-sky-200/70 bg-white/90 shadow-[0_10px_30px_-20px_rgba(2,132,199,0.65)] backdrop-blur-sm transition-colors data-[state=open]:bg-white"
                 >
-                  <AccordionTrigger className="px-4 py-4 text-md text-foreground hover:no-underline sm:px-5 [&>svg]:text-sky-700/70">
+                  <AccordionTrigger className="py-4 text-md text-foreground hover:no-underline sm:px-5 [&>svg]:text-sky-700/70">
                     <span className="flex items-center gap-3 sm:gap-4">
                       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200 bg-sky-100/80 text-sky-700">
                         <item.icon className="h-5 w-5" />
@@ -626,7 +626,7 @@ export default function Dashboard() {
                       </span>
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="px-4 pt-0 pb-4 sm:px-5">
+                  <AccordionContent className="px-0 pt-0 sm:px-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -747,34 +747,66 @@ export default function Dashboard() {
                       key={resume.id}
                       className="grid gap-4 border-b border-border/70 px-4 py-4 transition-colors hover:bg-muted/15 last:border-b-0 sm:px-5 md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px] md:items-center"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/resume/section/${resume.id}`)}
-                          className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02]"
-                        >
-                          <ResumeCardPreview templateId={resume.templateId} />
-                        </button>
-                        <div className="min-w-0">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-start gap-3">
                           <button
                             type="button"
                             onClick={() => router.push(`/resume/section/${resume.id}`)}
-                            className="line-clamp-1 text-left text-[18px] leading-tight font-semibold text-foreground hover:text-primary"
+                            className="h-20 w-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02] md:h-28 md:w-20"
                           >
-                            {resume.title}
+                            <ResumeCardPreview templateId={resume.templateId} />
                           </button>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            Created{" "}
-                            {new Date(resume.createdAt).toLocaleDateString(undefined, {
-                              month: "2-digit",
-                              day: "2-digit",
-                              year: "numeric",
-                            })}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/resume/section/${resume.id}`)}
+                              className="line-clamp-1 text-left text-base leading-tight font-semibold text-foreground hover:text-primary md:text-[18px]"
+                            >
+                              {resume.title}
+                            </button>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Created{" "}
+                              {new Date(resume.createdAt).toLocaleDateString(undefined, {
+                                month: "2-digit",
+                                day: "2-digit",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <div className="shrink-0 md:hidden">
+                            <ResumeRowActions resume={resume} />
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2 md:hidden">
+                          <button
+                            type="button"
+                            onClick={() => router.push("/dashboard/ats-checker")}
+                            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                          >
+                            <ScanSearch className="h-4 w-4" />
+                            <span>Check</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/dashboard/ai-resume")}
+                            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                          >
+                            <SpellCheck className="h-4 w-4" />
+                            <span>Get Review</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => router.push("/resume/upload")}
+                            className="inline-flex h-9 items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            <span>Tailor</span>
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center">
+                      <div className="hidden items-center md:flex">
                         <button
                           type="button"
                           onClick={() => router.push("/dashboard/ats-checker")}
@@ -785,7 +817,7 @@ export default function Dashboard() {
                         </button>
                       </div>
 
-                      <div className="flex items-center">
+                      <div className="hidden items-center md:flex">
                         <button
                           type="button"
                           onClick={() => router.push("/dashboard/ai-resume")}
@@ -796,7 +828,7 @@ export default function Dashboard() {
                         </button>
                       </div>
 
-                      <div className="flex items-center">
+                      <div className="hidden items-center md:flex">
                         <button
                           type="button"
                           onClick={() => router.push("/resume/upload")}
@@ -807,7 +839,9 @@ export default function Dashboard() {
                         </button>
                       </div>
 
-                      <ResumeRowActions resume={resume} />
+                      <div className="hidden md:block">
+                        <ResumeRowActions resume={resume} />
+                      </div>
                     </div>
                   ))}
                 </div>

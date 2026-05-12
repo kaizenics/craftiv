@@ -21,6 +21,14 @@ function normalizeIssueField(field: string): string {
     .trim();
 }
 
+function normalizeLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -65,39 +73,66 @@ export function applyFixToResume(
     return { data: updated, changed };
   }
 
-  const expMatch = normalizedField.match(/^Experience (\d+) - (.+)$/);
+  const expMatch = normalizedField.match(/^Experience (\d+)\s*[-:]\s*(.+)$/i);
   if (expMatch) {
     const idx = parseInt(expMatch[1]) - 1;
-    const sub = expMatch[2];
+    const sub = normalizeLabel(expMatch[2]);
     const exp = updated.experiences[idx];
     if (exp) {
-      if (sub === "Job Title") exp.jobTitle = replace(exp.jobTitle);
-      else if (sub === "Employer") exp.employer = replace(exp.employer);
-      else if (sub === "Description") exp.description = replace(exp.description);
+      if (sub === "job title" || sub === "title") exp.jobTitle = replace(exp.jobTitle);
+      else if (sub === "employer" || sub === "company") exp.employer = replace(exp.employer);
+      else if (sub === "description" || sub === "details") exp.description = replace(exp.description);
     }
-    return { data: updated, changed };
+    if (changed) return { data: updated, changed };
   }
 
-  const eduMatch = normalizedField.match(/^Education (\d+) - (.+)$/);
+  const eduMatch = normalizedField.match(/^Education (\d+)\s*[-:]\s*(.+)$/i);
   if (eduMatch) {
     const idx = parseInt(eduMatch[1]) - 1;
-    const sub = eduMatch[2];
+    const sub = normalizeLabel(eduMatch[2]);
     const edu = updated.educations[idx];
     if (edu) {
-      if (sub === "School") edu.schoolName = replace(edu.schoolName);
-      else if (sub === "Degree") edu.degree = replace(edu.degree);
-      else if (sub === "Description") edu.description = replace(edu.description);
+      if (sub === "school" || sub === "school name") edu.schoolName = replace(edu.schoolName);
+      else if (sub === "degree") edu.degree = replace(edu.degree);
+      else if (sub === "description" || sub === "details") edu.description = replace(edu.description);
     }
-    return { data: updated, changed };
+    if (changed) return { data: updated, changed };
   }
 
-  const skillMatch = normalizedField.match(/^Skill (\d+)$/);
+  const skillMatch = normalizedField.match(/^Skill (\d+)$/i);
   if (skillMatch) {
     const idx = parseInt(skillMatch[1]) - 1;
     if (updated.skills[idx]) {
       updated.skills[idx].name = replace(updated.skills[idx].name);
     }
-    return { data: updated, changed };
+    if (changed) return { data: updated, changed };
+  }
+
+  // Robust fallback: if field labels don't map cleanly, still apply a single text replacement
+  // across known resume text fields so "Apply Fix" reflects immediately in preview.
+  if (!changed) {
+    updated.summary = replace(updated.summary);
+    updated.contact.firstName = replace(updated.contact.firstName);
+    updated.contact.lastName = replace(updated.contact.lastName);
+    updated.contact.desiredJobTitle = replace(updated.contact.desiredJobTitle);
+    updated.contact.email = replace(updated.contact.email);
+    updated.contact.phone = replace(updated.contact.phone);
+
+    for (const exp of updated.experiences) {
+      exp.jobTitle = replace(exp.jobTitle);
+      exp.employer = replace(exp.employer);
+      exp.location = replace(exp.location);
+      exp.description = replace(exp.description);
+    }
+    for (const edu of updated.educations) {
+      edu.schoolName = replace(edu.schoolName);
+      edu.location = replace(edu.location);
+      edu.degree = replace(edu.degree);
+      edu.description = replace(edu.description);
+    }
+    for (const skill of updated.skills) {
+      skill.name = replace(skill.name);
+    }
   }
 
   return { data: updated, changed };
