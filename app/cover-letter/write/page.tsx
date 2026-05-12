@@ -810,7 +810,7 @@ function WriteCoverLetterPageContent() {
       {/* Method picker / Upload dialog */}
       <Dialog open={methodDialogOpen} onOpenChange={() => {}}>
         <DialogContent
-          className="sm:max-w-lg p-8"
+          className="w-[calc(100vw-1.5rem)] max-w-lg p-4 sm:p-6"
           showCloseButton={false}
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
@@ -819,43 +819,43 @@ function WriteCoverLetterPageContent() {
           {/* ─── View: Pick method ─── */}
           {dialogView === "pick" && (
             <>
-              <DialogHeader className="items-center pb-2">
-                <DialogTitle className="text-2xl font-bold text-center">
-                  How will you make your cover letter?
-                </DialogTitle>
-                <p className="text-sm text-muted-foreground text-center mt-1">
-                  Choose a method to get started.
-                </p>
-              </DialogHeader>
+                <DialogHeader className="items-center pb-1 sm:pb-2">
+                  <DialogTitle className="text-center text-xl leading-tight font-bold sm:text-2xl">
+                    How will you make your cover letter?
+                  </DialogTitle>
+                  <p className="mt-1 text-center text-sm text-muted-foreground">
+                    Choose a method to get started.
+                  </p>
+                </DialogHeader>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
                 <button
                   type="button"
                   onClick={() => {
                     setDialogView("upload");
                     resetUpload();
                   }}
-                  className="group relative w-full text-left rounded-xl border-2 border-sky-300 bg-sky-50 p-5 transition-all hover:border-sky-400 hover:bg-sky-100/80 hover:shadow-md"
+                  className="group relative w-full rounded-xl border-2 border-sky-300 bg-sky-50 p-4 text-left transition-all hover:border-sky-400 hover:bg-sky-100/80 hover:shadow-md sm:p-5"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-sm">
-                      <Sparkles className="h-7 w-7" />
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-sm sm:h-14 sm:w-14">
+                      <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base font-semibold text-foreground">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-2">
+                        <span className="text-base font-semibold leading-tight text-foreground">
                           Generate from resume
                         </span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-sky-200/70 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
                           <Sparkles className="h-3 w-3" />
                           20% faster
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
+                      <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
                         Upload your resume and AI writes it for you.
                       </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-sky-400 transition-transform group-hover:translate-x-1" />
+                    <ChevronRight className="h-5 w-5 shrink-0 text-sky-400 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
                   </div>
                 </button>
 
@@ -864,19 +864,19 @@ function WriteCoverLetterPageContent() {
                   onClick={() => {
                     setMethodDialogOpen(false);
                   }}
-                  className="group w-full text-left rounded-xl border-2 border-border bg-card p-5 transition-all hover:border-muted-foreground/30 hover:bg-muted/10 hover:shadow-md"
+                  className="group w-full rounded-xl border-2 border-border bg-card p-4 text-left transition-all hover:border-muted-foreground/30 hover:bg-muted/10 hover:shadow-md sm:p-5"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted/30 text-foreground">
-                      <PenLine className="h-7 w-7" />
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted/30 text-foreground sm:h-14 sm:w-14">
+                      <PenLine className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-base font-semibold text-foreground">Write from scratch</span>
-                      <p className="text-sm text-muted-foreground mt-0.5">
+                      <span className="text-base font-semibold leading-tight text-foreground">Write from scratch</span>
+                      <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
                         We&apos;ll walk you through it, step by step.
                       </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
                   </div>
                 </button>
               </div>
