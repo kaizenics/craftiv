@@ -138,3 +138,41 @@
     display: none;
   }
 }
+
+.testimonial-marquee-left,
+.testimonial-marquee-right {
+  animation-duration: 72s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.testimonial-marquee-left {
+  animation-name: testimonials-marquee-left;
+}
+
+.testimonial-marquee-right {
+  animation-name: testimonials-marquee-right;
+}
+
+.testimonial-marquee-left:hover,
+.testimonial-marquee-right:hover {
+  animation-play-state: paused;
+}
+
+@keyframes testimonials-marquee-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes testimonials-marquee-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}

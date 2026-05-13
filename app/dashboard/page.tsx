@@ -579,10 +579,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats - Only show if user has resumes */}
-      {hasResumes && (
-        <div className="w-full">
-          <div className="relative overflow-hidden rounded-3xl border border-sky-200/60 bg-sky-50 to-white p-4 sm:p-6">
+      {/* Action Plan - Show for all users, including new accounts */}
+      <div className="w-full">
+        <div className="relative overflow-hidden rounded-3xl border border-sky-200/60 bg-sky-50 to-white p-4 sm:p-6">
             <div
               aria-hidden
               className="pointer-events-none absolute -top-16 -right-12 h-44 w-44 rounded-full bg-sky-200/50 blur-3xl"
@@ -654,9 +653,8 @@ export default function Dashboard() {
                 </AccordionItem>
               ))}
             </Accordion>
-          </div>
         </div>
-      )}
+      </div>
 
       {/* Quick Actions */}
       <QuickActions />
