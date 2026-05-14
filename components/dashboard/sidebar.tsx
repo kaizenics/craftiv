@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth-provider";
 import { trpc } from "@/trpc/client";
 import {
   LayoutDashboard,
+  Briefcase,
   FileText,
   ScanSearch,
   Sparkles,
@@ -18,6 +19,7 @@ import {
   ChevronDown,
   ScrollText,
   Mail,
+  ArrowUpRight,
 } from "@/components/ui/icons";
 import { Coins } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -56,6 +58,11 @@ const sidebarItems: SidebarItem[] = [
     name: "AI Resume Assistant",
     href: "/dashboard/ai-resume",
     icon: Sparkles,
+  },
+  {
+    name: "Portfolio Builder",
+    href: "/coming-soon",
+    icon: Briefcase,
   },
   {
     name: "Settings",
@@ -222,6 +229,9 @@ export function DashboardSidebar() {
             >
               <item.icon className="h-5 w-5 shrink-0" />
               <span>{item.name}</span>
+              {item.name === "Portfolio Builder" ? (
+                <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : null}
             </button>
           );
         })}

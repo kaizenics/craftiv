@@ -186,7 +186,18 @@ export function PricingClient() {
                     {plan.name}
                   </p>
                 </div>
-                {plan.badge ? (
+                {currentPlan !== null &&
+                (plan.subscriptionMatch ?? plan.name.toLowerCase()) === currentPlan ? (
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
+                      plan.featured
+                        ? "bg-white text-zinc-900"
+                        : "bg-zinc-200 text-zinc-700"
+                    }`}
+                  >
+                    Last purchased
+                  </span>
+                ) : plan.badge ? (
                   <span
                     className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
                       plan.featured
@@ -263,38 +274,28 @@ export function PricingClient() {
               </ul>
 
               <div className="mt-auto pt-6">
-                {currentPlan !== null &&
-                (plan.subscriptionMatch ?? plan.name.toLowerCase()) === currentPlan ? (
-                  <span
-                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${
-                      plan.featured
-                        ? "bg-white/20 text-white"
-                        : "bg-zinc-200 text-zinc-700"
-                    }`}
-                  >
-                    Current plan
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void startPlanUpgrade(plan)}
-                    disabled={isAuthLoading || activeCheckoutPlan === plan.upgradeKey || createCheckout.isPending}
-                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
-                      plan.featured
-                        ? "bg-white text-zinc-900 hover:bg-zinc-100"
-                        : "bg-primary text-white hover:bg-primary/90"
-                    }`}
-                  >
-                    {isAuthLoading
-                      ? "Checking account..."
-                      : !session?.user
-                        ? `Sign in for ${plan.name}`
-                        : activeCheckoutPlan === plan.upgradeKey
-                          ? "Opening checkout..."
-                        : plan.cta}
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void startPlanUpgrade(plan)}
+                  disabled={isAuthLoading || activeCheckoutPlan === plan.upgradeKey || createCheckout.isPending}
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+                    plan.featured
+                      ? "bg-white text-zinc-900 hover:bg-zinc-100"
+                      : "bg-primary text-white hover:bg-primary/90"
+                  }`}
+                >
+                  {isAuthLoading
+                    ? "Checking account..."
+                    : !session?.user
+                      ? `Sign in for ${plan.name}`
+                      : activeCheckoutPlan === plan.upgradeKey
+                        ? "Opening checkout..."
+                        : currentPlan !== null &&
+                            (plan.subscriptionMatch ?? plan.name.toLowerCase()) === currentPlan
+                          ? "Buy Again"
+                          : plan.cta}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
               </div>
             </article>
           ))}
