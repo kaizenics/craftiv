@@ -67,6 +67,10 @@ function WriteCoverLetterPageContent() {
   const coverLetterId = searchParams.get("id");
   const selectedTemplateId = normalizeCoverLetterTemplateId(searchParams.get("template"));
   const isEditing = Boolean(coverLetterId);
+  const [workingCoverLetterId, setWorkingCoverLetterId] = useState<string | null>(
+    coverLetterId
+  );
+  const activeCoverLetterId = coverLetterId ?? workingCoverLetterId;
 
   // Dialog state
   const [methodDialogOpen, setMethodDialogOpen] = useState(true);
@@ -103,13 +107,17 @@ function WriteCoverLetterPageContent() {
     },
   });
   const updateCoverLetter = trpc.coverLetter.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       utils.coverLetter.listSummary.invalidate();
-      if (coverLetterId) {
-        utils.coverLetter.getById.invalidate({ id: coverLetterId });
+      if (variables.id) {
+        utils.coverLetter.getById.invalidate({ id: variables.id });
       }
     },
   });
+
+  useEffect(() => {
+    setWorkingCoverLetterId(coverLetterId);
+  }, [coverLetterId]);
 
   useEffect(() => {
     if (isLoading || session) return;
@@ -285,7 +293,7 @@ function WriteCoverLetterPageContent() {
 
       if (!parseRes.ok) {
         const err = await parseRes.json();
-        throw new Error(err.error || "Failed to parse resume");
+        throw new Error(err.message || err.error || "Failed to parse resume");
       }
 
       const { data: resumeData } = await parseRes.json();
@@ -321,15 +329,22 @@ function WriteCoverLetterPageContent() {
       const genRes = await fetch("/api/cover-letter/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText }),
+        body: JSON.stringify({
+          resumeText,
+          coverLetterId: activeCoverLetterId ?? undefined,
+          templateId: coverLetterData.templateId,
+        }),
       });
 
       if (!genRes.ok) {
         const err = await genRes.json();
-        throw new Error(err.error || "Failed to generate cover letter");
+        throw new Error(err.message || err.error || "Failed to generate cover letter");
       }
 
       const generated = await genRes.json();
+      if (generated?.coverLetterId && !activeCoverLetterId) {
+        setWorkingCoverLetterId(generated.coverLetterId);
+      }
 
       const generatedContent = generated.content
         ? plainToHtmlParagraphs(generated.content)
@@ -418,15 +433,20 @@ function WriteCoverLetterPageContent() {
           hiringManagerName: employer.hiringManagerName,
           candidateContext,
           existingDraft: currentDraftText,
+          coverLetterId: activeCoverLetterId ?? undefined,
+          templateId: coverLetterData.templateId,
         }),
       });
 
       if (!genRes.ok) {
         const err = await genRes.json();
-        throw new Error(err.error || "Failed to generate cover letter");
+        throw new Error(err.message || err.error || "Failed to generate cover letter");
       }
 
       const generated = await genRes.json();
+      if (generated?.coverLetterId && !activeCoverLetterId) {
+        setWorkingCoverLetterId(generated.coverLetterId);
+      }
       const generatedContent = generated.content
         ? plainToHtmlParagraphs(generated.content)
         : [generated.opening, generated.body, generated.closing]
@@ -711,16 +731,29 @@ function WriteCoverLetterPageContent() {
       setIsDownloadingPdf(true);
       const fileName = toSafeFileName(getCoverLetterTitle());
       const html = buildCoverLetterPdfHtml();
+      let effectiveCoverLetterId = activeCoverLetterId;
+      if (!effectiveCoverLetterId) {
+        const created = await saveCoverLetter.mutateAsync({ data: coverLetterData });
+        effectiveCoverLetterId = created.id;
+        setWorkingCoverLetterId(created.id);
+      }
 
-      const response = await fetch("/api/cover-letter/pdf", {
+      const response = await fetch("/api/cover-letter/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html, fileName }),
+        body: JSON.stringify({
+          coverLetterId: effectiveCoverLetterId,
+          requestId: crypto.randomUUID(),
+          format: "pdf",
+          fileName,
+          html,
+          plainText: getFullText(),
+        }),
       });
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || "Failed to generate PDF");
+        throw new Error(payload?.message || payload?.error || "Failed to generate PDF");
       }
 
       const blob = await response.blob();
@@ -749,13 +782,14 @@ function WriteCoverLetterPageContent() {
       return;
     }
     try {
-      if (isEditing && coverLetterId) {
+      if (activeCoverLetterId) {
         await updateCoverLetter.mutateAsync({
-          id: coverLetterId,
+          id: activeCoverLetterId,
           data: coverLetterData,
         });
       } else {
-        await saveCoverLetter.mutateAsync({ data: coverLetterData });
+        const created = await saveCoverLetter.mutateAsync({ data: coverLetterData });
+        setWorkingCoverLetterId(created.id);
       }
       router.push("/dashboard/documents/cover-letters");
     } catch (e: unknown) {
@@ -853,6 +887,9 @@ function WriteCoverLetterPageContent() {
                       </div>
                       <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
                         Upload your resume and AI writes it for you.
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-sky-700">
+                        Consumes 0.5 credits per AI session
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 shrink-0 text-sky-400 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />

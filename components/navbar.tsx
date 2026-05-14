@@ -25,7 +25,7 @@ const navItems: NavItem[] = [
 ];
 
 function getCreditsByPlan(plan: SubscriptionPlan): number {
-  if (plan === "free") return 0;
+  if (plan === "free") return 1;
   if (plan === "active") return 5;
   if (plan === "plus") return 12;
   return 25;

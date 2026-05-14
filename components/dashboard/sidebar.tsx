@@ -65,7 +65,7 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 function getCreditsByPlan(plan: SubscriptionPlan): number {
-  if (plan === "free") return 0;
+  if (plan === "free") return 1;
   if (plan === "active") return 5;
   if (plan === "plus") return 12;
   return 25;
@@ -232,15 +232,17 @@ export function DashboardSidebar() {
           <div className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
             <Coins className="h-3.5 w-3.5 text-amber-700" />
             <span>{credits}</span>
-            {credits === 0 ? (
               <span className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-amber-900 transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 group-hover:max-w-[220px] max-w-0 opacity-0">
-                <span className="text-amber-700">Insufficient credits</span>
-                <span className="text-amber-500">·</span>
-                <Link href="/pricing" className="underline underline-offset-2">
-                  Top Up
-                </Link>
-              </span>
-            ) : null}
+              {credits === 0 ? (
+                <>
+                  <span className="text-amber-700">Insufficient credits</span>
+                </>
+              ) : null}
+              <span className="text-amber-500">·</span>
+              <Link href="/pricing" className="underline underline-offset-2">
+                Top Up
+              </Link>
+            </span>
           </div>
         </div>
       ) : null}
@@ -299,3 +301,4 @@ export function DashboardSidebar() {
     </>
   );
 }
+

@@ -179,19 +179,6 @@ export default function AIAssistantPage() {
     return null;
   }, [data, goal]);
 
-  const consumeCredits = async (cost: number, eventType: string) => {
-    const response = await fetch("/api/credits/consume", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ eventType, cost }),
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      const message = payload?.message || payload?.error || "Insufficient credits.";
-      throw new Error(message);
-    }
-  };
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -213,9 +200,7 @@ export default function AIAssistantPage() {
     if (!activeResumeId || !currentContent || !data) return;
     setError(null); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false);
     setImproverOriginal(currentContent);
-    try {
-      await consumeCredits(0.5, "ai_resume_improver");
-      if (goal === "summary") {
+    try {      if (goal === "summary") {
         const res = await improveSection.mutateAsync({
           resumeId: activeResumeId,
           section: "summary",
@@ -269,9 +254,7 @@ export default function AIAssistantPage() {
   async function handleKeywordGenerate() {
     if (!activeResumeId || !jobDescriptionKw.trim()) return;
     setError(null); setKeywordResults(null);
-    try {
-      await consumeCredits(0.25, "ai_keyword_booster");
-      const res = await keywordBooster.mutateAsync({ resumeId: activeResumeId, jobDescription: jobDescriptionKw });
+    try {      const res = await keywordBooster.mutateAsync({ resumeId: activeResumeId, jobDescription: jobDescriptionKw });
       setKeywordResults(res.keywords);
     } catch (e: any) { setError(e.message || "Something went wrong."); }
   }
@@ -279,9 +262,7 @@ export default function AIAssistantPage() {
   async function handleAchievementGenerate() {
     if (!activeResumeId) return;
     setError(null); setAchievementResult(null); setAchievementApplied(false);
-    try {
-      await consumeCredits(0.25, "ai_achievement_builder");
-      const res = await achievementBuilder.mutateAsync({ resumeId: activeResumeId, experienceIndex: selectedExpIndex, targetRole: achievementTargetRole || undefined });
+    try {      const res = await achievementBuilder.mutateAsync({ resumeId: activeResumeId, experienceIndex: selectedExpIndex, targetRole: achievementTargetRole || undefined });
       setAchievementResult(res.bullets);
     } catch (e: any) { setError(e.message || "Something went wrong."); }
   }
@@ -709,3 +690,6 @@ export default function AIAssistantPage() {
     </div>
   );
 }
+
+
+

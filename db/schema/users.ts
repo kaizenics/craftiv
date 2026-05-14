@@ -22,9 +22,10 @@ export const users = sqliteTable("users", {
   coverLetterCreatedCount: integer("cover_letter_created_count")
     .notNull()
     .default(0),
+  // Stored in credit units where 100 units = 1 credit.
   creditBalance: integer("credit_balance")
     .notNull()
-    .default(1),
+    .default(100),
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),

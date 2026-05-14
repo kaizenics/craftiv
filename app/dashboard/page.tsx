@@ -438,6 +438,7 @@ function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
 
       {downloadData && (
         <CoverLetterDownloadDialog
+          coverLetterId={letter.id}
           data={downloadData}
           fileName={letter.title}
           isOpen={showDownloadDialog}
