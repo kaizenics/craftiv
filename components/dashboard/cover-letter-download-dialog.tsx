@@ -17,6 +17,7 @@ import type { CoverLetterData } from "@/lib/types/cover-letter";
 type CoverLetterDownloadFormat = "pdf" | "docx" | "txt";
 
 interface CoverLetterDownloadDialogProps {
+  coverLetterId: string;
   data: CoverLetterData;
   fileName: string;
   isOpen: boolean;
@@ -232,6 +233,7 @@ function buildCoverLetterPdfHtml(data: CoverLetterData) {
 }
 
 export function CoverLetterDownloadDialog({
+  coverLetterId,
   data,
   fileName,
   isOpen,
@@ -248,15 +250,21 @@ export function CoverLetterDownloadDialog({
 
       if (format === "pdf") {
         const html = buildCoverLetterPdfHtml(data);
-        const response = await fetch("/api/cover-letter/pdf", {
+        const response = await fetch("/api/cover-letter/export", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ html, fileName: safeFileName }),
+          body: JSON.stringify({
+            coverLetterId,
+            requestId: crypto.randomUUID(),
+            format: "pdf",
+            html,
+            fileName: safeFileName,
+          }),
         });
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          throw new Error(payload?.error || "Failed to generate PDF");
+          throw new Error(payload?.message || payload?.error || "Failed to generate PDF");
         }
 
         const blob = await response.blob();
@@ -264,19 +272,6 @@ export function CoverLetterDownloadDialog({
         const link = document.createElement("a");
         link.href = url;
         link.download = `${safeFileName || "cover-letter"}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-      } else if (format === "docx") {
-        const wordHtml = buildCoverLetterPdfHtml(data);
-        const blob = new Blob([wordHtml], {
-          type: "application/msword",
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${safeFileName || "cover-letter"}.docx`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -302,12 +297,32 @@ export function CoverLetterDownloadDialog({
             return !(arr[index - 1] === "" && arr[index + 1] === "");
           })
           .join("\n");
+        const html = buildCoverLetterPdfHtml(data);
+        const response = await fetch("/api/cover-letter/export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            coverLetterId,
+            requestId: crypto.randomUUID(),
+            format,
+            html,
+            plainText: lines,
+            fileName: safeFileName,
+          }),
+        });
 
-        const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(
+            payload?.message || payload?.error || `Failed to export ${format.toUpperCase()}`
+          );
+        }
+
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `${safeFileName || "cover-letter"}.txt`;
+        link.download = `${safeFileName || "cover-letter"}.${format}`;
         document.body.appendChild(link);
         link.click();
         link.remove();

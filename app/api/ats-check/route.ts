@@ -4,6 +4,12 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import {
+  ATS_CHECK_COST,
+  buildInsufficientCreditsPayload,
+  consumeCredits,
+  InsufficientCreditsError,
+} from "@/lib/credits";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -321,6 +327,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const jobDescription = (formData.get("jobDescription") as string | null)?.trim() || "";
+    const requestId = (formData.get("requestId") as string | null)?.trim() || crypto.randomUUID();
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -386,8 +393,30 @@ export async function POST(request: NextRequest) {
       topActions: deterministic.topActions,
     };
 
-    return NextResponse.json({ report });
+    const chargeResult = await consumeCredits({
+      userId: session.user.id,
+      eventType: "ats_check",
+      costUnits: ATS_CHECK_COST,
+      idempotencyKey: `ats_check:${session.user.id}:${requestId}`,
+      metadata: {
+        requestId,
+        fileName: file.name,
+      },
+    });
+
+    return NextResponse.json({
+      report,
+      creditCharge: {
+        chargedCredits: 1,
+        balanceCredits: chargeResult.balanceUnits / 100,
+        balanceUnits: chargeResult.balanceUnits,
+        replayed: chargeResult.replayed,
+      },
+    });
   } catch (error: any) {
+    if (error instanceof InsufficientCreditsError) {
+      return NextResponse.json(buildInsufficientCreditsPayload(error), { status: 402 });
+    }
     console.error("[ATS Check] Error:", error);
     return NextResponse.json(
       { error: error.message || "An unexpected error occurred" },

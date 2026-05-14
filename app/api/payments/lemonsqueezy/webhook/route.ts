@@ -7,6 +7,11 @@ import {
   getVariantPlanMap,
   type InternalPlan,
 } from "@/lib/lemon-squeezy";
+import {
+  addCredits,
+  CREDIT_UNITS_PER_CREDIT,
+  deductCreditsWithFloor,
+} from "@/lib/credits";
 
 type LemonWebhookPayload = {
   meta?: {
@@ -66,9 +71,9 @@ function isSupportedEvent(eventName: string): boolean {
 }
 
 function getCreditsForPlan(plan: InternalPlan): number {
-  if (plan === "active") return 5;
-  if (plan === "plus") return 12;
-  return 25;
+  if (plan === "active") return 500;
+  if (plan === "plus") return 1200;
+  return 2500;
 }
 
 export async function POST(request: Request) {
@@ -121,15 +126,18 @@ export async function POST(request: Request) {
   if (existing) {
     if (eventName === "order_refunded" && existing.status !== "refunded") {
       const now = new Date();
-      const currentUser = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-        columns: {
-          creditBalance: true,
+      const refundResult = await deductCreditsWithFloor({
+        userId,
+        eventType: "purchase_refund",
+        maxUnitsToDeduct: getCreditsForPlan(plan),
+        idempotencyKey: `purchase_refund:lemonsqueezy:${transactionId}`,
+        metadata: {
+          provider: "lemonsqueezy",
+          transactionId,
+          plan,
         },
       });
-      const currentBalance = currentUser?.creditBalance ?? 0;
-      const deductedBalance = Math.max(0, currentBalance - getCreditsForPlan(plan));
-      const nextPlan = deductedBalance > 1 ? plan : "free";
+      const nextPlan = refundResult.balanceUnits > CREDIT_UNITS_PER_CREDIT ? plan : "free";
       await db
         .update(processedTransactions)
         .set({ status: "refunded", updatedAt: now })
@@ -138,8 +146,8 @@ export async function POST(request: Request) {
         .update(users)
         .set({
           plan: nextPlan,
-          isPaid: deductedBalance > 1,
-          creditBalance: deductedBalance,
+          isPaid: refundResult.balanceUnits > CREDIT_UNITS_PER_CREDIT,
+          creditBalance: refundResult.balanceUnits,
           updatedAt: now,
         })
         .where(eq(users.id, userId));
@@ -164,43 +172,49 @@ export async function POST(request: Request) {
   });
 
   if (eventName === "order_created") {
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        creditBalance: true,
+    const purchaseResult = await addCredits({
+      userId,
+      eventType: "purchase",
+      addUnits: getCreditsForPlan(plan),
+      idempotencyKey: `purchase:lemonsqueezy:${transactionId}`,
+      metadata: {
+        provider: "lemonsqueezy",
+        transactionId,
+        plan,
       },
     });
-    const currentBalance = currentUser?.creditBalance ?? 0;
-    const nextBalance = currentBalance + getCreditsForPlan(plan);
 
     await db
       .update(users)
       .set({
         plan,
         isPaid: true,
-        creditBalance: nextBalance,
+        creditBalance: purchaseResult.balanceUnits,
         updatedAt: now,
       })
       .where(eq(users.id, userId));
   }
 
   if (eventName === "order_refunded") {
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        creditBalance: true,
+    const refundResult = await deductCreditsWithFloor({
+      userId,
+      eventType: "purchase_refund",
+      maxUnitsToDeduct: getCreditsForPlan(plan),
+      idempotencyKey: `purchase_refund:lemonsqueezy:${transactionId}`,
+      metadata: {
+        provider: "lemonsqueezy",
+        transactionId,
+        plan,
       },
     });
-    const currentBalance = currentUser?.creditBalance ?? 0;
-    const deductedBalance = Math.max(0, currentBalance - getCreditsForPlan(plan));
-    const nextPlan = deductedBalance > 1 ? plan : "free";
+    const nextPlan = refundResult.balanceUnits > CREDIT_UNITS_PER_CREDIT ? plan : "free";
 
     await db
       .update(users)
       .set({
         plan: nextPlan,
-        isPaid: deductedBalance > 1,
-        creditBalance: deductedBalance,
+        isPaid: refundResult.balanceUnits > CREDIT_UNITS_PER_CREDIT,
+        creditBalance: refundResult.balanceUnits,
         updatedAt: now,
       })
       .where(eq(users.id, userId));

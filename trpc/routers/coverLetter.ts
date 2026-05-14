@@ -44,8 +44,6 @@ async function assertCanCreateCoverLetter(db: any, userId: string) {
   const user = await db.query.users.findFirst({
     columns: {
       id: true,
-      plan: true,
-      isPaid: true,
       coverLetterCreatedCount: true,
     },
     where: eq(users.id, userId),
@@ -55,18 +53,6 @@ async function assertCanCreateCoverLetter(db: any, userId: string) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "User not found",
-    });
-  }
-
-  const plan = user.plan ?? "free";
-  const createdCount = user.coverLetterCreatedCount ?? 0;
-  const limit =
-    plan === "free" ? 1 : plan === "active" ? 2 : plan === "plus" ? 6 : 12;
-
-  if (limit !== null && createdCount >= limit) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: `You've reached your ${plan.toUpperCase()} plan limit. Upgrade your plan to create more cover letter templates.`,
     });
   }
 

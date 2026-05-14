@@ -24,6 +24,13 @@ import {
   isProgrammingRelated,
   looksLikeCodeOutput,
 } from "@/lib/chatbot-policy";
+import {
+  AI_ACHIEVEMENT_BUILDER_COST,
+  AI_KEYWORD_BOOSTER_COST,
+  AI_RESUME_IMPROVER_COST,
+  consumeCredits,
+  InsufficientCreditsError,
+} from "@/lib/credits";
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -72,6 +79,25 @@ function isIgnoredSpellCheckField(field: string): boolean {
   ];
 
   return ignoredLabels.some((label) => normalized.includes(label));
+}
+
+async function chargeForAiAction(userId: string, eventType: string, costUnits: number) {
+  try {
+    await consumeCredits({
+      userId,
+      eventType,
+      costUnits,
+      idempotencyKey: `${eventType}:${userId}:${crypto.randomUUID()}`,
+    });
+  } catch (error) {
+    if (error instanceof InsufficientCreditsError) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You do not have enough credits for this action.",
+      });
+    }
+    throw error;
+  }
 }
 
 // ── Input schemas ───────────────────────────────────────────────────────────
@@ -154,6 +180,7 @@ export const aiRouter = createTRPCRouter({
         maxTokens: 2000,
         temperature: 0.7,
       });
+      await chargeForAiAction(ctx.user.id, "ai_resume_improver", AI_RESUME_IMPROVER_COST);
 
       console.log(`[AI] improveSection done — model: ${model}`);
       return { improved };
@@ -187,6 +214,7 @@ export const aiRouter = createTRPCRouter({
           message: "AI returned invalid format. Please try again.",
         });
       }
+      await chargeForAiAction(ctx.user.id, "ai_resume_improver", AI_RESUME_IMPROVER_COST);
 
       console.log(`[AI] improveFullResume done — model: ${model}`);
       return { improved };
@@ -282,6 +310,7 @@ export const aiRouter = createTRPCRouter({
 
       const parsed = extractJsonArray(content);
       if (!parsed) {
+      await chargeForAiAction(ctx.user.id, "ai_keyword_booster", AI_KEYWORD_BOOSTER_COST);
         console.log("[AI] keywordBooster — no valid JSON array in response");
         return { keywords: [] };
       }
@@ -294,6 +323,7 @@ export const aiRouter = createTRPCRouter({
           section: item.section,
           suggestion: item.suggestion,
         }));
+      await chargeForAiAction(ctx.user.id, "ai_keyword_booster", AI_KEYWORD_BOOSTER_COST);
 
       console.log(`[AI] keywordBooster done — ${keywords.length} keyword(s) via ${model}`);
       return { keywords };
@@ -329,6 +359,7 @@ export const aiRouter = createTRPCRouter({
         maxTokens: 1500,
         temperature: 0.7,
       });
+      await chargeForAiAction(ctx.user.id, "ai_achievement_builder", AI_ACHIEVEMENT_BUILDER_COST);
 
       console.log(`[AI] achievementBuilder done — model: ${model}`);
       return { bullets };
@@ -394,3 +425,7 @@ export const aiRouter = createTRPCRouter({
       return { letter };
     }),
 });
+
+
+
+

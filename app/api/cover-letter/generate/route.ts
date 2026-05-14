@@ -1,12 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { and, eq } from "drizzle-orm";
 import {
   callWithFallback,
   extractJsonObject,
   buildCoverLetterFromResumePrompt,
   buildCoverLetterFromEditorPrompt,
 } from "@/lib/ai";
+import { db } from "@/db";
+import { coverLetters } from "@/db/schema";
+import {
+  buildInsufficientCreditsPayload,
+  consumeCredits,
+  COVER_LETTER_AI_SESSION_COST,
+  InsufficientCreditsError,
+} from "@/lib/credits";
+import {
+  createEmptyCoverLetterData,
+  isCoverLetterTemplateId,
+} from "@/lib/types/cover-letter";
+
+const DAY_BUCKET_MS = 24 * 60 * 60 * 1000;
+
+async function resolveCoverLetterId(params: {
+  requestedCoverLetterId?: string;
+  requestedTemplateId?: string;
+  userId: string;
+}) {
+  const requestedId = params.requestedCoverLetterId?.trim();
+  if (requestedId) {
+    const existing = await db.query.coverLetters.findFirst({
+      columns: { id: true },
+      where: and(
+        eq(coverLetters.id, requestedId),
+        eq(coverLetters.userId, params.userId),
+      ),
+    });
+    if (!existing) {
+      throw new Error("Cover letter not found.");
+    }
+    return requestedId;
+  }
+
+  const draftId = crypto.randomUUID();
+  const data = createEmptyCoverLetterData();
+  if (isCoverLetterTemplateId(params.requestedTemplateId)) {
+    data.templateId = params.requestedTemplateId;
+  }
+
+  await db.insert(coverLetters).values({
+    id: draftId,
+    userId: params.userId,
+    title: `Cover letter — ${new Date().toLocaleDateString()}`,
+    data,
+    updatedAt: new Date(),
+  });
+
+  return draftId;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +81,8 @@ export async function POST(request: NextRequest) {
       hiringManagerName?: string;
       candidateContext?: string;
       existingDraft?: string;
+      coverLetterId?: string;
+      templateId?: string;
     };
 
     const mode = body.mode ?? "resume";
@@ -100,10 +154,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const coverLetterId = await resolveCoverLetterId({
+      requestedCoverLetterId: body.coverLetterId,
+      requestedTemplateId: body.templateId,
+      userId: session.user.id,
+    });
+
+    const bucket = Math.floor(Date.now() / DAY_BUCKET_MS);
+    const chargeResult = await consumeCredits({
+      userId: session.user.id,
+      eventType: "cover_letter_ai_session",
+      costUnits: COVER_LETTER_AI_SESSION_COST,
+      idempotencyKey: `cl_ai_session:${session.user.id}:${coverLetterId}:${bucket}`,
+      metadata: {
+        mode,
+        coverLetterId,
+        bucket,
+      },
+    });
+
     return NextResponse.json({
       content,
+      coverLetterId,
+      creditCharge: {
+        replayed: chargeResult.replayed,
+        chargedCredits: 0.5,
+        balanceCredits: chargeResult.balanceUnits / 100,
+        balanceUnits: chargeResult.balanceUnits,
+      },
     });
   } catch (error: any) {
+    if (error instanceof InsufficientCreditsError) {
+      return NextResponse.json(buildInsufficientCreditsPayload(error), {
+        status: 402,
+      });
+    }
     console.error("[CoverLetter Generate] Error:", error);
     return NextResponse.json(
       { error: error.message || "An unexpected error occurred" },

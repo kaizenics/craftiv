@@ -52,20 +52,6 @@ export default function AtsCheckerPage() {
 
 	const canAnalyze = !!file && !isInvalidType && !isInvalidSize && !isAnalyzing;
 
-	const consumeCredits = async (cost: number) => {
-		const response = await fetch("/api/credits/consume", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ eventType: "ats_check", cost }),
-		});
-
-		if (!response.ok) {
-			const payload = await response.json().catch(() => null);
-			const message = payload?.message || payload?.error || "Insufficient credits.";
-			throw new Error(message);
-		}
-	};
-
 	const handleAnalyze = async () => {
 		if (!file || !canAnalyze) return;
 
@@ -73,11 +59,11 @@ export default function AtsCheckerPage() {
 		setReport(null);
 
 		try {
-			await consumeCredits(1);
 			setIsAnalyzing(true);
 
 			const formData = new FormData();
 			formData.append("file", file);
+			formData.append("requestId", crypto.randomUUID());
 			if (jobDescription.trim()) {
 				formData.append("jobDescription", jobDescription.trim());
 			}
@@ -89,7 +75,7 @@ export default function AtsCheckerPage() {
 
 			if (!response.ok) {
 				const body = await response.json();
-				throw new Error(body.error || "Failed to analyze resume");
+				throw new Error(body.message || body.error || "Failed to analyze resume");
 			}
 
 			const body = await response.json();

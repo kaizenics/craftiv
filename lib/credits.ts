@@ -1,0 +1,319 @@
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+
+import { db } from "@/db";
+import { creditEvents, users } from "@/db/schema";
+
+export const CREDIT_UNITS_PER_CREDIT = 100;
+
+export const COVER_LETTER_AI_SESSION_COST = 50;
+export const COVER_LETTER_DOWNLOAD_COST = 50;
+export const ATS_CHECK_COST = 100;
+export const RESUME_DOWNLOAD_COST = 100;
+export const AI_RESUME_IMPROVER_COST = 50;
+export const AI_KEYWORD_BOOSTER_COST = 25;
+export const AI_ACHIEVEMENT_BUILDER_COST = 25;
+
+export class InsufficientCreditsError extends Error {
+  code = "INSUFFICIENT_CREDITS" as const;
+  requiredUnits: number;
+  currentUnits: number;
+
+  constructor(requiredUnits: number, currentUnits: number) {
+    super("You do not have enough credits for this action.");
+    this.requiredUnits = requiredUnits;
+    this.currentUnits = currentUnits;
+  }
+}
+
+type CreditEventMetadata = Record<string, unknown> | null | undefined;
+
+type ConsumeCreditsInput = {
+  userId: string;
+  eventType: string;
+  costUnits: number;
+  idempotencyKey: string;
+  metadata?: CreditEventMetadata;
+};
+
+type AddCreditsInput = {
+  userId: string;
+  eventType: string;
+  addUnits: number;
+  idempotencyKey: string;
+  metadata?: CreditEventMetadata;
+};
+
+type DeductWithFloorInput = {
+  userId: string;
+  eventType: string;
+  maxUnitsToDeduct: number;
+  idempotencyKey: string;
+  metadata?: CreditEventMetadata;
+};
+
+type CreditMutationResult = {
+  replayed: boolean;
+  balanceUnits: number;
+  deltaUnits: number;
+};
+
+function asSafeMetadata(metadata?: CreditEventMetadata): Record<string, unknown> | null {
+  if (!metadata) return null;
+  return metadata;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.toLowerCase().includes("unique");
+}
+
+async function getReplayByIdempotencyKey(idempotencyKey: string): Promise<CreditMutationResult | null> {
+  const existing = await db.query.creditEvents.findFirst({
+    where: eq(creditEvents.idempotencyKey, idempotencyKey),
+    columns: {
+      deltaUnits: true,
+      balanceAfterUnits: true,
+    },
+  });
+
+  if (!existing) return null;
+  return {
+    replayed: true,
+    balanceUnits: existing.balanceAfterUnits,
+    deltaUnits: existing.deltaUnits,
+  };
+}
+
+export function toCreditUnits(credits: number): number {
+  return Math.round(credits * CREDIT_UNITS_PER_CREDIT);
+}
+
+export function fromCreditUnits(units: number): number {
+  return units / CREDIT_UNITS_PER_CREDIT;
+}
+
+export function formatCreditValue(units: number): string {
+  const credits = fromCreditUnits(units);
+  return Number.isInteger(credits) ? String(credits) : credits.toFixed(2).replace(/\.?0+$/, "");
+}
+
+export function buildInsufficientCreditsPayload(error: InsufficientCreditsError) {
+  return {
+    code: error.code,
+    message: error.message,
+    requiredCredits: fromCreditUnits(error.requiredUnits),
+    currentBalance: fromCreditUnits(error.currentUnits),
+  };
+}
+
+export async function consumeCredits(input: ConsumeCreditsInput): Promise<CreditMutationResult> {
+  const costUnits = Math.trunc(input.costUnits);
+  if (costUnits <= 0) {
+    throw new Error("costUnits must be greater than zero.");
+  }
+
+  try {
+    return await db.transaction(async (tx) => {
+      const replay = await tx.query.creditEvents.findFirst({
+        where: eq(creditEvents.idempotencyKey, input.idempotencyKey),
+        columns: {
+          deltaUnits: true,
+          balanceAfterUnits: true,
+        },
+      });
+      if (replay) {
+        return {
+          replayed: true,
+          balanceUnits: replay.balanceAfterUnits,
+          deltaUnits: replay.deltaUnits,
+        };
+      }
+
+      const user = await tx.query.users.findFirst({
+        where: eq(users.id, input.userId),
+        columns: {
+          creditBalance: true,
+        },
+      });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const currentUnits = user.creditBalance ?? 0;
+      if (currentUnits < costUnits) {
+        throw new InsufficientCreditsError(costUnits, currentUnits);
+      }
+
+      const nextUnits = currentUnits - costUnits;
+
+      await tx
+        .update(users)
+        .set({ creditBalance: nextUnits, updatedAt: new Date() })
+        .where(eq(users.id, input.userId));
+
+      await tx.insert(creditEvents).values({
+        id: randomUUID(),
+        userId: input.userId,
+        eventType: input.eventType,
+        deltaUnits: -costUnits,
+        balanceAfterUnits: nextUnits,
+        idempotencyKey: input.idempotencyKey,
+        metadataJson: asSafeMetadata(input.metadata),
+        createdAt: new Date(),
+      });
+
+      return {
+        replayed: false,
+        balanceUnits: nextUnits,
+        deltaUnits: -costUnits,
+      };
+    });
+  } catch (error) {
+    if (error instanceof InsufficientCreditsError) throw error;
+    if (isUniqueConstraintError(error)) {
+      const replay = await getReplayByIdempotencyKey(input.idempotencyKey);
+      if (replay) return replay;
+    }
+    throw error;
+  }
+}
+
+export async function addCredits(input: AddCreditsInput): Promise<CreditMutationResult> {
+  const addUnits = Math.trunc(input.addUnits);
+  if (addUnits <= 0) {
+    throw new Error("addUnits must be greater than zero.");
+  }
+
+  try {
+    return await db.transaction(async (tx) => {
+      const replay = await tx.query.creditEvents.findFirst({
+        where: eq(creditEvents.idempotencyKey, input.idempotencyKey),
+        columns: {
+          deltaUnits: true,
+          balanceAfterUnits: true,
+        },
+      });
+      if (replay) {
+        return {
+          replayed: true,
+          balanceUnits: replay.balanceAfterUnits,
+          deltaUnits: replay.deltaUnits,
+        };
+      }
+
+      const user = await tx.query.users.findFirst({
+        where: eq(users.id, input.userId),
+        columns: {
+          creditBalance: true,
+        },
+      });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const currentUnits = user.creditBalance ?? 0;
+      const nextUnits = currentUnits + addUnits;
+
+      await tx
+        .update(users)
+        .set({ creditBalance: nextUnits, updatedAt: new Date() })
+        .where(eq(users.id, input.userId));
+
+      await tx.insert(creditEvents).values({
+        id: randomUUID(),
+        userId: input.userId,
+        eventType: input.eventType,
+        deltaUnits: addUnits,
+        balanceAfterUnits: nextUnits,
+        idempotencyKey: input.idempotencyKey,
+        metadataJson: asSafeMetadata(input.metadata),
+        createdAt: new Date(),
+      });
+
+      return {
+        replayed: false,
+        balanceUnits: nextUnits,
+        deltaUnits: addUnits,
+      };
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      const replay = await getReplayByIdempotencyKey(input.idempotencyKey);
+      if (replay) return replay;
+    }
+    throw error;
+  }
+}
+
+export async function deductCreditsWithFloor(input: DeductWithFloorInput): Promise<CreditMutationResult> {
+  const maxUnitsToDeduct = Math.max(0, Math.trunc(input.maxUnitsToDeduct));
+  if (maxUnitsToDeduct <= 0) {
+    throw new Error("maxUnitsToDeduct must be greater than zero.");
+  }
+
+  try {
+    return await db.transaction(async (tx) => {
+      const replay = await tx.query.creditEvents.findFirst({
+        where: eq(creditEvents.idempotencyKey, input.idempotencyKey),
+        columns: {
+          deltaUnits: true,
+          balanceAfterUnits: true,
+        },
+      });
+      if (replay) {
+        return {
+          replayed: true,
+          balanceUnits: replay.balanceAfterUnits,
+          deltaUnits: replay.deltaUnits,
+        };
+      }
+
+      const user = await tx.query.users.findFirst({
+        where: eq(users.id, input.userId),
+        columns: {
+          creditBalance: true,
+        },
+      });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const currentUnits = user.creditBalance ?? 0;
+      const deductedUnits = Math.min(currentUnits, maxUnitsToDeduct);
+      const nextUnits = currentUnits - deductedUnits;
+
+      await tx
+        .update(users)
+        .set({ creditBalance: nextUnits, updatedAt: new Date() })
+        .where(eq(users.id, input.userId));
+
+      await tx.insert(creditEvents).values({
+        id: randomUUID(),
+        userId: input.userId,
+        eventType: input.eventType,
+        deltaUnits: -deductedUnits,
+        balanceAfterUnits: nextUnits,
+        idempotencyKey: input.idempotencyKey,
+        metadataJson: asSafeMetadata(input.metadata),
+        createdAt: new Date(),
+      });
+
+      return {
+        replayed: false,
+        balanceUnits: nextUnits,
+        deltaUnits: -deductedUnits,
+      };
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      const replay = await getReplayByIdempotencyKey(input.idempotencyKey);
+      if (replay) return replay;
+    }
+    throw error;
+  }
+}
+

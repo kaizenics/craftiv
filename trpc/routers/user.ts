@@ -18,6 +18,7 @@ import {
   type CheckoutPlan,
   validateLemonSqueezyConfig,
 } from "@/lib/lemon-squeezy";
+import { fromCreditUnits } from "@/lib/credits";
 
 function getEffectivePlan(user: {
   plan: "free" | "active" | "plus" | "pro" | null;
@@ -25,13 +26,6 @@ function getEffectivePlan(user: {
 }) {
   if (!user.isPaid) return "free" as const;
   return user.plan ?? "free";
-}
-
-function getPlanLimit(plan: "free" | "active" | "plus" | "pro") {
-  if (plan === "free") return 1;
-  if (plan === "active") return 2;
-  if (plan === "plus") return 6;
-  return 12;
 }
 
 /**
@@ -113,17 +107,15 @@ export const userRouter = createTRPCRouter({
     const creditBalance = user.creditBalance ?? 0;
     const resumeCreated = user.resumeCreatedCount ?? 0;
     const coverLetterCreated = user.coverLetterCreatedCount ?? 0;
-    const limit = getPlanLimit(plan);
 
     return {
       plan,
       isPaid: !!user.isPaid,
       status: user.isPaid ? "active" : "inactive",
-      creditBalance,
+      creditBalance: fromCreditUnits(creditBalance),
+      creditBalanceUnits: creditBalance,
       resumeCreatedCount: resumeCreated,
-      resumeCreationLimit: limit,
       coverLetterCreatedCount: coverLetterCreated,
-      coverLetterCreationLimit: limit,
     };
   }),
 

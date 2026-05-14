@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
 import { CheckCircle2 } from "@/components/ui/icons";
 import {
   AlertDialog,
@@ -25,13 +24,6 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
-
-function getResumeLimitByPlan(plan: SubscriptionPlan): number | null {
-  if (plan === "free") return 1;
-  if (plan === "active") return 2;
-  if (plan === "plus") return 6;
-  return 12;
-}
 
 function getPlanBenefits(plan: SubscriptionPlan): string[] {
   if (plan === "free") {
@@ -212,23 +204,9 @@ export default function Settings() {
   const subscriptionPlan = (subscription?.plan as SubscriptionPlan | undefined) ?? "free";
   const hasPaidCredits = subscriptionPlan !== "free" && subscription?.status === "active";
   const creditStatusLabel = hasPaidCredits ? "active credits" : "starter access";
-  const resumeLimit = subscription?.resumeCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
-  const resumeUsageCount = subscription?.resumeCreatedCount ?? 0;
-  const coverLetterLimit =
-    subscription?.coverLetterCreationLimit ?? getResumeLimitByPlan(subscriptionPlan);
-  const coverLetterUsageCount = subscription?.coverLetterCreatedCount ?? 0;
-  const resumeUsagePercent = resumeLimit
-    ? Math.min((resumeUsageCount / resumeLimit) * 100, 100)
-    : 100;
-  const coverLetterUsagePercent = coverLetterLimit
-    ? Math.min((coverLetterUsageCount / coverLetterLimit) * 100, 100)
-    : 100;
-  const creditsUsageCount = Math.max(resumeUsageCount, coverLetterUsageCount);
-  const creditsUsageLimit = Math.max(resumeLimit ?? 0, coverLetterLimit ?? 0);
-  const creditsUsageLabel = creditsUsageLimit
-    ? `${Math.min(creditsUsageCount, creditsUsageLimit)}/${creditsUsageLimit}`
-    : "Unlimited";
-  const creditsUsagePercent = Math.max(resumeUsagePercent, coverLetterUsagePercent);
+  const availableCredits = subscription?.creditBalance ?? 0;
+  const resumesCreated = subscription?.resumeCreatedCount ?? 0;
+  const coverLettersCreated = subscription?.coverLetterCreatedCount ?? 0;
   const currentPlanBenefits = getPlanBenefits(subscriptionPlan);
 
   return (
@@ -267,9 +245,11 @@ export default function Settings() {
                 </p>
                 <div className="mt-3">
                   <p className="text-xs font-medium text-muted-foreground">
-                    Credits: {creditsUsageLabel}
+                    Available credits: {availableCredits}
                   </p>
-                  <Progress value={creditsUsagePercent} className="mt-1 h-2 w-full max-w-xs" />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Documents created: {resumesCreated} resumes, {coverLettersCreated} cover letters.
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
