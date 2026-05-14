@@ -6,6 +6,7 @@ import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  ArrowUpRight01Icon,
   ArrowUp01Icon,
   Award02Icon,
   Briefcase01Icon,
@@ -108,6 +109,7 @@ export const AlertCircle = createIcon(AlertCircleIcon);
 export const AlertTriangle = createIcon(Alert02Icon);
 export const ArrowLeft = createIcon(ArrowLeft01Icon);
 export const ArrowRight = createIcon(ArrowRight01Icon);
+export const ArrowUpRight = createIcon(ArrowUpRight01Icon);
 export const ArrowUp = createIcon(ArrowUp01Icon);
 export const Award = createIcon(Award02Icon);
 export const BadgeCheck = createIcon(CheckmarkBadge01Icon);

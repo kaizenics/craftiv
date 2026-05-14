@@ -52,7 +52,7 @@ function getPlanBenefits(plan: SubscriptionPlan): string[] {
     ];
   }
   return [
-    "Everything in Plus with the highest output capacity",
+    "Includes all premium features with maximum credit capacity",
     "Built for frequent applicants and career switchers",
     "Advanced AI optimization support",
     "No subscription, credits never expire",
@@ -62,13 +62,6 @@ function getPlanBenefits(plan: SubscriptionPlan): string[] {
 function isAIBenefit(benefit: string): boolean {
   const normalized = benefit.toLowerCase();
   return normalized.includes("ai-");
-}
-
-function getCreditTierLabel(plan: SubscriptionPlan): string {
-  if (plan === "free") return "Free Starter";
-  if (plan === "active") return "Active Credits";
-  if (plan === "plus") return "Plus Credits";
-  return "Pro Credits";
 }
 
 export default function Settings() {
@@ -202,11 +195,10 @@ export default function Settings() {
   };
 
   const subscriptionPlan = (subscription?.plan as SubscriptionPlan | undefined) ?? "free";
-  const hasPaidCredits = subscriptionPlan !== "free" && subscription?.status === "active";
-  const creditStatusLabel = hasPaidCredits ? "active credits" : "starter access";
   const availableCredits = subscription?.creditBalance ?? 0;
   const resumesCreated = subscription?.resumeCreatedCount ?? 0;
   const coverLettersCreated = subscription?.coverLetterCreatedCount ?? 0;
+  const approxAiSessionsLeft = Math.floor(availableCredits * 2);
   const currentPlanBenefits = getPlanBenefits(subscriptionPlan);
 
   return (
@@ -219,33 +211,22 @@ export default function Settings() {
         <section>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
 
-          <div
-            className={`mb-6 rounded-xl border p-4 ${
-              subscriptionPlan === "free"
-                ? "border-border bg-muted/30"
-                : "border-primary/30 bg-primary/5"
-            }`}
-          >
+          <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Current credits access</p>
-                <p className="text-lg font-semibold text-foreground capitalize">
-                  {getCreditTierLabel(subscriptionPlan)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Access status:{" "}
-                  <span
-                    className={hasPaidCredits ? "text-green-600 font-medium" : "text-muted-foreground"}
-                  >
-                    {creditStatusLabel}
-                  </span>
-                </p>
+                <p className="text-sm text-muted-foreground">Credits overview</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Billing model: one-time credit packs, no recurring subscription.
                 </p>
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Available credits: {availableCredits}
+                <div className="mt-4">
+                  <p className="text-4xl font-bold leading-none text-foreground">
+                    {availableCredits}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Available credits
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Approx. {approxAiSessionsLeft} AI sessions left (0.5 credit each).
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Documents created: {resumesCreated} resumes, {coverLettersCreated} cover letters.
