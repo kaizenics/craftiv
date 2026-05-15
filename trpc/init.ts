@@ -11,14 +11,16 @@ import { headers } from "next/headers";
  * Available in all tRPC procedures
  */
 export const createTRPCContext = async () => {
+  const requestHeaders = await headers();
   const session = await auth.api.getSession({
-    headers: await headers(),
+    headers: requestHeaders,
   });
 
   return {
     db,
     session,
     user: session?.user ?? null,
+    requestHeaders,
   };
 };
 

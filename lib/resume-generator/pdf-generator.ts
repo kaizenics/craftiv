@@ -131,6 +131,7 @@ export async function generatePDF({
     body: JSON.stringify({
       html: printableHtml,
       fileName,
+      requestId: crypto.randomUUID(),
     }),
   });
 

@@ -9,7 +9,11 @@ import {
   buildInsufficientCreditsPayload,
   consumeCredits,
   InsufficientCreditsError,
+  refundCredits,
 } from "@/lib/credits";
+import { enforceApiRouteGuards } from "@/lib/security/guards";
+import { assertContentLength } from "@/lib/security/request";
+import { hashForLogs, securityLog } from "@/lib/security/logging";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -315,6 +319,7 @@ ${text}`;
 }
 
 export async function POST(request: NextRequest) {
+  let chargedRequest: { userId: string; idempotencyKey: string } | null = null;
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -324,6 +329,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
+    const guard = await enforceApiRouteGuards({
+      request,
+      route: "/api/ats-check",
+      category: "ai_heavy",
+      userId: session.user.id,
+    });
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    assertContentLength(request, 11_000_000);
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const jobDescription = (formData.get("jobDescription") as string | null)?.trim() || "";
@@ -369,6 +385,29 @@ export async function POST(request: NextRequest) {
     const deterministic = scoreResumeDeterministically(truncatedText, jobDescription);
     const prompt = buildAtsPrompt(truncatedText, deterministic, jobDescription);
 
+    const chargeIdempotencyKey = `ats_check:${session.user.id}:${requestId}`;
+    const chargeResult = await consumeCredits({
+      userId: session.user.id,
+      eventType: "ats_check",
+      costUnits: ATS_CHECK_COST,
+      idempotencyKey: chargeIdempotencyKey,
+      metadata: {
+        requestId,
+        fileName: file.name,
+      },
+    });
+    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+
+    securityLog("credits_consumed", {
+      requestId: guard.requestId,
+      route: "/api/ats-check",
+      userIdHash: hashForLogs(session.user.id),
+      eventType: "ats_check",
+      costUnits: ATS_CHECK_COST,
+      replayed: chargeResult.replayed,
+      balanceUnits: chargeResult.balanceUnits,
+    });
+
     const { content } = await callWithFallback({
       messages: [{ role: "user", content: prompt }],
       maxTokens: 4500,
@@ -377,10 +416,7 @@ export async function POST(request: NextRequest) {
 
     const parsed = extractJsonObject(content);
     if (!parsed) {
-      return NextResponse.json(
-        { error: "AI returned an invalid response. Please try again." },
-        { status: 500 }
-      );
+      throw new Error("AI returned an invalid response. Please try again.");
     }
 
     const report = {
@@ -393,17 +429,6 @@ export async function POST(request: NextRequest) {
       topActions: deterministic.topActions,
     };
 
-    const chargeResult = await consumeCredits({
-      userId: session.user.id,
-      eventType: "ats_check",
-      costUnits: ATS_CHECK_COST,
-      idempotencyKey: `ats_check:${session.user.id}:${requestId}`,
-      metadata: {
-        requestId,
-        fileName: file.name,
-      },
-    });
-
     return NextResponse.json({
       report,
       creditCharge: {
@@ -414,6 +439,17 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
+    if (chargedRequest) {
+      await refundCredits({
+        userId: chargedRequest.userId,
+        eventType: "ats_check_refund",
+        refundUnits: ATS_CHECK_COST,
+        idempotencyKey: `refund:${chargedRequest.idempotencyKey}`,
+        metadata: {
+          reason: "ats_generation_failed",
+        },
+      });
+    }
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json(buildInsufficientCreditsPayload(error), { status: 402 });
     }
