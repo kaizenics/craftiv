@@ -13,6 +13,30 @@ export const RESUME_DOWNLOAD_COST = 100;
 export const AI_RESUME_IMPROVER_COST = 50;
 export const AI_KEYWORD_BOOSTER_COST = 25;
 export const AI_ACHIEVEMENT_BUILDER_COST = 25;
+export const RESUME_PARSE_COST = 50;
+export const RESUME_LAYOUT_CHAT_COST = 25;
+export const CHATBOT_STREAM_COST = 10;
+export const AI_SPELL_CHECK_COST = 25;
+export const AI_SUGGESTION_COST = 25;
+export const AI_COVER_LETTER_COST = 50;
+
+export const SERVER_CREDIT_COSTS = {
+  ats_check: ATS_CHECK_COST,
+  resume_download: RESUME_DOWNLOAD_COST,
+  cover_letter_download: COVER_LETTER_DOWNLOAD_COST,
+  cover_letter_ai_session: COVER_LETTER_AI_SESSION_COST,
+  resume_parse: RESUME_PARSE_COST,
+  resume_layout_chat: RESUME_LAYOUT_CHAT_COST,
+  chatbot_stream: CHATBOT_STREAM_COST,
+  ai_resume_improver: AI_RESUME_IMPROVER_COST,
+  ai_keyword_booster: AI_KEYWORD_BOOSTER_COST,
+  ai_achievement_builder: AI_ACHIEVEMENT_BUILDER_COST,
+  ai_spell_check: AI_SPELL_CHECK_COST,
+  ai_suggestion: AI_SUGGESTION_COST,
+  ai_cover_letter: AI_COVER_LETTER_COST,
+} as const;
+
+export type ServerCreditEventType = keyof typeof SERVER_CREDIT_COSTS;
 
 export class InsufficientCreditsError extends Error {
   code = "INSUFFICIENT_CREDITS" as const;
@@ -317,3 +341,18 @@ export async function deductCreditsWithFloor(input: DeductWithFloorInput): Promi
   }
 }
 
+export async function refundCredits(input: {
+  userId: string;
+  eventType: string;
+  refundUnits: number;
+  idempotencyKey: string;
+  metadata?: CreditEventMetadata;
+}) {
+  return addCredits({
+    userId: input.userId,
+    eventType: input.eventType,
+    addUnits: Math.max(0, Math.trunc(input.refundUnits)),
+    idempotencyKey: input.idempotencyKey,
+    metadata: input.metadata,
+  });
+}

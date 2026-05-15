@@ -3,6 +3,16 @@ import mammoth from "mammoth";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import {
+  buildInsufficientCreditsPayload,
+  consumeCredits,
+  InsufficientCreditsError,
+  RESUME_PARSE_COST,
+  refundCredits,
+} from "@/lib/credits";
+import { enforceApiRouteGuards } from "@/lib/security/guards";
+import { assertContentLength } from "@/lib/security/request";
+import { hashForLogs, securityLog } from "@/lib/security/logging";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const VALID_SKILL_LEVELS = ["Beginner", "Intermediate", "Advanced", "Expert"];
@@ -129,6 +139,7 @@ ${text}`;
 }
 
 export async function POST(request: NextRequest) {
+  let chargedRequest: { userId: string; idempotencyKey: string } | null = null;
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -141,6 +152,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const guard = await enforceApiRouteGuards({
+      request,
+      route: "/api/resume/parse",
+      category: "ai_heavy",
+      userId: session.user.id,
+    });
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    assertContentLength(request, 11_000_000);
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -192,6 +214,29 @@ export async function POST(request: NextRequest) {
 
     const truncatedText = extractedText.slice(0, 8000);
     const prompt = buildResumeParsePrompt(truncatedText);
+    const requestId = crypto.randomUUID();
+    const chargeIdempotencyKey = `resume_parse:${session.user.id}:${requestId}`;
+    const chargeResult = await consumeCredits({
+      userId: session.user.id,
+      eventType: "resume_parse",
+      costUnits: RESUME_PARSE_COST,
+      idempotencyKey: chargeIdempotencyKey,
+      metadata: {
+        requestId,
+        fileName: file.name,
+      },
+    });
+    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+
+    securityLog("credits_consumed", {
+      requestId: guard.requestId,
+      route: "/api/resume/parse",
+      userIdHash: hashForLogs(session.user.id),
+      eventType: "resume_parse",
+      costUnits: RESUME_PARSE_COST,
+      replayed: chargeResult.replayed,
+      balanceUnits: chargeResult.balanceUnits,
+    });
 
     console.log(`[Resume Parse] Extracted ${extractedText.length} chars, sending ${truncatedText.length} to AI`);
 
@@ -207,10 +252,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed) {
       console.error("[Resume Parse] AI returned invalid JSON:", content.slice(0, 500));
-      return NextResponse.json(
-        { error: "Failed to parse resume content. Please try again." },
-        { status: 500 }
-      );
+      throw new Error("Failed to parse resume content. Please try again.");
     }
 
     const c = parsed.contact || {};
@@ -282,8 +324,30 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    return NextResponse.json({ data: resumeData });
+    return NextResponse.json({
+      data: resumeData,
+      creditCharge: {
+        replayed: chargeResult.replayed,
+        chargedCredits: RESUME_PARSE_COST / 100,
+        balanceCredits: chargeResult.balanceUnits / 100,
+        balanceUnits: chargeResult.balanceUnits,
+      },
+    });
   } catch (error: any) {
+    if (chargedRequest) {
+      await refundCredits({
+        userId: chargedRequest.userId,
+        eventType: "resume_parse_refund",
+        refundUnits: RESUME_PARSE_COST,
+        idempotencyKey: `refund:${chargedRequest.idempotencyKey}`,
+        metadata: {
+          reason: "resume_parse_failed",
+        },
+      });
+    }
+    if (error instanceof InsufficientCreditsError) {
+      return NextResponse.json(buildInsufficientCreditsPayload(error), { status: 402 });
+    }
     console.error("[Resume Parse] Error:", error);
     return NextResponse.json(
       { error: error.message || "An unexpected error occurred" },

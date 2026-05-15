@@ -12,6 +12,9 @@ import {
   CREDIT_UNITS_PER_CREDIT,
   deductCreditsWithFloor,
 } from "@/lib/credits";
+import { verifyHmacSignature } from "@/lib/security/webhook";
+import { enforceRouteRateLimits } from "@/lib/security/guards";
+import { securityLog, securityRequestId } from "@/lib/security/logging";
 
 type LemonWebhookPayload = {
   meta?: {
@@ -77,7 +80,47 @@ function getCreditsForPlan(plan: InternalPlan): number {
 }
 
 export async function POST(request: Request) {
+  const requestId = securityRequestId(request.headers.get("x-request-id"));
+  const rateLimit = await enforceRouteRateLimits({
+    category: "global",
+    route: "/api/payments/lemonsqueezy/webhook",
+    requestHeaders: request.headers,
+    requestId,
+  });
+  if (!rateLimit.allowed) {
+    return Response.json(
+      { error: "Rate limit exceeded" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      },
+    );
+  }
+
   const rawBody = await request.text();
+  const signature =
+    request.headers.get("x-signature") ?? request.headers.get("X-Signature");
+  const webhookSecret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret) {
+    securityLog("webhook_secret_missing", { requestId, route: "/api/payments/lemonsqueezy/webhook" }, "error");
+    return Response.json({ error: "Webhook is not configured." }, { status: 500 });
+  }
+  const validSignature = verifyHmacSignature({
+    payload: rawBody,
+    signature,
+    secret: webhookSecret,
+  });
+  if (!validSignature) {
+    securityLog(
+      "webhook_signature_invalid",
+      {
+        requestId,
+        route: "/api/payments/lemonsqueezy/webhook",
+      },
+      "warn",
+    );
+    return Response.json({ error: "Invalid signature" }, { status: 401 });
+  }
 
   let payload: LemonWebhookPayload;
   try {

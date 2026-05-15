@@ -70,22 +70,6 @@ export function DownloadDialog({
     URL.revokeObjectURL(url);
   };
 
-  const consumeResumeCredit = async () => {
-    const response = await fetch('/api/credits/consume', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventType: 'resume_download', cost: 1 }),
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      const message = payload?.message || payload?.error || 'Unable to use credits for download.';
-      throw new Error(message);
-    }
-
-    await utils.user.subscription.invalidate();
-  };
-
   const handleDownload = async () => {
     setIsDownloading(true);
 
@@ -113,8 +97,8 @@ export function DownloadDialog({
         });
       }
 
-      await consumeResumeCredit();
       triggerDownload(blob, format === 'pdf' ? 'pdf' : 'docx');
+      await utils.user.subscription.invalidate();
       setDownloadComplete(true);
 
       // Call the completion callback

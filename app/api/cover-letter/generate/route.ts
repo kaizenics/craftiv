@@ -15,11 +15,15 @@ import {
   consumeCredits,
   COVER_LETTER_AI_SESSION_COST,
   InsufficientCreditsError,
+  refundCredits,
 } from "@/lib/credits";
 import {
   createEmptyCoverLetterData,
   isCoverLetterTemplateId,
 } from "@/lib/types/cover-letter";
+import { enforceApiRouteGuards } from "@/lib/security/guards";
+import { parseJsonWithLimit } from "@/lib/security/request";
+import { hashForLogs, securityLog } from "@/lib/security/logging";
 
 const DAY_BUCKET_MS = 24 * 60 * 60 * 1000;
 
@@ -32,10 +36,7 @@ async function resolveCoverLetterId(params: {
   if (requestedId) {
     const existing = await db.query.coverLetters.findFirst({
       columns: { id: true },
-      where: and(
-        eq(coverLetters.id, requestedId),
-        eq(coverLetters.userId, params.userId),
-      ),
+      where: and(eq(coverLetters.id, requestedId), eq(coverLetters.userId, params.userId)),
     });
     if (!existing) {
       throw new Error("Cover letter not found.");
@@ -52,7 +53,7 @@ async function resolveCoverLetterId(params: {
   await db.insert(coverLetters).values({
     id: draftId,
     userId: params.userId,
-    title: `Cover letter — ${new Date().toLocaleDateString()}`,
+    title: `Cover letter - ${new Date().toLocaleDateString()}`,
     data,
     updatedAt: new Date(),
   });
@@ -61,19 +62,28 @@ async function resolveCoverLetterId(params: {
 }
 
 export async function POST(request: NextRequest) {
+  let chargedRequest: { userId: string; idempotencyKey: string } | null = null;
+
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const body = (await request.json()) as {
+    const guard = await enforceApiRouteGuards({
+      request,
+      route: "/api/cover-letter/generate",
+      category: "ai_heavy",
+      userId: session.user.id,
+    });
+    if (!guard.ok) {
+      return guard.response;
+    }
+
+    const body = await parseJsonWithLimit<{
       resumeText?: string;
       mode?: "resume" | "editor";
       targetJobTitle?: string;
@@ -83,25 +93,19 @@ export async function POST(request: NextRequest) {
       existingDraft?: string;
       coverLetterId?: string;
       templateId?: string;
-    };
+    }>(request, 120_000);
 
     const mode = body.mode ?? "resume";
 
-    if (
-      mode === "resume" &&
-      (!body.resumeText || body.resumeText.trim().length < 20)
-    ) {
+    if (mode === "resume" && (!body.resumeText || body.resumeText.trim().length < 20)) {
       return NextResponse.json(
         { error: "Resume text is too short to generate a cover letter." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (mode === "editor" && !body.targetJobTitle?.trim()) {
-      return NextResponse.json(
-        { error: "Target job title is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Target job title is required." }, { status: 400 });
     }
 
     const prompt =
@@ -115,9 +119,38 @@ export async function POST(request: NextRequest) {
           })
         : buildCoverLetterFromResumePrompt(body.resumeText!.trim());
 
-    console.log(
-      `[CoverLetter Generate] Generating in ${mode} mode`
-    );
+    console.log(`[CoverLetter Generate] Generating in ${mode} mode`);
+
+    const coverLetterId = await resolveCoverLetterId({
+      requestedCoverLetterId: body.coverLetterId,
+      requestedTemplateId: body.templateId,
+      userId: session.user.id,
+    });
+
+    const bucket = Math.floor(Date.now() / DAY_BUCKET_MS);
+    const chargeIdempotencyKey = `cl_ai_session:${session.user.id}:${coverLetterId}:${bucket}`;
+    const chargeResult = await consumeCredits({
+      userId: session.user.id,
+      eventType: "cover_letter_ai_session",
+      costUnits: COVER_LETTER_AI_SESSION_COST,
+      idempotencyKey: chargeIdempotencyKey,
+      metadata: {
+        mode,
+        coverLetterId,
+        bucket,
+      },
+    });
+    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+
+    securityLog("credits_consumed", {
+      requestId: guard.requestId,
+      route: "/api/cover-letter/generate",
+      userIdHash: hashForLogs(session.user.id),
+      eventType: "cover_letter_ai_session",
+      costUnits: COVER_LETTER_AI_SESSION_COST,
+      replayed: chargeResult.replayed,
+      balanceUnits: chargeResult.balanceUnits,
+    });
 
     const { content: aiContent, model } = await callWithFallback({
       messages: [{ role: "user", content: prompt }],
@@ -125,7 +158,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.7,
     });
 
-    console.log(`[CoverLetter Generate] Done — model: ${model}`);
+    console.log(`[CoverLetter Generate] Done - model: ${model}`);
 
     const parsed = extractJsonObject(aiContent);
 
@@ -138,40 +171,12 @@ export async function POST(request: NextRequest) {
     const content =
       mode === "editor"
         ? normalizePlainText(aiContent)
-        : parsed?.content ||
-          [parsed?.opening, parsed?.body, parsed?.closing]
-            .filter(Boolean)
-            .join("\n\n");
+        : parsed?.content || [parsed?.opening, parsed?.body, parsed?.closing].filter(Boolean).join("\n\n");
 
     if (!content) {
-      console.error(
-        "[CoverLetter Generate] Invalid JSON from AI:",
-        aiContent.slice(0, 500)
-      );
-      return NextResponse.json(
-        { error: "AI returned an unexpected format. Please try again." },
-        { status: 500 }
-      );
+      console.error("[CoverLetter Generate] Invalid JSON from AI:", aiContent.slice(0, 500));
+      throw new Error("AI returned an unexpected format. Please try again.");
     }
-
-    const coverLetterId = await resolveCoverLetterId({
-      requestedCoverLetterId: body.coverLetterId,
-      requestedTemplateId: body.templateId,
-      userId: session.user.id,
-    });
-
-    const bucket = Math.floor(Date.now() / DAY_BUCKET_MS);
-    const chargeResult = await consumeCredits({
-      userId: session.user.id,
-      eventType: "cover_letter_ai_session",
-      costUnits: COVER_LETTER_AI_SESSION_COST,
-      idempotencyKey: `cl_ai_session:${session.user.id}:${coverLetterId}:${bucket}`,
-      metadata: {
-        mode,
-        coverLetterId,
-        bucket,
-      },
-    });
 
     return NextResponse.json({
       content,
@@ -183,16 +188,26 @@ export async function POST(request: NextRequest) {
         balanceUnits: chargeResult.balanceUnits,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (chargedRequest) {
+      await refundCredits({
+        userId: chargedRequest.userId,
+        eventType: "cover_letter_ai_session_refund",
+        refundUnits: COVER_LETTER_AI_SESSION_COST,
+        idempotencyKey: `refund:${chargedRequest.idempotencyKey}`,
+        metadata: {
+          reason: "ai_generation_failed",
+        },
+      });
+    }
+
     if (error instanceof InsufficientCreditsError) {
       return NextResponse.json(buildInsufficientCreditsPayload(error), {
         status: 402,
       });
     }
     console.error("[CoverLetter Generate] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "An unexpected error occurred" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "An unexpected error occurred";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
