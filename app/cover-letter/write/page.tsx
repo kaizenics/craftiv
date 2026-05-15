@@ -1065,9 +1065,9 @@ function WriteCoverLetterPageContent() {
         <div className="flex flex-col lg:flex-row w-full h-full">
           {/* Left: Form */}
           <div
-            className={`${
-              showPreview ? "lg:w-1/2" : "w-full"
-            } flex flex-col h-full overflow-auto`}
+            className={`w-full ${
+              showPreview ? "lg:w-1/2" : "lg:w-full"
+            } transition-all duration-300 ease-in-out flex flex-col h-full overflow-auto`}
           >
             <div className="flex-1 pb-20 sm:pb-24 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
               <div className="mb-4">
@@ -1126,9 +1126,9 @@ function WriteCoverLetterPageContent() {
 
             {/* Bottom Navigation */}
             <div
-              className={`fixed bottom-0 left-0 bg-background border-t p-3 sm:p-4 z-30 ${
-                showPreview ? "lg:w-1/2 w-full" : "w-full"
-              }`}
+              className={`fixed bottom-0 left-0 bg-background border-t p-3 sm:p-4 z-30 w-full ${
+                showPreview ? "lg:w-1/2" : "lg:w-full"
+              } transition-all duration-300 ease-in-out`}
             >
               <div className="flex items-center justify-between px-2 sm:px-4">
                 <Button
@@ -1239,11 +1239,18 @@ function WriteCoverLetterPageContent() {
           </div>
 
           {/* Right: Preview */}
-          {showPreview && (
-            <div className="hidden lg:block lg:w-1/2 h-full overflow-auto py-6 px-8 bg-zinc-50 dark:bg-zinc-900">
+          <div
+            className={`hidden lg:block h-full overflow-hidden bg-zinc-50 dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800 transition-all duration-300 ease-in-out ${
+              showPreview
+                ? "lg:w-1/2 opacity-100 translate-x-0"
+                : "lg:w-0 opacity-0 translate-x-3 border-l-0 pointer-events-none"
+            }`}
+            aria-hidden={!showPreview}
+          >
+            <div className="h-full overflow-auto py-6 px-8">
               <CoverLetterPreview data={coverLetterData} className="h-full" />
             </div>
-          )}
+          </div>
         </div>
       </div>
 

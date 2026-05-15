@@ -246,7 +246,7 @@ export default function ResumeSectionDynamicPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Main Content - Form Section */}
         <div
-          className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+          className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${
             showPreview ? "lg:w-1/2" : "lg:w-full"
           }`}
         >
@@ -261,7 +261,9 @@ export default function ResumeSectionDynamicPage() {
 
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-20 lg:pb-6">
-            <div className="max-w-2xl mx-auto">{renderStepContent()}</div>
+            <div className="max-w-2xl mx-auto">
+              {renderStepContent()}
+            </div>
           </div>
 
           {/* Footer Navigation */}
@@ -290,8 +292,15 @@ export default function ResumeSectionDynamicPage() {
         </div>
 
         {/* Desktop Preview Panel */}
-        {showPreview && (
-          <div className="hidden lg:block w-1/2 border-l bg-muted/30 overflow-auto p-8">
+        <div
+          className={`hidden lg:block bg-muted/30 overflow-hidden transition-all duration-300 ease-in-out ${
+            showPreview
+              ? "w-1/2 border-l opacity-100 translate-x-0"
+              : "w-0 border-l-0 opacity-0 translate-x-3 pointer-events-none"
+          }`}
+          aria-hidden={!showPreview}
+        >
+          <div className="h-full overflow-auto p-8">
             <div className="max-w-3xl mx-auto">
               <ResumePreview
                 data={resumeData}
@@ -303,7 +312,7 @@ export default function ResumeSectionDynamicPage() {
               />
             </div>
           </div>
-        )}
+        </div>
 
         {/* Mobile Preview Sheet */}
         <Sheet modal={false} open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
