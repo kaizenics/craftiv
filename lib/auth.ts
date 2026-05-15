@@ -1,9 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { emailOTP } from "better-auth/plugins";
 
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { sendAuthOtpEmail } from "@/lib/email";
 
 const toOrigin = (value?: string) => {
   if (!value) return null;
@@ -72,6 +74,13 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     },
   },
-  plugins: [nextCookies()],
+  plugins: [
+    nextCookies(),
+    emailOTP({
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        await sendAuthOtpEmail({ email, otp, type });
+      },
+    }),
+  ],
 });
 

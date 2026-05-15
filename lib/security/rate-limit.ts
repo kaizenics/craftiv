@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { rateLimits } from "@/db/schema";
 
-export type RateLimitScope = "global_api" | "ai_heavy" | "pdf_export";
+export type RateLimitScope =
+  | "global_api"
+  | "ai_heavy"
+  | "pdf_export"
+  | "auth_sensitive";
 export type RateLimitSubjectType = "ip" | "user" | "ip_user";
 export type RateLimitWindowName = "minutely" | "daily";
 

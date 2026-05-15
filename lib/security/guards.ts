@@ -4,7 +4,11 @@ import { consumeRateLimitRule, type RateLimitDecision, type RateLimitRule, type 
 import { getClientIp, getClientIpFromHeaders } from "@/lib/security/request";
 import { hashForLogs, recordSecurityAlertCounter, securityLog, securityRequestId } from "@/lib/security/logging";
 
-export type SecurityCategory = "global" | "ai_heavy" | "pdf_export";
+export type SecurityCategory =
+  | "global"
+  | "ai_heavy"
+  | "pdf_export"
+  | "auth_sensitive";
 
 type RateLimitResult = {
   allowed: boolean;
@@ -16,6 +20,7 @@ type RateLimitResult = {
 function toScope(category: SecurityCategory): RateLimitScope {
   if (category === "ai_heavy") return "ai_heavy";
   if (category === "pdf_export") return "pdf_export";
+  if (category === "auth_sensitive") return "auth_sensitive";
   return "global_api";
 }
 
@@ -148,6 +153,57 @@ function buildRules(params: {
         windowName: "minutely",
         windowSizeSeconds: 60,
         limit: 7,
+      });
+    }
+  }
+
+  if (scope === "auth_sensitive") {
+    rules.push({
+      scope,
+      route: params.route,
+      subjectType: "ip",
+      subjectId: params.ipHash,
+      windowName: "minutely",
+      windowSizeSeconds: 60,
+      limit: 12,
+    });
+    rules.push({
+      scope,
+      route: params.route,
+      subjectType: "ip",
+      subjectId: params.ipHash,
+      windowName: "daily",
+      windowSizeSeconds: 24 * 60 * 60,
+      limit: 120,
+    });
+
+    if (params.userHash) {
+      rules.push({
+        scope,
+        route: params.route,
+        subjectType: "user",
+        subjectId: params.userHash,
+        windowName: "minutely",
+        windowSizeSeconds: 60,
+        limit: 8,
+      });
+      rules.push({
+        scope,
+        route: params.route,
+        subjectType: "user",
+        subjectId: params.userHash,
+        windowName: "daily",
+        windowSizeSeconds: 24 * 60 * 60,
+        limit: 80,
+      });
+      rules.push({
+        scope,
+        route: params.route,
+        subjectType: "ip_user",
+        subjectId: `${params.ipHash}:${params.userHash}`,
+        windowName: "minutely",
+        windowSizeSeconds: 60,
+        limit: 8,
       });
     }
   }
