@@ -48,7 +48,7 @@ export function Testimonials() {
                     </div>
                   </div>
                   <p className="mt-4 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                    &quot;{testimonial.quote}&quot;
+                    {testimonial.quote}
                   </p>
                 </article>
               ))}
@@ -74,7 +74,7 @@ export function Testimonials() {
                     </div>
                   </div>
                   <p className="mt-4 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                    &quot;{testimonial.quote}&quot;
+                    {testimonial.quote}
                   </p>
                 </article>
               ))}

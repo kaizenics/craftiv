@@ -13,7 +13,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Virtual Assistant",
     company: "Freelance",
     quote:
-      "Super bilis gamitin. Inayos ko resume ko tonight, then may reply agad from a client kinabukasan.",
+      "It was very easy to use. I improved my resume in one evening, and a client replied the next day.",
   },
   {
     id: 2,
@@ -29,7 +29,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Customer Service Representative",
     company: "SaaS Support Team",
     quote:
-      "Sobrang helpful ng format. Mas naging clear yung metrics ko like CSAT and first response time.",
+      "The format was extremely helpful. It made my metrics like CSAT and first response time much clearer.",
   },
   {
     id: 4,
@@ -37,7 +37,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "GHL Developer",
     company: "Automation Studio",
     quote:
-      "I used the ATS flow before applying to GoHighLevel projects. Mas professional na tingnan yung technical stack ko.",
+      "I used the ATS flow before applying to GoHighLevel projects. My technical stack now looks more professional.",
   },
   {
     id: 5,
@@ -45,7 +45,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Appointment Setter",
     company: "B2B Sales Team",
     quote:
-      "Ang dali i-tailor per niche. Nagkaroon ako ng more booked interviews after updating my profile and resume.",
+      "It is easy to tailor for each niche. I started booking more interviews after updating my profile and resume.",
   },
   {
     id: 6,
@@ -69,7 +69,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Video Editor",
     company: "Media Team",
     quote:
-      "Mas confident na ako mag-apply internationally. The layout feels modern and easy for recruiters to scan.",
+      "I feel much more confident applying internationally. The layout feels modern and easy for recruiters to scan.",
   },
   {
     id: 9,
@@ -77,7 +77,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Executive Assistant",
     company: "Founder Office",
     quote:
-      "I updated my resume in less than an hour. Ang linaw na ngayon ng admin and calendar management experience ko.",
+      "I updated my resume in less than an hour. My admin and calendar management experience is now much clearer.",
   },
   {
     id: 10,
@@ -93,7 +93,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Email Marketing Assistant",
     company: "DTC Brand",
     quote:
-      "Madaling i-customize per client. I can highlight campaign wins quickly before each application.",
+      "It is easy to customize for each client. I can highlight campaign wins quickly before every application.",
   },
   {
     id: 12,
@@ -101,7 +101,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Data Entry Specialist",
     company: "Operations Team",
     quote:
-      "Simple but professional. Naging mas organized yung work history ko and mas readable sa recruiters.",
+      "Simple but professional. My work history is more organized now and much easier for recruiters to read.",
   },
   {
     id: 13,
@@ -117,7 +117,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Bookkeeper",
     company: "SMB Finance",
     quote:
-      "Clear sections and clean layout. Mas madaling ipakita yung QuickBooks and reconciliation results ko.",
+      "The sections are clear and the layout is clean. It is now easier to present my QuickBooks and reconciliation results.",
   },
   {
     id: 15,
@@ -133,7 +133,7 @@ export const mockTestimonials: Testimonial[] = [
     role: "Content Writer",
     company: "Content Studio",
     quote:
-      "The final resume sounds more professional but still natural. Sobrang useful for remote writing roles.",
+      "The final resume sounds more professional while still feeling natural. It is very useful for remote writing roles.",
   },
   {
     id: 17,
@@ -149,6 +149,6 @@ export const mockTestimonials: Testimonial[] = [
     role: "Community Manager",
     company: "Creator Community",
     quote:
-      "Nag-improve yung profile ko for Discord and social communities. Recruiters can see impact agad.",
+      "My profile for Discord and social communities improved a lot. Recruiters can now see my impact right away.",
   },
 ];
