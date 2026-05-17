@@ -45,6 +45,25 @@ const GOALS: { id: Goal; label: string; icon: typeof ScrollText }[] = [
   { id: "full", label: "Improve Full Resume", icon: FileText },
 ];
 
+function readStoredJobTargetDraft(): { role: string; jobDescription: string } {
+  if (typeof window === "undefined") {
+    return { role: "", jobDescription: "" };
+  }
+
+  const raw = localStorage.getItem("resumeAiJobTarget");
+  if (!raw) return { role: "", jobDescription: "" };
+
+  try {
+    const parsed = JSON.parse(raw) as { role?: string; jobDescription?: string };
+    return {
+      role: parsed.role?.trim() || "",
+      jobDescription: parsed.jobDescription?.trim() || "",
+    };
+  } catch {
+    return { role: "", jobDescription: "" };
+  }
+}
+
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
 function formatDate(date: Date | string): string {
@@ -87,6 +106,7 @@ function formatResumeDataAsText(d: Record<string, any>): string {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function AIAssistantPage() {
+  const initialTargetDraft = readStoredJobTargetDraft();
   const [activeTool, setActiveTool] = useState<Tool>("improver");
 
   // Resume selector state
@@ -98,20 +118,26 @@ export default function AIAssistantPage() {
 
   // Improver state
   const [goal, setGoal] = useState<Goal>("summary");
-  const [targetRole, setTargetRole] = useState("");
-  const [jobDescriptionImprover, setJobDescriptionImprover] = useState("");
+  const [targetRole, setTargetRole] = useState(initialTargetDraft.role);
+  const [jobDescriptionImprover, setJobDescriptionImprover] = useState(
+    initialTargetDraft.jobDescription,
+  );
   const [improverResult, setImproverResult] = useState<string | null>(null);
   const [fullResumeImproved, setFullResumeImproved] = useState<Record<string, any> | null>(null);
   const [improverOriginal, setImproverOriginal] = useState<string | null>(null);
   const [improverApplied, setImproverApplied] = useState(false);
 
   // Keyword Booster state
-  const [jobDescriptionKw, setJobDescriptionKw] = useState("");
+  const [jobDescriptionKw, setJobDescriptionKw] = useState(
+    initialTargetDraft.jobDescription,
+  );
   const [keywordResults, setKeywordResults] = useState<Array<{ keyword: string; importance: string; section: string; suggestion: string }> | null>(null);
 
   // Achievement Builder state
   const [selectedExpIndex, setSelectedExpIndex] = useState<number>(0);
-  const [achievementTargetRole, setAchievementTargetRole] = useState("");
+  const [achievementTargetRole, setAchievementTargetRole] = useState(
+    initialTargetDraft.role,
+  );
   const [achievementResult, setAchievementResult] = useState<string | null>(null);
   const [achievementApplied, setAchievementApplied] = useState(false);
 
