@@ -32,9 +32,21 @@ type AtsReport = {
 
 const MAX_SIZE_MB = 10;
 
+function readStoredAtsJobDescription(): string {
+	if (typeof window === "undefined") return "";
+	const raw = localStorage.getItem("atsJobDescriptionDraft");
+	if (!raw) return "";
+	try {
+		const parsed = JSON.parse(raw) as { jobDescription?: string };
+		return parsed.jobDescription?.trim() || "";
+	} catch {
+		return "";
+	}
+}
+
 export default function AtsCheckerPage() {
 	const [file, setFile] = useState<File | null>(null);
-	const [jobDescription, setJobDescription] = useState("");
+	const [jobDescription, setJobDescription] = useState(readStoredAtsJobDescription);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [report, setReport] = useState<AtsReport | null>(null);

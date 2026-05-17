@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/trpc/client";
 import {
@@ -17,14 +16,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { authClient } from "@/lib/auth-client";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Sheet,
@@ -40,12 +31,17 @@ import {
   DesignOptions,
   defaultDesignOptions,
 } from "@/components/resume/resume-preview";
-import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import { ResumeData } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
 import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
+import { TemplatesTab } from "./tabs/templates-tab";
+import { SectionsTab } from "./tabs/sections-tab";
+import { DesignTab } from "./tabs/design-tab";
+import { ContentQualityTab } from "./tabs/content-quality-tab";
+import { VersionHistoryTab } from "./tabs/version-history-tab";
+import { JobTargetTab } from "./tabs/job-target-tab";
 import {
   LayoutTemplate,
   Layers,
@@ -54,29 +50,31 @@ import {
   Check,
   Loader2,
   AlertCircle,
-  RotateCcw,
   Pencil,
   Eye,
+  Sparkles,
+  Clock,
+  Target,
 } from "@/components/ui/icons";
 
 // Sidebar tab types
-type SidebarTab = "templates" | "sections" | "design" | "spellcheck";
+type SidebarTab =
+  | "templates"
+  | "sections"
+  | "design"
+  | "spellcheck"
+  | "contentquality"
+  | "versionhistory"
+  | "jobtarget";
 
-const fontFamilies = [
-  { name: "Inter", value: "Inter, system-ui, sans-serif" },
-  { name: "Roboto", value: "Roboto, system-ui, sans-serif" },
-  { name: "Open Sans", value: '"Open Sans", system-ui, sans-serif' },
-  { name: "Lato", value: "Lato, system-ui, sans-serif" },
-  { name: "Montserrat", value: "Montserrat, system-ui, sans-serif" },
-  { name: "Poppins", value: "Poppins, system-ui, sans-serif" },
-  {
-    name: "Source Sans Pro",
-    value: '"Source Sans Pro", system-ui, sans-serif',
-  },
-  { name: "Nunito", value: "Nunito, system-ui, sans-serif" },
-  { name: "Raleway", value: "Raleway, system-ui, sans-serif" },
-  { name: "Merriweather", value: "Merriweather, Georgia, serif" },
-];
+type ResumeSnapshot = {
+  id: string;
+  createdAt: string;
+  resumeName: string;
+  resumeData: ResumeData;
+  designOptions: DesignOptions;
+  selectedColor: string;
+};
 
 // Color options for templates
 const templateColors = [
@@ -104,8 +102,24 @@ export default function FinalResumePage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>("#1e3a5f");
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
-  const [showPhoto, setShowPhoto] = useState(false);
+  const [currentResumeId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("currentResumeId");
+  });
+  const [showPhoto] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const savedShowPhoto = localStorage.getItem("showPhoto");
+    if (!savedShowPhoto) return false;
+    try {
+      return JSON.parse(savedShowPhoto) as boolean;
+    } catch {
+      return false;
+    }
+  });
+  const [jobTargetRole, setJobTargetRole] = useState("");
+  const [jobTargetDescription, setJobTargetDescription] = useState("");
+  const [snapshots, setSnapshots] = useState<ResumeSnapshot[]>([]);
+  const [snapshotSavedAt, setSnapshotSavedAt] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const latestSaveRequestRef = useRef(0);
   const hasHydratedRef = useRef(false);
@@ -116,6 +130,8 @@ export default function FinalResumePage() {
 
   const { data: session } = authClient.useSession();
   const updateResume = trpc.resume.update.useMutation();
+  const snapshotStorageKey = `resumeSnapshots:${currentResumeId ?? "local"}`;
+  const jobTargetStorageKey = `resumeJobTarget:${currentResumeId ?? "local"}`;
   const { data: savedResume } = trpc.resume.getById.useQuery(
     { id: currentResumeId! },
     { enabled: !!currentResumeId },
@@ -152,35 +168,26 @@ export default function FinalResumePage() {
     const savedData = localStorage.getItem("resumeData");
     const templateId = localStorage.getItem("selectedTemplateId");
     const resumeId = localStorage.getItem("currentResumeId");
-    const savedShowPhoto = localStorage.getItem("showPhoto");
 
     if (!savedData || !templateId) {
       router.push("/resume/templates");
       return;
     }
     
-    // Set resume ID if exists
-    if (resumeId) {
-      setCurrentResumeId(resumeId);
-    }
-
-    if (savedShowPhoto) {
-      try {
-        setShowPhoto(JSON.parse(savedShowPhoto));
-      } catch {
-        setShowPhoto(false);
-      }
-    }
+    // Keep localStorage key warm for downstream flows if present.
+    if (resumeId) localStorage.setItem("currentResumeId", resumeId);
 
     let initialResumeData: ResumeData | null = null;
     let initialSelectedColor = "#1e3a5f";
     let initialDesignOptions = defaultDesignOptions;
     let initialResumeName = "Resume_1";
+    let initialJobTargetRole = "";
+    let initialJobTargetDescription = "";
+    let initialSnapshots: ResumeSnapshot[] = [];
 
     try {
       const parsed = JSON.parse(savedData);
       initialResumeData = parsed;
-      setResumeData(parsed);
 
       // Set initial color from template
       const template = resumeTemplates.find((t) => t.id === parsed.templateId);
@@ -192,7 +199,6 @@ export default function FinalResumePage() {
         const preferredColor =
           isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
         initialSelectedColor = preferredColor;
-        setSelectedColor(preferredColor);
       }
     } catch {
       router.push("/resume/templates");
@@ -205,7 +211,6 @@ export default function FinalResumePage() {
       try {
         const parsedDesign = JSON.parse(savedDesign);
         initialDesignOptions = parsedDesign;
-        setDesignOptions(parsedDesign);
       } catch {
         // Use defaults
       }
@@ -215,18 +220,53 @@ export default function FinalResumePage() {
     const savedResumeName = localStorage.getItem("resumeName");
     if (savedResumeName) {
       initialResumeName = savedResumeName;
-      setResumeName(savedResumeName);
     }
 
-    if (initialResumeData) {
-      lastSavedResumeDataRef.current = JSON.stringify(initialResumeData);
+    const savedJobTarget = localStorage.getItem(jobTargetStorageKey);
+    if (savedJobTarget) {
+      try {
+        const parsed = JSON.parse(savedJobTarget) as {
+          role?: string;
+          description?: string;
+        };
+        initialJobTargetRole = parsed.role || "";
+        initialJobTargetDescription = parsed.description || "";
+      } catch {
+        initialJobTargetRole = "";
+        initialJobTargetDescription = "";
+      }
     }
-    lastSavedDesignOptionsRef.current = JSON.stringify(initialDesignOptions);
-    lastSavedSelectedColorRef.current = initialSelectedColor;
-    lastSavedResumeNameRef.current = initialResumeName.trim() || "Resume_1";
-    hasHydratedRef.current = true;
-    setIsLoading(false);
-  }, [router]);
+
+    const savedSnapshots = localStorage.getItem(snapshotStorageKey);
+    if (savedSnapshots) {
+      try {
+        const parsed = JSON.parse(savedSnapshots) as ResumeSnapshot[];
+        initialSnapshots = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        initialSnapshots = [];
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (initialResumeData) {
+        setResumeData(initialResumeData);
+        lastSavedResumeDataRef.current = JSON.stringify(initialResumeData);
+      }
+      setSelectedColor(initialSelectedColor);
+      setDesignOptions(initialDesignOptions);
+      setResumeName(initialResumeName);
+      setJobTargetRole(initialJobTargetRole);
+      setJobTargetDescription(initialJobTargetDescription);
+      setSnapshots(initialSnapshots);
+      lastSavedDesignOptionsRef.current = JSON.stringify(initialDesignOptions);
+      lastSavedSelectedColorRef.current = initialSelectedColor;
+      lastSavedResumeNameRef.current = initialResumeName.trim() || "Resume_1";
+      hasHydratedRef.current = true;
+      setIsLoading(false);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [router, jobTargetStorageKey, snapshotStorageKey]);
 
   // Save design options to localStorage and database
   useEffect(() => {
@@ -303,14 +343,34 @@ export default function FinalResumePage() {
     }
   }, [resumeName, isLoading]);
 
+  useEffect(() => {
+    if (isLoading || !hasHydratedRef.current) return;
+    localStorage.setItem(
+      jobTargetStorageKey,
+      JSON.stringify({
+        role: jobTargetRole,
+        description: jobTargetDescription,
+      }),
+    );
+  }, [jobTargetRole, jobTargetDescription, isLoading, jobTargetStorageKey]);
+
+  useEffect(() => {
+    if (isLoading || !hasHydratedRef.current) return;
+    localStorage.setItem(snapshotStorageKey, JSON.stringify(snapshots));
+  }, [snapshots, isLoading, snapshotStorageKey]);
+
   // Keep the editor title in sync with the database title when available
   useEffect(() => {
     if (!savedResume?.title) return;
 
     const normalizedTitle = savedResume.title.trim() || "Resume_1";
-    setResumeName(savedResume.title);
-    localStorage.setItem("resumeName", savedResume.title);
-    lastSavedResumeNameRef.current = normalizedTitle;
+    const timeoutId = setTimeout(() => {
+      setResumeName(savedResume.title);
+      localStorage.setItem("resumeName", savedResume.title);
+      lastSavedResumeNameRef.current = normalizedTitle;
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [savedResume?.title]);
 
   // Persist title edits to database so dashboard name matches final-resume name
@@ -485,6 +545,78 @@ export default function FinalResumePage() {
     localStorage.setItem("resumeData", JSON.stringify(updated));
   };
 
+  const saveVersionSnapshot = () => {
+    const snapshot: ResumeSnapshot = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      resumeName,
+      resumeData,
+      designOptions,
+      selectedColor,
+    };
+
+    setSnapshots((prev) => [snapshot, ...prev].slice(0, 20));
+    setSnapshotSavedAt(snapshot.createdAt);
+  };
+
+  const restoreVersionSnapshot = (snapshot: ResumeSnapshot) => {
+    setResumeData(snapshot.resumeData);
+    setDesignOptions(snapshot.designOptions);
+    setSelectedColor(snapshot.selectedColor);
+    setResumeName(snapshot.resumeName);
+    localStorage.setItem("resumeData", JSON.stringify(snapshot.resumeData));
+    localStorage.setItem("designOptions", JSON.stringify(snapshot.designOptions));
+    localStorage.setItem("selectedColor", snapshot.selectedColor);
+    localStorage.setItem("resumeName", snapshot.resumeName);
+  };
+
+  const deleteVersionSnapshot = (snapshotId: string) => {
+    setSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== snapshotId));
+  };
+
+  const pushJobTargetToAssistant = () => {
+    localStorage.setItem(
+      "resumeAiJobTarget",
+      JSON.stringify({
+        role: jobTargetRole,
+        jobDescription: jobTargetDescription,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+    router.push("/dashboard/ai-resume");
+  };
+
+  const openAtsCheckerWithTarget = () => {
+    localStorage.setItem(
+      "atsJobDescriptionDraft",
+      JSON.stringify({
+        jobDescription: jobTargetDescription,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+    router.push("/dashboard/ats-checker");
+  };
+
+  const getCoreQualityStats = () => {
+    const hasContact = Boolean(
+      resumeData.contact.firstName ||
+        resumeData.contact.lastName ||
+        resumeData.contact.email,
+    );
+    const hasSummary = Boolean(resumeData.summary?.trim());
+    const hasExperience = resumeData.experiences.some((exp) =>
+      Boolean(exp.description?.trim()),
+    );
+    const hasEducation = resumeData.educations.some(
+      (edu) => Boolean(edu.schoolName?.trim()) || Boolean(edu.degree?.trim()),
+    );
+    const hasSkills = resumeData.skills.length > 0;
+
+    const checks = [hasContact, hasSummary, hasExperience, hasEducation, hasSkills];
+    const complete = checks.filter(Boolean).length;
+    return { complete, total: checks.length };
+  };
+
   const sidebarTabs: {
     id: SidebarTab;
     label: string;
@@ -506,6 +638,21 @@ export default function FinalResumePage() {
       label: "Spell check",
       icon: <SpellCheck className="h-5 w-5" />,
     },
+    {
+      id: "contentquality",
+      label: "Content Quality",
+      icon: <Sparkles className="h-5 w-5" />,
+    },
+    {
+      id: "versionhistory",
+      label: "Version History",
+      icon: <Clock className="h-5 w-5" />,
+    },
+    {
+      id: "jobtarget",
+      label: "Job Target",
+      icon: <Target className="h-5 w-5" />,
+    },
   ];
 
   const activeTemplate = resumeTemplates.find((t) => t.id === resumeData.templateId);
@@ -517,6 +664,7 @@ export default function FinalResumePage() {
   const availableTemplateColors = isColorLockedTemplate
     ? [lockedTemplateColor]
     : templateColors;
+  const coreQualityStats = getCoreQualityStats();
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -581,13 +729,13 @@ export default function FinalResumePage() {
 
         {/* Mobile Bottom Navigation */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
-          <div className="grid grid-cols-4 gap-1">
+          <div className="flex gap-1 overflow-x-auto px-1 pb-1">
             {sidebarTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2 px-1 transition-colors",
+                  "flex min-w-20 shrink-0 flex-col items-center gap-1 rounded-md py-2 px-1 transition-colors",
                   activeTab === tab.id
                     ? "text-zinc-900 bg-zinc-100 dark:text-zinc-100 dark:bg-zinc-800"
                     : "text-muted-foreground"
@@ -603,324 +751,68 @@ export default function FinalResumePage() {
         {/* Sidebar Content Panel */}
         <div className="w-full lg:w-1/3 border-r bg-background flex flex-col pb-16 lg:pb-0">
           <div className="p-4 overflow-y-auto flex-1">
-            {/* Templates Tab */}
             {activeTab === "templates" && (
-              <div className="space-y-4">
-                <h2 className="font-display text-xl sm:text-2xl font-bold">Templates</h2>
-                <div className="border-b pb-4" />
-
-                {/* Color Options */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Template Color</Label>
-                  <div className="flex gap-2 items-center flex-wrap">
-                    {availableTemplateColors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => handleColorChange(color)}
-                        className={cn(
-                          "w-9 h-9 rounded-full border-2 transition-all hover:scale-110",
-                          selectedColor === color
-                            ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
-                            : "border-zinc-200 hover:border-zinc-400"
-                        )}
-                        style={{ backgroundColor: color }}
-                        title={color}
-                      />
-                    ))}
-                    {!isColorLockedTemplate && (
-                      <div className="relative group">
-                        <label
-                          className={cn(
-                            "w-9 h-9 rounded-full border-2 cursor-pointer flex items-center justify-center transition-all hover:scale-110",
-                            !templateColors.includes(selectedColor)
-                              ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
-                              : "border-zinc-200 hover:border-zinc-400"
-                          )}
-                          style={{
-                            backgroundColor: !templateColors.includes(
-                              selectedColor
-                            )
-                              ? selectedColor
-                              : "transparent",
-                            backgroundImage: templateColors.includes(
-                              selectedColor
-                            )
-                              ? "conic-gradient(from 90deg, red, yellow, lime, aqua, blue, magenta, red)"
-                              : "none",
-                          }}
-                          title="Custom color"
-                        >
-                          <input
-                            type="color"
-                            value={selectedColor}
-                            onChange={(e) => handleColorChange(e.target.value)}
-                            className="opacity-0 w-0 h-0 absolute"
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Selected: {selectedColor}
-                  </p>
-                </div>
-
-                {/* Template Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {resumeTemplates.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleTemplateChange(t.id)}
-                      className={cn(
-                        "relative aspect-3/4 border-2 rounded-lg overflow-hidden transition-all hover:shadow-lg text-left",
-                        resumeData.templateId === t.id
-                          ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
-                          : "border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      {/* Template Preview */}
-                      <div className="absolute inset-0 text-left">
-                        <TemplateLivePreview
-                          templateId={t.id}
-                          color={
-                            resumeData.templateId === t.id
-                              ? selectedColor
-                              : t.primaryColor
-                          }
-                        />
-                      </div>
-                      {resumeData.templateId === t.id && (
-                        <div className="absolute top-1 right-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-full p-0.5">
-                          <Check className="h-3 w-3" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <TemplatesTab
+                resumeData={resumeData}
+                selectedColor={selectedColor}
+                availableTemplateColors={availableTemplateColors}
+                templateColors={templateColors}
+                isColorLockedTemplate={isColorLockedTemplate}
+                onColorChange={handleColorChange}
+                onTemplateChange={handleTemplateChange}
+              />
             )}
 
-            {/* Sections Tab */}
             {activeTab === "sections" && (
-              <div className="space-y-4">
-                <h2 className="font-display text-xl sm:text-2xl font-bold">Sections</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  These are the sections included in your resume based on the
-                  information you provided.
-                </p>
-                <div className="border-b pb-4" />
-
-                <div className="space-y-2">
-                  {getActiveSections().map((section) => (
-                    <div
-                      key={section.id}
-                      className="flex items-center gap-3 p-3 border rounded-lg bg-card"
-                    >
-                      <div className="h-8 w-8 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                        <Check className="h-4 w-4 text-zinc-900 dark:text-zinc-100" />
-                      </div>
-                      <span className="font-medium">{section.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => router.push("/resume/section")}
-                >
-                  Edit Sections
-                </Button>
-              </div>
+              <SectionsTab
+                sections={getActiveSections()}
+                onEditSections={() => router.push("/resume/section")}
+              />
             )}
 
-            {/* Design & Formatting Tab */}
             {activeTab === "design" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-display text-xl sm:text-2xl font-bold">
-                    Design & Formatting
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetDesignOptions}
-                    className="text-muted-foreground text-xs sm:text-sm"
-                  >
-                    <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                    Reset
-                  </Button>
-                </div>
-                <div className="border-b pb-4" />
-
-                {/* Font Family */}
-                <div className="space-y-2">
-                  <Label>Font Family</Label>
-                  <Select
-                    value={designOptions.fontFamily}
-                    onValueChange={(value: any) =>
-                      setDesignOptions({ ...designOptions, fontFamily: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fontFamilies.map((font) => (
-                        <SelectItem key={font.value} value={font.value}>
-                          <span style={{ fontFamily: font.value }}>
-                            {font.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Font Size */}
-                <div className="space-y-2">
-                  <Label className="text-sm">Font Size</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={8}
-                      max={16}
-                      value={designOptions.fontSize}
-                      onChange={(e) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          fontSize: parseInt(e.target.value) || 11,
-                        })
-                      }
-                      className="w-16 sm:w-20 text-sm"
-                    />
-                    <span className="text-sm text-muted-foreground">pt</span>
-                    <Slider
-                      min={8}
-                      max={16}
-                      step={1}
-                      value={[designOptions.fontSize]}
-                      onValueChange={(value) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          fontSize: value[0],
-                        })
-                      }
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Section Spacing */}
-                <div className="space-y-2">
-                  <Label className="text-sm">Section Spacing</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={8}
-                      max={32}
-                      value={designOptions.sectionSpacing}
-                      onChange={(e) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          sectionSpacing: parseInt(e.target.value) || 16,
-                        })
-                      }
-                      className="w-16 sm:w-20 text-sm"
-                    />
-                    <span className="text-sm text-muted-foreground">px</span>
-                    <Slider
-                      min={8}
-                      max={32}
-                      step={1}
-                      value={[designOptions.sectionSpacing]}
-                      onValueChange={(value) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          sectionSpacing: value[0],
-                        })
-                      }
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Paragraph Spacing */}
-                <div className="space-y-2">
-                  <Label className="text-sm">Paragraph Spacing</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={4}
-                      max={24}
-                      value={designOptions.paragraphSpacing}
-                      onChange={(e) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          paragraphSpacing: parseInt(e.target.value) || 8,
-                        })
-                      }
-                      className="w-16 sm:w-20 text-sm"
-                    />
-                    <span className="text-sm text-muted-foreground">px</span>
-                    <Slider
-                      min={4}
-                      max={24}
-                      step={1}
-                      value={[designOptions.paragraphSpacing]}
-                      onValueChange={(value) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          paragraphSpacing: value[0],
-                        })
-                      }
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Line Spacing */}
-                <div className="space-y-2">
-                  <Label className="text-sm">Line Spacing</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={3}
-                      step={0.1}
-                      value={designOptions.lineSpacing}
-                      onChange={(e) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          lineSpacing: parseFloat(e.target.value) || 1.5,
-                        })
-                      }
-                      className="w-16 sm:w-20 text-sm"
-                    />
-                    <Slider
-                      min={1}
-                      max={3}
-                      step={0.1}
-                      value={[designOptions.lineSpacing]}
-                      onValueChange={(value) =>
-                        setDesignOptions({
-                          ...designOptions,
-                          lineSpacing: value[0],
-                        })
-                      }
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              </div>
+              <DesignTab
+                designOptions={designOptions}
+                onChange={setDesignOptions}
+                onReset={resetDesignOptions}
+              />
             )}
 
-            {/* Spell Check Tab */}
             {activeTab === "spellcheck" && (
               <SpellCheckPanel
                 resumeId={currentResumeId}
                 resumeData={resumeData}
                 onResumeDataChange={handleResumeDataChange}
+              />
+            )}
+
+            {activeTab === "contentquality" && (
+              <ContentQualityTab
+                stats={coreQualityStats}
+                onOpenAssistant={() => router.push("/dashboard/ai-resume")}
+                onOpenAts={() => router.push("/dashboard/ats-checker")}
+                onRunSpellCheck={() => setActiveTab("spellcheck")}
+              />
+            )}
+
+            {activeTab === "versionhistory" && (
+              <VersionHistoryTab
+                snapshots={snapshots}
+                snapshotSavedAt={snapshotSavedAt}
+                onSaveSnapshot={saveVersionSnapshot}
+                onRestoreSnapshot={restoreVersionSnapshot}
+                onDeleteSnapshot={deleteVersionSnapshot}
+              />
+            )}
+
+            {activeTab === "jobtarget" && (
+              <JobTargetTab
+                role={jobTargetRole}
+                description={jobTargetDescription}
+                onRoleChange={setJobTargetRole}
+                onDescriptionChange={setJobTargetDescription}
+                onUseInAssistant={pushJobTargetToAssistant}
+                onUseInAts={openAtsCheckerWithTarget}
               />
             )}
           </div>
