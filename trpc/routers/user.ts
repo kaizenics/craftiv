@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -19,6 +19,11 @@ import {
   validateLemonSqueezyConfig,
 } from "@/lib/lemon-squeezy";
 import { fromCreditUnits } from "@/lib/credits";
+import {
+  DEFAULT_USER_PREFERENCES,
+  getUserPreferencesFromRecord,
+  userPreferencesSchema,
+} from "@/lib/user-preferences";
 
 function getEffectivePlan(user: {
   plan: "free" | "active" | "plus" | "pro" | null;
@@ -42,6 +47,20 @@ export const userRouter = createTRPCRouter({
     });
 
     return user ?? null;
+  }),
+
+  preferences: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.query.users.findFirst({
+      columns: {
+        autoSaveDrafts: true,
+        defaultSpellCheck: true,
+        showResumeScore: true,
+        compactEditor: true,
+      },
+      where: eq(users.id, ctx.user.id),
+    });
+
+    return getUserPreferencesFromRecord(user);
   }),
 
   /**
@@ -177,6 +196,50 @@ export const userRouter = createTRPCRouter({
 
     return { success: true };
   }),
+
+  updateSettings: protectedProcedure
+    .input(
+      z.object({
+        firstName: z.string().trim().min(1, "First name is required").max(100),
+        lastName: z.string().trim().max(100).optional().default(""),
+        email: z.string().trim().email(),
+        preferences: userPreferencesSchema.default(DEFAULT_USER_PREFERENCES),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const fullName = `${input.firstName} ${input.lastName}`.trim();
+
+      const duplicateUser = await ctx.db.query.users.findFirst({
+        columns: { id: true },
+        where: and(eq(users.email, input.email), ne(users.id, ctx.user.id)),
+      });
+
+      if (duplicateUser) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That email address is already in use.",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({
+          name: fullName,
+          email: input.email,
+          autoSaveDrafts: input.preferences.autoSaveDrafts,
+          defaultSpellCheck: input.preferences.defaultSpellCheck,
+          showResumeScore: input.preferences.showResumeScore,
+          compactEditor: input.preferences.compactEditor,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
+
+      return {
+        name: fullName,
+        email: input.email,
+        preferences: input.preferences,
+      };
+    }),
 
   /**
    * Delete user account and all associated data

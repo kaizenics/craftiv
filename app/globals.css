@@ -129,6 +129,17 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  .compact-editor input,
+  .compact-editor textarea,
+  .compact-editor [role="combobox"],
+  .compact-editor button[data-slot="select-trigger"] {
+    min-height: 2.5rem;
+  }
+
+  .compact-editor h2 {
+    line-height: 1.15;
+  }
 }
 
 @utility scrollbar-none {

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
@@ -67,6 +68,10 @@ function isAIBenefit(benefit: string): boolean {
 export default function Settings() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
+  const utils = trpc.useUtils();
+  const { data: userProfile } = trpc.user.me.useQuery(undefined, {
+    enabled: !!session?.user,
+  });
   const { data: providers } = trpc.user.getProviders.useQuery();
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
@@ -86,8 +91,10 @@ export default function Settings() {
   const [noticeDialogOpen, setNoticeDialogOpen] = useState(false);
   const [noticeDialogTitle, setNoticeDialogTitle] = useState("Notice");
   const [noticeDialogMessage, setNoticeDialogMessage] = useState("");
+  const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
+  const updateSettingsMutation = trpc.user.updateSettings.useMutation();
   const openNotice = (title: string, message: string) => {
     setNoticeDialogTitle(title);
     setNoticeDialogMessage(message);
@@ -105,10 +112,9 @@ export default function Settings() {
 
   // Populate form with user data from session
   useEffect(() => {
-    if (session?.user) {
+    if ((userProfile || session?.user) && !hasLoadedSettings) {
       const timer = window.setTimeout(() => {
-        // Split name into firstName and lastName
-        const fullName = session.user.name || "";
+        const fullName = userProfile?.name || session?.user?.name || "";
         const nameParts = fullName.trim().split(" ");
         if (nameParts.length > 1) {
           setFirstName(nameParts[0]);
@@ -117,21 +123,50 @@ export default function Settings() {
           setFirstName(fullName);
           setLastName("");
         }
-        setEmail(session.user.email || "");
+        setEmail(userProfile?.email || session?.user?.email || "");
+        setAutoSaveDrafts(userProfile?.autoSaveDrafts ?? DEFAULT_USER_PREFERENCES.autoSaveDrafts);
+        setDefaultSpellCheck(userProfile?.defaultSpellCheck ?? DEFAULT_USER_PREFERENCES.defaultSpellCheck);
+        setCompactEditor(userProfile?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor);
+        setShowResumeScore(userProfile?.showResumeScore ?? DEFAULT_USER_PREFERENCES.showResumeScore);
+        setHasLoadedSettings(true);
       }, 0);
 
       return () => window.clearTimeout(timer);
     }
-  }, [session]);
+  }, [hasLoadedSettings, session, userProfile]);
 
   const onSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setSaving(true);
-    // Combine firstName and lastName for saving
-    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-    await new Promise((r) => setTimeout(r, 700));
-    setSaving(false);
-    openNotice("Settings Saved", `Name: ${fullName}\nEmail: ${email}`);
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const trimmedEmail = email.trim();
+    const fullName = `${trimmedFirstName} ${trimmedLastName}`.trim();
+
+    try {
+      await updateSettingsMutation.mutateAsync({
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        email: trimmedEmail,
+        preferences: {
+          autoSaveDrafts,
+          defaultSpellCheck,
+          showResumeScore,
+          compactEditor,
+        },
+      });
+      await Promise.all([
+        utils.user.me.invalidate(),
+        utils.user.preferences.invalidate(),
+      ]);
+      router.refresh();
+      openNotice("Settings Saved", `Name: ${fullName}\nEmail: ${trimmedEmail}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save settings.";
+      openNotice("Save Failed", message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Get provider display info

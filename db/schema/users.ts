@@ -26,6 +26,18 @@ export const users = sqliteTable("users", {
   creditBalance: integer("credit_balance")
     .notNull()
     .default(100),
+  autoSaveDrafts: integer("auto_save_drafts", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  defaultSpellCheck: integer("default_spell_check", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  showResumeScore: integer("show_resume_score", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  compactEditor: integer("compact_editor", { mode: "boolean" })
+    .notNull()
+    .default(false),
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),
