@@ -14,7 +14,12 @@ import {
   refundCredits,
 } from "@/lib/credits";
 import { enforceApiRouteGuards } from "@/lib/security/guards";
-import { MAX_PDF_HTML_BYTES, hardenPdfPage, sanitizeHtmlForPdf } from "@/lib/security/pdf";
+import {
+  MAX_PDF_HTML_BYTES,
+  MAX_PDF_REQUEST_BYTES,
+  hardenPdfPage,
+  sanitizeHtmlForPdf,
+} from "@/lib/security/pdf";
 import { parseJsonWithLimit } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
       return guard.response;
     }
 
-    const body = await parseJsonWithLimit<CoverLetterExportRequestBody>(request, MAX_PDF_HTML_BYTES + 120_000);
+    const body = await parseJsonWithLimit<CoverLetterExportRequestBody>(request, MAX_PDF_REQUEST_BYTES);
     const format = body?.format;
     const coverLetterId = body?.coverLetterId?.trim();
     const requestId = body?.requestId?.trim();

@@ -4,7 +4,8 @@ const SCRIPT_TAG_REGEX = /<script[\s\S]*?>[\s\S]*?<\/script>/gi;
 const EVENT_HANDLER_REGEX = /\son[a-z]+\s*=\s*(['"]).*?\1/gi;
 const JS_URL_REGEX = /(href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\2/gi;
 
-export const MAX_PDF_HTML_BYTES = 600_000;
+export const MAX_PDF_HTML_BYTES = 5_000_000;
+export const MAX_PDF_REQUEST_BYTES = MAX_PDF_HTML_BYTES + 250_000;
 
 export function sanitizeHtmlForPdf(input: string) {
   return input

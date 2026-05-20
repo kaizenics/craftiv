@@ -37,7 +37,7 @@ interface DownloadDialogProps {
   onSecondaryAction?: () => void;
 }
 
-type DownloadFormat = 'pdf' | 'docx';
+type DownloadFormat = 'pdf' | 'doc';
 
 export function DownloadDialog({
   data,
@@ -59,7 +59,7 @@ export function DownloadDialog({
   const template = resumeTemplates.find((t) => t.id === data.templateId) || resumeTemplates[0];
   const fileName = customFileName || `${data.contact.firstName || 'Resume'}_${data.contact.lastName || 'CV'}`;
 
-  const triggerDownload = (blob: Blob, extension: 'pdf' | 'docx') => {
+  const triggerDownload = (blob: Blob, extension: 'pdf' | 'doc') => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -97,7 +97,7 @@ export function DownloadDialog({
         });
       }
 
-      triggerDownload(blob, format === 'pdf' ? 'pdf' : 'docx');
+      triggerDownload(blob, format === 'pdf' ? 'pdf' : 'doc');
       await utils.user.subscription.invalidate();
       setDownloadComplete(true);
 
@@ -191,16 +191,16 @@ export function DownloadDialog({
             </button>
 
             <button
-              onClick={() => setFormat('docx')}
+              onClick={() => setFormat('doc')}
               className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                format === 'docx'
+                format === 'doc'
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
               }`}
             >
-              <File className={`h-8 w-8 ${format === 'docx' ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span className="font-medium">DOCX</span>
-              <span className="text-xs text-muted-foreground">Easy to edit</span>
+              <File className={`h-8 w-8 ${format === 'doc' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className="font-medium">DOC</span>
+              <span className="text-xs text-muted-foreground">Editable Word file</span>
             </button>
           </div>
 
