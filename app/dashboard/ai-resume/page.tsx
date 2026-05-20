@@ -712,7 +712,6 @@ export default function AIAssistantPage() {
           )}
         </div>
       )}
-
     </div>
   );
 }

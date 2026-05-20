@@ -2,7 +2,7 @@ import { ResumeData, TemplateLayout } from '@/lib/types/resume';
 import { DesignOptions } from './styles';
 import { generateResumeHTML } from './html-generator';
 
-interface DOCXGeneratorOptions {
+interface WordDocumentGeneratorOptions {
   data: ResumeData;
   template: { primaryColor: string; name: string; layout?: string };
   fileName: string;
@@ -109,7 +109,13 @@ function buildWordHtml(content: string): string {
   `;
 }
 
-export async function generateDOCX({ data, template, fileName, designOptions, customColor }: DOCXGeneratorOptions): Promise<Blob> {
+export async function generateDOCX({
+  data,
+  template,
+  fileName,
+  designOptions,
+  customColor,
+}: WordDocumentGeneratorOptions): Promise<Blob> {
   const previewElement = document.querySelector('[data-resume-export-preview] [data-resume-preview]') as HTMLElement | null;
 
   let htmlContent: string;
@@ -153,9 +159,22 @@ export async function generateDOCX({ data, template, fileName, designOptions, cu
     htmlContent = fallbackHTML;
   }
 
-  const blob = new Blob([htmlContent], {
-    type: 'application/msword',
+  const response = await fetch('/api/resume/doc', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      html: htmlContent,
+      fileName,
+      requestId: crypto.randomUUID(),
+    }),
   });
 
-  return blob;
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to generate DOC: ${errorText}`);
+  }
+
+  return await response.blob();
 }
