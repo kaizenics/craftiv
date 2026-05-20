@@ -32,6 +32,8 @@ import {
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Eye, EyeOff } from "@/components/ui/icons";
+import { cn } from "@/lib/utils";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 
 export default function ResumeSectionDynamicPage() {
   const router = useRouter();
@@ -49,6 +51,12 @@ export default function ResumeSectionDynamicPage() {
   // Fetch resume data from database
   const { data: resume, isLoading: isLoadingResume } = trpc.resume.getById.useQuery({ id: resumeId });
   const updateResume = trpc.resume.update.useMutation();
+  const { data: preferences } = trpc.user.preferences.useQuery(undefined, {
+    retry: false,
+  });
+  const autoSaveDraftsEnabled = preferences?.autoSaveDrafts ?? DEFAULT_USER_PREFERENCES.autoSaveDrafts;
+  const showResumeScoreEnabled = preferences?.showResumeScore ?? DEFAULT_USER_PREFERENCES.showResumeScore;
+  const compactEditorEnabled = preferences?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor;
 
   useEffect(() => {
     if (!resume) return;
@@ -82,6 +90,7 @@ export default function ResumeSectionDynamicPage() {
   // Auto-save to database when resume data changes
   useEffect(() => {
     if (!resumeData || isLoading) return;
+    if (!autoSaveDraftsEnabled) return;
 
     const timeoutId = setTimeout(() => {
       updateResume.mutate({
@@ -92,7 +101,7 @@ export default function ResumeSectionDynamicPage() {
     }, 1000); // Debounce for 1 second
 
     return () => clearTimeout(timeoutId);
-  }, [resumeData, currentStep, resumeId, isLoading]);
+  }, [autoSaveDraftsEnabled, resumeData, currentStep, resumeId, isLoading]);
 
   if (isLoading || isLoadingResume || !resumeData) {
     return (
@@ -203,9 +212,9 @@ export default function ResumeSectionDynamicPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className={cn("h-screen flex flex-col overflow-hidden bg-background", compactEditorEnabled && "compact-editor")}>
       {/* Header */}
-      <header className="border-b bg-card px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0">
+      <header className={cn("border-b bg-card px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0", compactEditorEnabled && "py-2 sm:py-3")}>
         <div className="flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
@@ -251,7 +260,7 @@ export default function ResumeSectionDynamicPage() {
           }`}
         >
           {/* Step Indicator */}
-          <div className="px-3 sm:px-6 py-4 sm:py-6 border-b bg-card shrink-0">
+          <div className={cn("px-3 sm:px-6 py-4 sm:py-6 border-b bg-card shrink-0", compactEditorEnabled && "px-3 sm:px-5 py-3 sm:py-4")}>
             <StepIndicator
               currentStep={currentStep}
               completedSteps={completedSteps}
@@ -260,14 +269,14 @@ export default function ResumeSectionDynamicPage() {
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-20 lg:pb-6">
+          <div className={cn("flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-20 lg:pb-6", compactEditorEnabled && "px-3 sm:px-5 py-3 sm:py-4")}>
             <div className="max-w-2xl mx-auto">
               {renderStepContent()}
             </div>
           </div>
 
           {/* Footer Navigation */}
-          <div className="border-t bg-card px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0">
+          <div className={cn("border-t bg-card px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0", compactEditorEnabled && "px-3 sm:px-5 py-2.5 sm:py-3")}>
             <Button
               variant="outline"
               onClick={handleBack}
@@ -300,7 +309,7 @@ export default function ResumeSectionDynamicPage() {
           }`}
           aria-hidden={!showPreview}
         >
-          <div className="h-full overflow-auto p-8">
+          <div className={cn("h-full overflow-auto p-8", compactEditorEnabled && "p-6")}>
             <div className="max-w-3xl mx-auto">
               <ResumePreview
                 data={resumeData}
@@ -309,6 +318,7 @@ export default function ResumeSectionDynamicPage() {
                     ?.primaryColor || "#2563eb"
                 }
                 showPhoto={showPhoto}
+                showScore={showResumeScoreEnabled}
               />
             </div>
           </div>
@@ -340,6 +350,7 @@ export default function ResumeSectionDynamicPage() {
                       ?.primaryColor || "#2563eb"
                   }
                   showPhoto={showPhoto}
+                  showScore={showResumeScoreEnabled}
                 />
               </PinchZoomContainer>
             </div>

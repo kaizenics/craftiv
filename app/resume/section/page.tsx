@@ -33,6 +33,8 @@ import {
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Download, Eye, EyeOff } from "@/components/ui/icons";
+import { cn } from "@/lib/utils";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 
 export default function ResumeSectionPage() {
   const router = useRouter();
@@ -49,6 +51,12 @@ export default function ResumeSectionPage() {
   // Add tRPC mutations
   const createResume = trpc.resume.create.useMutation();
   const updateResume = trpc.resume.update.useMutation();
+  const { data: preferences } = trpc.user.preferences.useQuery(undefined, {
+    retry: false,
+  });
+  const autoSaveDraftsEnabled = preferences?.autoSaveDrafts ?? DEFAULT_USER_PREFERENCES.autoSaveDrafts;
+  const showResumeScoreEnabled = preferences?.showResumeScore ?? DEFAULT_USER_PREFERENCES.showResumeScore;
+  const compactEditorEnabled = preferences?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor;
 
   useEffect(() => {
     // Get the selected template from localStorage
@@ -130,7 +138,7 @@ export default function ResumeSectionPage() {
       localStorage.setItem("resumeData", JSON.stringify(resumeData));
       
       // Auto-save to database with debounce
-      if (currentResumeId) {
+      if (currentResumeId && autoSaveDraftsEnabled) {
         const timeoutId = setTimeout(() => {
           updateResume.mutate({
             id: currentResumeId,
@@ -143,7 +151,7 @@ export default function ResumeSectionPage() {
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [resumeData, currentResumeId, currentStep]);
+  }, [autoSaveDraftsEnabled, resumeData, currentResumeId, currentStep]);
 
   if (isLoading || !resumeData) {
     return (
@@ -252,16 +260,16 @@ export default function ResumeSectionPage() {
   };
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className={cn("h-screen bg-background flex flex-col overflow-hidden", compactEditorEnabled && "compact-editor")}>
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         <div className="flex flex-col lg:flex-row w-full h-full">
           <div className={`w-full ${showPreview ? "lg:w-1/2" : "lg:w-full"} transition-all duration-300 ease-in-out flex flex-col h-full overflow-auto`}>
             {/* Form Section with Header and Navigation */}
-            <div className="flex-1 pb-20 sm:pb-24 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+            <div className={cn("flex-1 pb-20 sm:pb-24 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6", compactEditorEnabled && "px-3 sm:px-4 lg:px-5 pt-3 sm:pt-4")}>
 
               {/* Step Indicator - Form Section Only */}
-              <div className="bg-background border rounded-lg shadow-sm mb-4 p-3 sm:p-4">
+              <div className={cn("bg-background border rounded-lg shadow-sm mb-4 p-3 sm:p-4", compactEditorEnabled && "mb-3 p-2.5 sm:p-3")}>
                 <StepIndicator
                   currentStep={currentStep}
                   completedSteps={completedSteps}
@@ -270,7 +278,7 @@ export default function ResumeSectionPage() {
               </div>
 
               {/* Form Content */}
-              <div className="bg-background rounded-lg border p-4 sm:p-6 mb-4">
+              <div className={cn("bg-background rounded-lg border p-4 sm:p-6 mb-4", compactEditorEnabled && "p-3 sm:p-4 mb-3")}>
                 {renderCurrentForm()}
               </div>
 
@@ -318,6 +326,7 @@ export default function ResumeSectionPage() {
                               data={resumeData}
                               className="shadow-none"
                               showPhoto={showPhoto}
+                              showScore={showResumeScoreEnabled}
                             />
                           </PinchZoomContainer>
                         </div>
@@ -376,11 +385,12 @@ export default function ResumeSectionPage() {
             }`}
             aria-hidden={!showPreview}
           >
-            <div className="h-full overflow-auto py-6 px-8">
+            <div className={cn("h-full overflow-auto py-6 px-8", compactEditorEnabled && "py-4 px-6")}>
               <ResumePreview
                 data={resumeData}
                 className="h-full"
                 showPhoto={showPhoto}
+                showScore={showResumeScoreEnabled}
               />
             </div>
           </div>

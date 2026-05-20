@@ -42,6 +42,7 @@ import { DesignTab } from "./tabs/design-tab";
 import { ContentQualityTab } from "./tabs/content-quality-tab";
 import { VersionHistoryTab } from "./tabs/version-history-tab";
 import { JobTargetTab } from "./tabs/job-target-tab";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 import {
   LayoutTemplate,
   Layers,
@@ -130,6 +131,13 @@ export default function FinalResumePage() {
 
   const { data: session } = authClient.useSession();
   const updateResume = trpc.resume.update.useMutation();
+  const { data: preferences } = trpc.user.preferences.useQuery(undefined, {
+    retry: false,
+  });
+  const autoSaveDraftsEnabled = preferences?.autoSaveDrafts ?? DEFAULT_USER_PREFERENCES.autoSaveDrafts;
+  const defaultSpellCheckEnabled = preferences?.defaultSpellCheck ?? DEFAULT_USER_PREFERENCES.defaultSpellCheck;
+  const showResumeScoreEnabled = preferences?.showResumeScore ?? DEFAULT_USER_PREFERENCES.showResumeScore;
+  const compactEditorEnabled = preferences?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor;
   const snapshotStorageKey = `resumeSnapshots:${currentResumeId ?? "local"}`;
   const jobTargetStorageKey = `resumeJobTarget:${currentResumeId ?? "local"}`;
   const { data: savedResume } = trpc.resume.getById.useQuery(
@@ -276,6 +284,10 @@ export default function FinalResumePage() {
     localStorage.setItem("designOptions", serializedDesign);
 
     if (serializedDesign === lastSavedDesignOptionsRef.current) return;
+    if (!autoSaveDraftsEnabled) {
+      lastSavedDesignOptionsRef.current = serializedDesign;
+      return;
+    }
 
     const requestId = latestSaveRequestRef.current + 1;
     latestSaveRequestRef.current = requestId;
@@ -288,7 +300,7 @@ export default function FinalResumePage() {
     }, 350);
 
     return () => clearTimeout(timeoutId);
-  }, [designOptions, isLoading, currentResumeId]);
+  }, [autoSaveDraftsEnabled, designOptions, isLoading, currentResumeId]);
 
   // Save resume data changes to localStorage and database
   useEffect(() => {
@@ -297,6 +309,10 @@ export default function FinalResumePage() {
     localStorage.setItem("resumeData", serializedResume);
 
     if (serializedResume === lastSavedResumeDataRef.current) return;
+    if (!autoSaveDraftsEnabled) {
+      lastSavedResumeDataRef.current = serializedResume;
+      return;
+    }
 
     const timeoutId = setTimeout(() => {
       runServerAutosave(
@@ -313,7 +329,7 @@ export default function FinalResumePage() {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [resumeData, currentResumeId, runServerAutosave]);
+  }, [autoSaveDraftsEnabled, resumeData, currentResumeId, runServerAutosave]);
 
   // Save selected color to localStorage and mark draft update
   useEffect(() => {
@@ -322,6 +338,10 @@ export default function FinalResumePage() {
     localStorage.setItem("selectedColor", selectedColor);
 
     if (selectedColor === lastSavedSelectedColorRef.current) return;
+    if (!autoSaveDraftsEnabled) {
+      lastSavedSelectedColorRef.current = selectedColor;
+      return;
+    }
 
     const requestId = latestSaveRequestRef.current + 1;
     latestSaveRequestRef.current = requestId;
@@ -334,7 +354,7 @@ export default function FinalResumePage() {
     }, 350);
 
     return () => clearTimeout(timeoutId);
-  }, [selectedColor, isLoading, currentResumeId]);
+  }, [autoSaveDraftsEnabled, selectedColor, isLoading, currentResumeId]);
 
   // Save resume name to localStorage when it changes
   useEffect(() => {
@@ -665,11 +685,16 @@ export default function FinalResumePage() {
     ? [lockedTemplateColor]
     : templateColors;
   const coreQualityStats = getCoreQualityStats();
+  useEffect(() => {
+    if (defaultSpellCheckEnabled) {
+      setActiveTab((currentTab) => (currentTab === "templates" ? "spellcheck" : currentTab));
+    }
+  }, [defaultSpellCheckEnabled]);
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className={cn("h-screen bg-background flex flex-col overflow-hidden", compactEditorEnabled && "compact-editor")}>
       {/* Header */}
-      <header className="border-b bg-background px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between shrink-0">
+      <header className={cn("border-b bg-background px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between shrink-0", compactEditorEnabled && "sm:py-2")}>
         <div className="flex items-center gap-2">
           <span className="font-display text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
             Craftiv
@@ -709,7 +734,7 @@ export default function FinalResumePage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex w-28 border-r bg-muted/30 flex-col items-center py-4 gap-2">
+        <aside className={cn("hidden lg:flex w-28 border-r bg-muted/30 flex-col items-center py-4 gap-2", compactEditorEnabled && "py-3 gap-1")}>
           {sidebarTabs.map((tab) => (
             <button
               key={tab.id}
@@ -750,7 +775,7 @@ export default function FinalResumePage() {
 
         {/* Sidebar Content Panel */}
         <div className="w-full lg:w-1/3 border-r bg-background flex flex-col pb-16 lg:pb-0">
-          <div className="p-4 overflow-y-auto flex-1">
+          <div className={cn("p-4 overflow-y-auto flex-1", compactEditorEnabled && "p-3")}>
             {activeTab === "templates" && (
               <TemplatesTab
                 resumeData={resumeData}
@@ -852,7 +877,7 @@ export default function FinalResumePage() {
               customColor={selectedColor}
               showPhoto={showPhoto}
               saveStatus={saveState}
-              showScore={false}
+              showScore={showResumeScoreEnabled}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />
@@ -884,7 +909,7 @@ export default function FinalResumePage() {
                   customColor={selectedColor}
                   showPhoto={showPhoto}
                   saveStatus={saveState}
-                  showScore={false}
+                  showScore={showResumeScoreEnabled}
                   currentPage={currentPage}
                   onPageChange={setCurrentPage}
                 />
