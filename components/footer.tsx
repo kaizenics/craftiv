@@ -13,9 +13,7 @@ const navigation = {
     { name: "Data Deletion", href: "/data-deletion" },
   ],
   support: [
-    { name: "Help Center", href: "#help" },
     { name: "Contact", href: "/contact" },
-    { name: "Status", href: "#status" },
   ],
 };
 

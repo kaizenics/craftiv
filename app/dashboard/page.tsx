@@ -60,6 +60,7 @@ type ResumeListItem = {
   id: string;
   title: string;
   templateId: string;
+  data?: ResumeDataJSON | null;
   status: "draft" | "completed";
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -753,7 +754,7 @@ export default function Dashboard() {
                             onClick={() => router.push(`/resume/section/${resume.id}`)}
                             className="h-20 w-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02] md:h-28 md:w-20"
                           >
-                            <ResumeCardPreview templateId={resume.templateId} />
+                            <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
                           </button>
                           <div className="min-w-0 flex-1">
                             <button

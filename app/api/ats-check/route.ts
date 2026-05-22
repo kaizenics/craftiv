@@ -85,6 +85,54 @@ const STOPWORDS = new Set([
   "across",
 ]);
 
+function isLikelyResumeText(rawText: string) {
+  const text = rawText.toLowerCase();
+
+  const resumeSignals = [
+    /\bexperience\b/,
+    /\beducation\b/,
+    /\bskills?\b/,
+    /\bsummary\b/,
+    /\bprofessional\b/,
+    /\bwork history\b/,
+    /\bemployment\b/,
+    /\bcertifications?\b/,
+    /\bprojects?\b/,
+    /\breferences\b/,
+    /\bresume\b/,
+    /\bcurriculum vitae\b/,
+  ];
+
+  const coverLetterSignals = [
+    /\bdear\s+[a-z]/,
+    /\bsincerely\b/,
+    /\bto whom it may concern\b/,
+    /\bhiring manager\b/,
+    /\bi am writing to\b/,
+    /\bthank you for your consideration\b/,
+    /\bcover letter\b/,
+  ];
+
+  const resumeHits = resumeSignals.filter((pattern) => pattern.test(text)).length;
+  const coverLetterHits = coverLetterSignals.filter((pattern) => pattern.test(text)).length;
+  const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(rawText);
+  const hasPhone = /(\+?\d[\d\s().-]{7,}\d)/.test(rawText);
+  const hasDateRange = /\b(19|20)\d{2}\s*[-–]\s*((19|20)\d{2}|present|current)\b/i.test(rawText);
+  const hasBulletLikeLines = /(^|\n)\s*[-*•]\s+\S+/m.test(rawText);
+
+  const resumeEvidence =
+    resumeHits +
+    (hasEmail ? 1 : 0) +
+    (hasPhone ? 1 : 0) +
+    (hasDateRange ? 1 : 0) +
+    (hasBulletLikeLines ? 1 : 0);
+
+  // Require some resume structure and avoid clear cover-letter patterns.
+  const isResume = resumeEvidence >= 3 && !(coverLetterHits >= 2 && resumeHits <= 1);
+
+  return { isResume, resumeEvidence, resumeHits, coverLetterHits };
+}
+
 type DeterministicReport = {
   overallScore: number;
   atsCompatibility: "Low" | "Medium" | "High";
@@ -378,6 +426,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Could not extract enough text from the file." },
         { status: 422 }
+      );
+    }
+
+    const relevanceCheck = isLikelyResumeText(extractedText);
+    if (!relevanceCheck.isResume) {
+      return NextResponse.json(
+        {
+          error:
+            "This file does not appear to be a resume. Please upload a resume/CV document for ATS checking.",
+        },
+        { status: 422 },
       );
     }
 
