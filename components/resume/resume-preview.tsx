@@ -114,6 +114,15 @@ function SectionHeader({ title, layout, color, spacing }: SectionHeaderProps) {
   }
 }
 
+function formatDateRange(start?: string, end?: string): string {
+  const startValue = start?.trim() ?? "";
+  const endValue = end?.trim() ?? "";
+
+  if (!startValue && !endValue) return "";
+  if (startValue && endValue) return `${startValue} - ${endValue}`;
+  return startValue || endValue;
+}
+
 interface ResumePreviewProps {
   data: ResumeData;
   className?: string;
@@ -275,7 +284,7 @@ export function ResumePreview({
       }}
     >
       {/* Harvard Header - Name centered, contact below */}
-      <div className="text-center border-b border-zinc-900 pb-3" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+      <div className="text-center pb-3" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
         {showPhoto && data.contact.photoUrl && (
           <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-zinc-200 mb-3">
             <Image src={data.contact.photoUrl} alt="Profile" width={96} height={96} className="object-cover w-full h-full" />
@@ -291,6 +300,14 @@ export function ResumePreview({
         </div>
       </div>
 
+      {/* Professional Summary */}
+      {data.summary && (
+        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+          <SectionHeader title="Professional Summary" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <p className="text-zinc-700 whitespace-pre-line">{data.summary}</p>
+        </div>
+      )}
+
       {/* Education Section - Harvard puts education first */}
       {data.educations.length > 0 && (
         <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
@@ -302,11 +319,9 @@ export function ResumePreview({
                   <div>
                     <p className="font-bold text-zinc-900">{edu.schoolName || 'University'}</p>
                     <p className="text-zinc-700 italic">{edu.degree || 'Degree'}</p>
-                    {edu.location && <p className="text-zinc-600 text-sm">{edu.location}</p>}
+                    {edu.location && <p className="text-zinc-600 text-[0.92em]">{edu.location}</p>}
                   </div>
-                  <p className="text-zinc-600 text-sm">
-                    {edu.startDate || 'Start'}  -  {edu.endDate || 'End'}
-                  </p>
+                  <p className="text-zinc-600 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                 </div>
                 {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
               </div>
@@ -326,11 +341,9 @@ export function ResumePreview({
                   <div>
                     <p className="font-bold text-zinc-900">{exp.employer || 'Company'}</p>
                     <p className="text-zinc-700 italic">{exp.jobTitle || 'Position'}</p>
-                    {exp.location && <p className="text-zinc-600 text-sm">{exp.location}</p>}
+                    {exp.location && <p className="text-zinc-600 text-[0.92em]">{exp.location}</p>}
                   </div>
-                  <p className="text-zinc-600 text-sm">
-                    {exp.startDate || 'Start'}  -  {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                  </p>
+                  <p className="text-zinc-600 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                 </div>
                 {exp.description && (
                   <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
@@ -413,9 +426,7 @@ export function ResumePreview({
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
-                      </p>
+                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && (
                       <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
@@ -438,7 +449,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-800">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName}</p>
-                    <p className="text-zinc-500 text-sm">{edu.startDate}  -  {edu.endDate}</p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -484,7 +495,7 @@ export function ResumePreview({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {data.finalize.certifications.map((cert) => (
                   <p key={cert.id} className="text-zinc-600 text-sm">
-                    {cert.name}  -  {cert.issuer} ({cert.date})
+                    {cert.name}{cert.issuer ? `  -  ${cert.issuer}` : ''}{cert.date ? ` (${cert.date})` : ''}
                   </p>
                 ))}
               </div>
@@ -632,7 +643,7 @@ export function ResumePreview({
               {data.experiences.map((exp) => (
                 <div key={exp.id} className="grid grid-cols-[128px_1fr] gap-4">
                   <div className="text-[0.82rem] text-[#6b7280]">
-                    <p>{exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : exp.endDate}</p>
+                    <p>{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     <p className="mt-1 text-[0.9rem]">{exp.employer || 'Company'}</p>
                   </div>
                   <div>
@@ -658,7 +669,7 @@ export function ResumePreview({
               {data.educations.map((edu) => (
                 <div key={edu.id} className="grid grid-cols-[128px_1fr] gap-4">
                   <div className="text-[0.82rem] text-[#6b7280]">
-                    <p>{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    <p>{formatDateRange(edu.startDate, edu.endDate)}</p>
                     <p className="mt-1 text-[0.9rem]">{edu.schoolName || 'School'}</p>
                   </div>
                   <div>
@@ -761,9 +772,7 @@ export function ResumePreview({
                       <p className="font-semibold" style={{ color: activeColor }}>{exp.employer}</p>
                       {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                     </div>
-                    <p className="text-zinc-500 text-sm">
-                      {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
-                    </p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                   </div>
                   {exp.description && (
                     <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
@@ -783,7 +792,7 @@ export function ResumePreview({
                 <div key={edu.id} className="border-l-4 pl-4" style={{ borderColor: activeColor }}>
                   <p className="font-bold text-zinc-800">{edu.degree}</p>
                   <p style={{ color: activeColor }}>{edu.schoolName}</p>
-                  <p className="text-zinc-500 text-sm">{edu.startDate}  -  {edu.endDate}</p>
+                  <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                 </div>
               ))}
             </div>
@@ -862,9 +871,7 @@ export function ResumePreview({
                     <p className="font-medium text-zinc-800">{exp.jobTitle}</p>
                     <p className="text-zinc-600">{exp.employer}</p>
                   </div>
-                  <p className="text-zinc-400 text-sm">
-                    {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
-                  </p>
+                  <p className="text-zinc-400 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                 </div>
                 {exp.description && (
                   <p className="text-zinc-500 mt-1 whitespace-pre-line">{exp.description}</p>
@@ -884,7 +891,7 @@ export function ResumePreview({
               <div key={edu.id}>
                 <p className="font-medium text-zinc-800">{edu.degree}</p>
                 <p className="text-zinc-600">{edu.schoolName}</p>
-                <p className="text-zinc-400 text-sm">{edu.startDate}  -  {edu.endDate}</p>
+                <p className="text-zinc-400 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
               </div>
             ))}
           </div>
@@ -960,9 +967,7 @@ export function ResumePreview({
                     <p className="font-semibold" style={{ color: activeColor }}>{exp.jobTitle}</p>
                     {exp.location && <p className="text-zinc-500">{exp.location}</p>}
                   </div>
-                  <p className="text-zinc-500 text-sm">
-                    {exp.startDate}  -  {exp.isCurrentJob ? 'Present' : exp.endDate}
-                  </p>
+                  <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                 </div>
                 {exp.description && (
                   <p className="text-zinc-600 mt-2 whitespace-pre-line">{exp.description}</p>
@@ -982,7 +987,7 @@ export function ResumePreview({
               <div key={edu.id}>
                 <p className="font-bold text-zinc-800">{edu.schoolName}</p>
                 <p style={{ color: activeColor }}>{edu.degree}</p>
-                <p className="text-zinc-500 text-sm">{edu.startDate}  -  {edu.endDate}</p>
+                <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
               </div>
             ))}
           </div>
@@ -1066,9 +1071,7 @@ export function ResumePreview({
                     </p>
                     <p className="text-gray-500">{exp.location}</p>
                   </div>
-                  <p className="text-gray-500 text-sm">
-                    {exp.startDate || 'Start'}  -  {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                  </p>
+                  <p className="text-gray-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                 </div>
                 {exp.description && (
                   <p className="text-gray-600 mt-1 whitespace-pre-line">
@@ -1095,9 +1098,7 @@ export function ResumePreview({
                       {edu.schoolName || 'School'}, {edu.location}
                     </p>
                   </div>
-                  <p className="text-gray-500 text-sm">
-                    {edu.startDate || 'Start'}  -  {edu.endDate || 'End'}
-                  </p>
+                  <p className="text-gray-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                 </div>
               </div>
             ))}
@@ -1369,9 +1370,7 @@ export function ResumePreview({
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                      </p>
+                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1388,9 +1387,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">
-                      {edu.startDate || 'Start'} - {edu.endDate || 'End'}
-                    </p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                     {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
                   </div>
                 ))}
@@ -1460,9 +1457,7 @@ export function ResumePreview({
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                      </p>
+                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1479,7 +1474,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                     {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
                   </div>
                 ))}
@@ -1622,9 +1617,7 @@ export function ResumePreview({
                     <p className="text-zinc-700">{exp.employer || 'Company'}</p>
                     {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                   </div>
-                  <p className="text-zinc-500 text-sm">
-                    {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                  </p>
+                  <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                 </div>
                 {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
               </div>
@@ -1641,7 +1634,7 @@ export function ResumePreview({
               <div key={edu.id}>
                 <p className="font-semibold text-zinc-900">{edu.schoolName || 'School'}</p>
                 <p style={{ color: activeColor }}>{edu.degree || 'Degree'}</p>
-                <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                 {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
               </div>
             ))}
@@ -1712,9 +1705,7 @@ export function ResumePreview({
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                      </p>
+                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-2 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1733,7 +1724,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -1811,9 +1802,7 @@ export function ResumePreview({
                     <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
                     <p className="text-zinc-700">{exp.employer || 'Company'}{exp.location ? `, ${exp.location}` : ''}</p>
                   </div>
-                  <p className="text-zinc-500 text-sm">
-                    {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                  </p>
+                  <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                 </div>
                 {exp.description && <p className="text-zinc-700 mt-1 whitespace-pre-line">{exp.description}</p>}
               </div>
@@ -1832,7 +1821,7 @@ export function ResumePreview({
                   <p className="font-semibold text-zinc-900">{edu.schoolName || 'School'}</p>
                   <p className="text-zinc-700">{edu.degree || 'Degree'}</p>
                 </div>
-                <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
               </div>
             ))}
           </div>
@@ -1911,9 +1900,7 @@ export function ResumePreview({
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                      </p>
+                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1930,7 +1917,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -2015,9 +2002,7 @@ export function ResumePreview({
                         <p style={{ color: activeColor }}>{exp.employer || 'Company'}</p>
                         {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
-                      </p>
+                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -2034,7 +2019,7 @@ export function ResumePreview({
                   <div key={edu.id} className="border-b pb-3" style={{ borderColor: `${activeColor}20` }}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p style={{ color: activeColor }}>{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{edu.startDate || 'Start'} - {edu.endDate || 'End'}</p>
+                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
                     {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
                   </div>
                 ))}
@@ -2113,7 +2098,7 @@ export function ResumePreview({
                           <p className="mt-0.5 text-[0.9rem] text-[#7a8087]">{exp.employer || 'Company'}</p>
                         </div>
                         <p className="whitespace-nowrap text-[0.8rem] italic text-[#7a8087]">
-                          {exp.startDate || 'Start'} - {exp.isCurrentJob ? 'Present' : (exp.endDate || 'End')}
+                          {formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}
                         </p>
                       </div>
                       {exp.description && (
@@ -2149,9 +2134,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-bold text-[#565d66]">{edu.schoolName || 'School'}</p>
                     <p className="text-[0.88rem] text-[#7a8087]">{edu.degree || 'Degree'}</p>
-                    <p className="text-[0.82rem] text-[#8a8f96]">
-                      {edu.startDate || 'Start'} - {edu.endDate || 'End'}
-                    </p>
+                    <p className="text-[0.82rem] text-[#8a8f96]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -2257,7 +2240,7 @@ export function ResumePreview({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {data.finalize.certifications.map((cert) => (
               <p key={cert.id}>
-                {cert.name}  -  {cert.issuer} ({cert.date})
+                {cert.name}{cert.issuer ? `  -  ${cert.issuer}` : ''}{cert.date ? ` (${cert.date})` : ''}
               </p>
             ))}
           </div>

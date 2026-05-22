@@ -20,11 +20,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/trpc/client";
 import { Spinner } from "@/components/ui/spinner";
+import type { CoverLetterData } from "@/lib/types/cover-letter";
 
 type CoverLetterListItem = {
   id: string;
   title: string;
   updatedAt: Date;
+  data: CoverLetterData;
 };
 
 function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
@@ -90,7 +92,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
       >
         <div className="flex items-center gap-3 pr-8">
           <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
-            <CoverLetterCardPreview />
+            <CoverLetterCardPreview data={letter.data} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>

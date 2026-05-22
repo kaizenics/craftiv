@@ -73,16 +73,22 @@ export const coverLetterRouter = createTRPCRouter({
   }),
 
   listSummary: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.coverLetters.findMany({
+    const rows = await ctx.db.query.coverLetters.findMany({
       columns: {
         id: true,
         title: true,
         createdAt: true,
         updatedAt: true,
+        data: true,
       },
       where: eq(coverLetters.userId, ctx.user.id),
       orderBy: [desc(coverLetters.updatedAt)],
     });
+
+    return rows.map((row) => ({
+      ...row,
+      data: normalizeCoverLetterData(row.data as Partial<CoverLetterData>),
+    }));
   }),
 
   getById: protectedProcedure
