@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FileText } from "@/components/ui/icons";
 import { authClient } from "@/lib/auth-client";
@@ -85,10 +85,14 @@ function CoverLetterTemplateCard({
 
 export default function CoverLetterTemplatesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
+  const existingCoverLetterId = searchParams.get("id");
 
   const handleUseTemplate = (templateId: CoverLetterTemplateId) => {
-    const target = `/cover-letter/write?template=${templateId}`;
+    const target = existingCoverLetterId
+      ? `/cover-letter/write?id=${existingCoverLetterId}&template=${templateId}`
+      : `/cover-letter/write?template=${templateId}`;
 
     if (!session?.user) {
       router.push(`/sign-in?redirect=${encodeURIComponent(target)}`);

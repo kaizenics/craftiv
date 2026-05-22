@@ -15,6 +15,11 @@ export function sanitizeHtmlForPdf(input: string) {
 }
 
 export async function hardenPdfPage(page: Page, allowedOrigin: string) {
+  const allowedExternalOrigins = [
+    "https://fonts.googleapis.com",
+    "https://fonts.gstatic.com",
+  ];
+
   await page.route("**/*", async (route) => {
     const req = route.request();
     const url = req.url();
@@ -25,7 +30,10 @@ export async function hardenPdfPage(page: Page, allowedOrigin: string) {
       lower.startsWith("data:") ||
       lower.startsWith("blob:");
     const sameOrigin = lower.startsWith(allowedOrigin.toLowerCase());
-    const allowed = isDocument || allowedProtocol || sameOrigin;
+    const whitelistedExternal = allowedExternalOrigins.some((origin) =>
+      lower.startsWith(origin),
+    );
+    const allowed = isDocument || allowedProtocol || sameOrigin || whitelistedExternal;
     if (allowed) {
       await route.continue();
       return;

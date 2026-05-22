@@ -415,6 +415,12 @@ export default function FinalResumePage() {
     return () => clearTimeout(timeoutId);
   }, [resumeName, isLoading, currentResumeId, runServerAutosave]);
 
+  useEffect(() => {
+    if (defaultSpellCheckEnabled) {
+      setActiveTab((currentTab) => (currentTab === "templates" ? "spellcheck" : currentTab));
+    }
+  }, [defaultSpellCheckEnabled]);
+
   if (isLoading || !resumeData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -685,11 +691,6 @@ export default function FinalResumePage() {
     ? [lockedTemplateColor]
     : templateColors;
   const coreQualityStats = getCoreQualityStats();
-  useEffect(() => {
-    if (defaultSpellCheckEnabled) {
-      setActiveTab((currentTab) => (currentTab === "templates" ? "spellcheck" : currentTab));
-    }
-  }, [defaultSpellCheckEnabled]);
 
   return (
     <div className={cn("h-screen bg-background flex flex-col overflow-hidden", compactEditorEnabled && "compact-editor")}>

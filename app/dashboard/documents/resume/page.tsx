@@ -202,20 +202,21 @@ export default function DocumentsPage() {
             >
               {filteredResumes.map((resume) => (
                 viewMode === "grid" ? (
-                  <ResumeCard
-                    key={resume.id}
-                    id={resume.id}
-                    title={resume.title}
-                    updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
-                    template={resume.templateId}
-                  />
-                ) : (
+                    <ResumeCard
+                      key={resume.id}
+                      id={resume.id}
+                      title={resume.title}
+                      updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
+                      template={resume.templateId}
+                      data={resume.data}
+                    />
+                  ) : (
                   <div
                     key={resume.id}
                     className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/10"
                   >
                     <div className="h-16 w-12 shrink-0 overflow-hidden rounded border border-zinc-100 bg-white">
-                      <ResumeCardPreview templateId={resume.templateId} />
+                      <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">

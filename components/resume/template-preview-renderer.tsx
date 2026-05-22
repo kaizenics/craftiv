@@ -322,6 +322,10 @@ export function TemplatePreviewRenderer({ layout, color, sampleData, showPhoto =
               <span>{sampleData.email}</span>
             </div>
           </div>
+          <div className="mb-2">
+            <p className="text-[8px] font-bold text-zinc-900 uppercase tracking-wider border-b border-zinc-300 pb-0.5 mb-1">Professional Summary</p>
+            <p className="text-[6px] text-zinc-600 leading-relaxed">{sampleData.summary}</p>
+          </div>
           {/* Education Section - Harvard style puts education first */}
           <div className="mb-2">
             <p className="text-[8px] font-bold text-zinc-900 uppercase tracking-wider border-b border-zinc-300 pb-0.5 mb-1">Education</p>

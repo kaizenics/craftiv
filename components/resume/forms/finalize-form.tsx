@@ -260,6 +260,19 @@ export function FinalizeForm({ data, onChange }: FinalizeFormProps) {
     });
   };
 
+  const moveCustomSection = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= data.customSections.length) return;
+
+    const customSections = [...data.customSections];
+    [customSections[index], customSections[targetIndex]] = [customSections[targetIndex], customSections[index]];
+
+    onChange({
+      ...data,
+      customSections,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -535,17 +548,35 @@ export function FinalizeForm({ data, onChange }: FinalizeFormProps) {
           icon={<FileText className="h-5 w-5 text-muted-foreground" />}
         >
           <div className="space-y-3 pt-4">
-            {data.customSections.map((section) => (
+            {data.customSections.map((section, index) => (
               <div key={section.id} className="space-y-2 p-3 border rounded-lg">
                 <div className="flex justify-between">
                   <Label>Custom Section</Label>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => removeCustomSection(section.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => moveCustomSection(index, 'up')}
+                      disabled={index === 0}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => moveCustomSection(index, 'down')}
+                      disabled={index === data.customSections.length - 1}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeCustomSection(section.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <Input
                   placeholder="Section name (e.g. Volunteer Work)"

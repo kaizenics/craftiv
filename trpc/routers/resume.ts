@@ -206,7 +206,7 @@ export const resumeRouter = createTRPCRouter({
 
   /**
    * Lightweight list for dashboards and selectors.
-   * Avoids selecting the full resume JSON payload on every page load.
+   * Includes resume data so dashboard thumbnails can render real content.
    */
   listSummary: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.query.resumes.findMany({
@@ -214,6 +214,7 @@ export const resumeRouter = createTRPCRouter({
         id: true,
         title: true,
         templateId: true,
+        data: true,
         status: true,
         lastEditedSection: true,
         createdAt: true,

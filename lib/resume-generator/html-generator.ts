@@ -26,7 +26,7 @@ export function generateResumeHTML({ data, template, designOptions }: HTMLGenera
     </head>
     <body>
       ${generateHeader(data, layout)}
-      ${!isHarvard && data.summary ? generateSummarySection(data.summary) : ''}
+      ${data.summary ? generateSummarySection(data.summary) : ''}
       ${isHarvard && data.educations.length > 0 ? generateEducationSection(data.educations, isHarvard) : ''}
       ${data.experiences.length > 0 ? generateExperienceSection(data.experiences, isHarvard) : ''}
       ${!isHarvard && data.educations.length > 0 ? generateEducationSection(data.educations, isHarvard) : ''}
@@ -41,6 +41,15 @@ export function generateResumeHTML({ data, template, designOptions }: HTMLGenera
     </body>
     </html>
   `;
+}
+
+function formatDateRange(start?: string, end?: string): string {
+  const startValue = start?.trim() ?? '';
+  const endValue = end?.trim() ?? '';
+
+  if (!startValue && !endValue) return '';
+  if (startValue && endValue) return `${startValue} - ${endValue}`;
+  return startValue || endValue;
 }
 
 function generateHeader(data: ResumeData, layout: TemplateLayout): string {
@@ -74,7 +83,7 @@ function generateEducationSection(educations: ResumeData['educations'], isHarvar
             <div class="entry">
               <div class="entry-header">
                 <span class="entry-title">${edu.schoolName}</span>
-                <span class="entry-date">${edu.startDate} - ${edu.endDate}</span>
+                <span class="entry-date">${formatDateRange(edu.startDate, edu.endDate)}</span>
               </div>
               <div class="entry-position">${edu.degree}</div>
               ${edu.location ? `<div class="entry-subtitle">${edu.location}</div>` : ''}
@@ -86,7 +95,7 @@ function generateEducationSection(educations: ResumeData['educations'], isHarvar
             <div class="entry">
               <div class="entry-header">
                 <span class="entry-title">${edu.degree}</span>
-                <span class="entry-date">${edu.startDate} - ${edu.endDate}</span>
+                <span class="entry-date">${formatDateRange(edu.startDate, edu.endDate)}</span>
               </div>
               <div class="entry-subtitle">${edu.schoolName}${edu.location ? `, ${edu.location}` : ''}</div>
               ${edu.description ? `<div class="entry-description">${edu.description}</div>` : ''}
@@ -106,7 +115,7 @@ function generateExperienceSection(experiences: ResumeData['experiences'], isHar
         <div class="entry">
           <div class="entry-header">
             <span class="entry-title">${isHarvard ? exp.employer : exp.jobTitle}${!isHarvard && exp.employer ? `, ${exp.employer}` : ''}</span>
-            <span class="entry-date">${exp.startDate} - ${exp.isCurrentJob ? 'Present' : exp.endDate}</span>
+            <span class="entry-date">${formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</span>
           </div>
           ${isHarvard ? `<div class="entry-position">${exp.jobTitle}</div>` : ''}
           ${exp.location ? `<div class="entry-subtitle">${exp.location}</div>` : ''}

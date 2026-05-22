@@ -11,6 +11,29 @@ interface PDFGeneratorOptions {
 }
 
 function inlineComputedStyles(sourceRoot: HTMLElement, targetRoot: HTMLElement) {
+  const excludedProps = new Set([
+    // Avoid freezing layout measurements that can differ in PDF rendering.
+    'height',
+    'min-height',
+    'max-height',
+    'width',
+    'min-width',
+    'max-width',
+    'inline-size',
+    'min-inline-size',
+    'max-inline-size',
+    'block-size',
+    'min-block-size',
+    'max-block-size',
+    // Avoid carrying interactive/runtime transforms into print output.
+    'transform',
+    'translate',
+    'rotate',
+    'scale',
+    'transition',
+    'animation',
+  ]);
+
   const sourceNodes = [sourceRoot, ...Array.from(sourceRoot.querySelectorAll('*'))];
   const targetNodes = [targetRoot, ...Array.from(targetRoot.querySelectorAll('*'))];
   const nodeCount = Math.min(sourceNodes.length, targetNodes.length);
@@ -23,6 +46,7 @@ function inlineComputedStyles(sourceRoot: HTMLElement, targetRoot: HTMLElement) 
 
     const computed = window.getComputedStyle(sourceNode);
     const cssText = Array.from(computed)
+      .filter((prop) => !excludedProps.has(prop))
       .map((prop) => `${prop}:${computed.getPropertyValue(prop)};`)
       .join('');
 

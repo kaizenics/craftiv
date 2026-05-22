@@ -3,6 +3,8 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -95,6 +97,7 @@ function WriteCoverLetterPageContent() {
   const [finishError, setFinishError] = useState("");
   const [pdfError, setPdfError] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isSwitchingTemplate, setIsSwitchingTemplate] = useState(false);
 
   const utils = trpc.useUtils();
   const coverLetterQuery = trpc.coverLetter.getById.useQuery(
@@ -146,8 +149,6 @@ function WriteCoverLetterPageContent() {
   }, [coverLetterQuery.data]);
 
   useEffect(() => {
-    if (isEditing) return;
-
     setCoverLetterData((prev) =>
       prev.templateId === selectedTemplateId
         ? prev
@@ -156,7 +157,7 @@ function WriteCoverLetterPageContent() {
             templateId: selectedTemplateId,
           }
     );
-  }, [isEditing, selectedTemplateId]);
+  }, [selectedTemplateId]);
 
   // ── Upload helpers ──────────────────────────────────────────────────────
 
@@ -798,6 +799,36 @@ function WriteCoverLetterPageContent() {
     }
   };
 
+  const handleChangeTemplate = async () => {
+    setFinishError("");
+
+    try {
+      setIsSwitchingTemplate(true);
+
+      let effectiveCoverLetterId = activeCoverLetterId;
+      if (effectiveCoverLetterId) {
+        await updateCoverLetter.mutateAsync({
+          id: effectiveCoverLetterId,
+          data: coverLetterData,
+        });
+      } else {
+        const created = await saveCoverLetter.mutateAsync({ data: coverLetterData });
+        effectiveCoverLetterId = created.id;
+        setWorkingCoverLetterId(created.id);
+      }
+
+      const target = effectiveCoverLetterId
+        ? `/cover-letter/templates?id=${effectiveCoverLetterId}`
+        : "/cover-letter/templates";
+      router.push(target);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Could not save before changing template.";
+      setFinishError(message);
+    } finally {
+      setIsSwitchingTemplate(false);
+    }
+  };
+
   if (isLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -1080,11 +1111,17 @@ function WriteCoverLetterPageContent() {
                       Fill in each section and see changes live in the preview.
                     </p>
                   </div>
-                  {!isEditing && (
-                    <Button variant="outline" asChild>
-                      <Link href="/cover-letter/templates">Change Template</Link>
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    onClick={handleChangeTemplate}
+                    disabled={
+                      isSwitchingTemplate ||
+                      saveCoverLetter.isPending ||
+                      updateCoverLetter.isPending
+                    }
+                  >
+                    {isSwitchingTemplate ? "Saving..." : "Change Template"}
+                  </Button>
                 </div>
               </div>
 
@@ -1108,6 +1145,28 @@ function WriteCoverLetterPageContent() {
                       }
                     }}
                   />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-5">
+                    <div>
+                      <h2 className="font-display text-lg font-bold text-foreground">Letter Date</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Set the date shown on your cover letter.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="coverLetterDate">Date</Label>
+                      <Input
+                        id="coverLetterDate"
+                        value={coverLetterData.date}
+                        onChange={(e) =>
+                          setCoverLetterData({ ...coverLetterData, date: e.target.value })
+                        }
+                        placeholder="May 22, 2026"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
