@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { absoluteUrl, createPageMetadata } from "@/lib/seo";
 import CoverLetterTemplatesPageClient from "./client";
 
@@ -26,7 +27,9 @@ export default function CoverLetterTemplatesPage() {
           __html: JSON.stringify(coverLetterTemplatesJsonLd),
         }}
       />
-      <CoverLetterTemplatesPageClient />
+      <Suspense fallback={null}>
+        <CoverLetterTemplatesPageClient />
+      </Suspense>
     </>
   );
 }
