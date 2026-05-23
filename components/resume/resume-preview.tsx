@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { ResumeData, ResumeSectionKey, TemplateLayout, normalizeSectionOrder } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
@@ -123,6 +123,55 @@ function formatDateRange(start?: string, end?: string): string {
   return startValue || endValue;
 }
 
+function renderRichDescription(
+  text: string,
+  paragraphClassName: string,
+  listClassName?: string,
+) {
+  const lines = text
+    .split(/\r?\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const bulletPattern = /^(?:-|•|\*)\s+/;
+  const hasBullets = lines.some((line) => bulletPattern.test(line));
+
+  if (!hasBullets) {
+    return <p className={paragraphClassName}>{text}</p>;
+  }
+
+  const nodes: React.ReactNode[] = [];
+  let bufferedBullets: string[] = [];
+
+  const flushBullets = () => {
+    if (bufferedBullets.length === 0) return;
+    const listKey = `list-${nodes.length}`;
+    nodes.push(
+      <ul key={listKey} className={listClassName ?? "mt-1 list-disc space-y-1 pl-5 text-zinc-600"}>
+        {bufferedBullets.map((line, index) => (
+          <li key={`${listKey}-${index}`}>{line.replace(bulletPattern, "")}</li>
+        ))}
+      </ul>,
+    );
+    bufferedBullets = [];
+  };
+
+  lines.forEach((line, index) => {
+    if (bulletPattern.test(line)) {
+      bufferedBullets.push(line);
+      return;
+    }
+
+    flushBullets();
+    nodes.push(
+      <p key={`p-${index}`} className={paragraphClassName}>
+        {line}
+      </p>,
+    );
+  });
+
+  flushBullets();
+  return <div className="space-y-1">{nodes}</div>;
+}
 interface ResumePreviewProps {
   data: ResumeData;
   className?: string;
@@ -327,7 +376,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-1 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -345,7 +394,7 @@ export function ResumePreview({
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-700">{edu.schoolName || 'School'}{edu.location ? `, ${edu.location}` : ''}</p>
                     <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
+                    {edu.description && renderRichDescription(edu.description, "text-zinc-600 mt-1 text-[1.08em]")}
                   </div>
                 ))}
               </div>
@@ -570,9 +619,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && (
-                      <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
-                    )}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-1 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -790,11 +837,7 @@ export function ResumePreview({
                   </div>
                   <div>
                     <p className="font-semibold text-[#374151]">{exp.jobTitle || 'Role'}</p>
-                    {exp.description && (
-                      <p className="mt-1 whitespace-pre-line text-[0.82rem] leading-5 text-[#6b7280]">
-                        {exp.description}
-                      </p>
-                    )}
+                    {exp.description && renderRichDescription(exp.description, "mt-1 whitespace-pre-line text-[0.82rem] leading-5 text-[#6b7280]", "mt-1 list-disc space-y-1 pl-5 text-[0.82rem] leading-5 text-[#6b7280]")}
                   </div>
                 </div>
               ))}
@@ -816,11 +859,7 @@ export function ResumePreview({
                   </div>
                   <div>
                     <p className="font-semibold text-[#374151]">{edu.degree || 'Degree'}</p>
-                    {edu.description && (
-                      <p className="mt-1 text-[0.82rem] leading-5 text-[#6b7280]">
-                        {edu.description}
-                      </p>
-                    )}
+                    {edu.description && renderRichDescription(edu.description, "mt-1 text-[0.82rem] leading-5 text-[#6b7280]", "mt-1 list-disc space-y-1 pl-5 text-[0.82rem] leading-5 text-[#6b7280]")}
                   </div>
                 </div>
               ))}
@@ -1126,16 +1165,7 @@ export function ResumePreview({
                     <div>
                       <p className="text-[1rem] font-bold text-black">{exp.jobTitle || 'Sales Representative'}</p>
                       <p className="mt-0.5 text-[0.88rem] text-[#4b5563]">{exp.employer || 'Company'}</p>
-                      {exp.description && (
-                        <div className="mt-2 text-[0.8rem] leading-5 text-[#374151]">
-                          {exp.description
-                            .split(/\r?\n+/)
-                            .filter(Boolean)
-                            .map((line, index) => (
-                              <p key={index}>• {line}</p>
-                            ))}
-                        </div>
-                      )}
+                      {exp.description && renderRichDescription(exp.description, "mt-2 whitespace-pre-line text-[0.8rem] leading-5 text-[#374151]", "mt-2 list-disc space-y-1 pl-5 text-[0.8rem] leading-5 text-[#374151]")}
                     </div>
                   </div>
                 ))}
@@ -1250,7 +1280,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-1 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -1266,7 +1296,7 @@ export function ResumePreview({
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
                     <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
+                    {edu.description && renderRichDescription(edu.description, "text-zinc-600 mt-1 text-[1.08em]")}
                   </div>
                 ))}
               </div>
@@ -1337,7 +1367,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-1 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -1353,7 +1383,7 @@ export function ResumePreview({
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
                     <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
+                    {edu.description && renderRichDescription(edu.description, "text-zinc-600 mt-1 text-[1.08em]")}
                   </div>
                 ))}
               </div>
@@ -1530,7 +1560,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && <p className="text-zinc-600 mt-2 whitespace-pre-line">{exp.description}</p>}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-2 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -1676,7 +1706,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-1 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -1778,7 +1808,7 @@ export function ResumePreview({
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
-                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                    {exp.description && renderRichDescription(exp.description, "text-zinc-600 mt-1 whitespace-pre-line")}
                   </div>
                 ))}
               </div>
@@ -1794,7 +1824,7 @@ export function ResumePreview({
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p style={{ color: activeColor }}>{edu.schoolName || 'School'}</p>
                     <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
+                    {edu.description && renderRichDescription(edu.description, "text-zinc-600 mt-1 text-[1.08em]")}
                   </div>
                 ))}
               </div>
@@ -1875,20 +1905,7 @@ export function ResumePreview({
                           {formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}
                         </p>
                       </div>
-                      {exp.description && (
-                        <ul className="mt-2 space-y-1.5 pl-1 text-[0.87rem] leading-[1.7] text-[#6b7280]">
-                          {exp.description
-                            .split(/\n+/)
-                            .map((line) => line.trim())
-                            .filter(Boolean)
-                            .map((line, index) => (
-                              <li key={`${exp.id}-bullet-${index}`} className="flex items-start gap-2">
-                                <span className="mt-[0.62rem] h-[3.5px] w-[3.5px] shrink-0 rounded-full bg-[#6b7280]" />
-                                <span>{line.replace(/^[•\-\*\u2022]\s*/, "")}</span>
-                              </li>
-                            ))}
-                        </ul>
-                      )}
+                      {exp.description && renderRichDescription(exp.description, "mt-2 whitespace-pre-line text-[0.87rem] leading-[1.7] text-[#6b7280]", "mt-2 list-disc space-y-1.5 pl-5 text-[0.87rem] leading-[1.7] text-[#6b7280]")}
                     </div>
                   ))}
                 </div>
@@ -2280,9 +2297,3 @@ function calculateScore(data: ResumeData): number {
 
   return Math.min(score, maxScore);
 }
-
-
-
-
-
-

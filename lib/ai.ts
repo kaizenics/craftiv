@@ -1,7 +1,6 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
 import { TRPCError } from "@trpc/server";
 
-// ── Client ──────────────────────────────────────────────────────────────────
 
 export const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -15,7 +14,6 @@ export const openrouter = new OpenAI({
 export const AI_MODEL = "google/gemini-2.5-flash";
 export const AI_MODEL_FALLBACK = "moonshotai/kimi-k2.5";
 
-// ── Response helpers ────────────────────────────────────────────────────────
 
 export function extractContent(choice: any): string | null {
   return (
@@ -55,7 +53,7 @@ export async function callWithFallback(
       const tokens = response.usage?.total_tokens ?? "N/A";
       const content = extractContent(response.choices[0])?.trim();
 
-      console.log(`[AI] ${model} — ${elapsed}ms, tokens: ${tokens}, finish: ${finish}`);
+      console.log(`[AI] ${model} - ${elapsed}ms, tokens: ${tokens}, finish: ${finish}`);
 
       if (content) {
         console.log(`[AI] Got content (${content.length} chars) from ${model}`);
@@ -77,7 +75,6 @@ export async function callWithFallback(
   });
 }
 
-// ── JSON extraction ─────────────────────────────────────────────────────────
 
 export function extractJsonObject(raw: string): Record<string, any> | null {
   const match = raw.match(/\{[\s\S]*\}/);
@@ -100,7 +97,6 @@ export function extractJsonArray(raw: string): any[] | null {
   }
 }
 
-// ── Prompt builders ─────────────────────────────────────────────────────────
 
 export function buildImproveSectionPrompt(
   section: string,
@@ -112,11 +108,36 @@ export function buildImproveSectionPrompt(
   const jobHint = jobDescription?.trim()
     ? `Target job description:\n${jobDescription.trim().slice(0, 2000)}`
     : "";
-  return `You are a professional resume writer. ${roleHint}
+  const experienceFormattingRule =
+    section === "experience"
+      ? `Formatting requirement for experience:
+- The input may contain the separator token <<<EXP_SPLIT>>> between experience entries.
+- Preserve <<<EXP_SPLIT>>> exactly between entries in your output.
+- For each entry, output exactly 3 bullet points.
+- Each bullet must start with "• " and be 12-28 words.
+- Do not add headings, numbering, or extra commentary.`
+      : "";
+
+  return `You are a senior resume strategist and ATS optimization expert. ${roleHint}
 ${jobHint}
-Improve the following resume ${section} section to be more impactful, concise, and ATS-friendly.
-Use strong action verbs and quantify achievements where possible.
-Return ONLY the improved text. No explanation, no markdown formatting, no quotes.
+Rewrite ONLY the "${section}" section below so it is specific, concise, and ATS-friendly.
+
+Hard requirements:
+- Preserve factual truth from the original content. Do not invent companies, titles, tools, projects, dates, or metrics.
+- Keep first-person pronouns out.
+- Remove filler phrases, buzzwords, and repeated ideas.
+- Use direct action-result language.
+- If a strong metric is not provided, use a realistic placeholder like [X%], [$X], [X users], [X projects].
+- Keep tense consistent (present for current role, past for previous roles).
+- Keep output ready to paste into a resume.
+
+Section-specific rules:
+- summary: 2-4 lines, role-relevant, includes core strengths and measurable impact.
+- experience: polished bullet content with measurable outcomes and business impact, not task lists.
+- education: concise and relevant; highlight distinctions, coursework, or outcomes only when useful.
+${experienceFormattingRule}
+
+Return ONLY the improved text. No explanation, no markdown, no quotes.
 
 Original:
 ${content}`;
@@ -131,14 +152,21 @@ export function buildImproveFullResumePrompt(
   const jobHint = jobDescription?.trim()
     ? `Target job description:\n${jobDescription.trim().slice(0, 2000)}`
     : "";
-  return `You are a professional resume writer. ${roleHint}
+  return `You are a senior resume strategist and ATS optimization expert. ${roleHint}
 ${jobHint}
-Review the following resume data and return an improved version.
-Improve the summary to be compelling and ATS-friendly.
-Improve each experience description with strong action verbs and quantified achievements.
-Improve each education description if present.
-Keep all other fields (names, dates, IDs, etc.) exactly the same.
-Return ONLY valid JSON matching the exact same structure. No markdown, no explanation.
+Rewrite this resume data for higher interview conversion and ATS match.
+
+Hard requirements:
+- Keep structure and IDs exactly the same.
+- Do not add or remove objects/keys.
+- Do not change names, emails, phone numbers, employers, schools, dates, locations, or existing tools/technologies unless correcting obvious grammar/formatting.
+- Improve only narrative fields (summary, experience.description, education.description, and short text fields where needed).
+- Remove fluff and vague claims.
+- Prioritize measurable outcomes; if missing, add realistic placeholders like [X%], [$X], [X users], [X projects].
+- Keep writing concise, professional, and role-relevant.
+- No first-person pronouns.
+
+Return ONLY valid JSON matching the exact same structure. No markdown, no explanation, no code fences.
 
 Resume data:
 ${JSON.stringify(data, null, 2)}`;
@@ -203,19 +231,26 @@ Return ONLY the replacement text. No explanation, no markdown, no quotes, no bul
 Keep it concise and professional.`;
 }
 
-// ── Keyword Booster ─────────────────────────────────────────────────────────
 
 export function buildKeywordBoosterPrompt(
   resumeText: string,
   jobDescription: string,
 ): string {
-  return `You are an expert ATS keyword analyst. Compare the resume below against the job description and identify missing keywords the candidate should add.
+  return `You are an expert ATS keyword analyst.
+Compare the resume and job description and return only truly missing high-value keywords.
 
-For each missing keyword, return a JSON object with:
+Rules:
+- Include only keywords/phrases that appear in the job description and are absent or materially underrepresented in the resume.
+- Prefer skills, tools, domain terms, certifications, methods, and role-critical responsibilities.
+- Exclude generic soft skills unless explicitly central in the job description.
+- Remove duplicates and near-duplicates.
+- Limit output to the top 12 most impactful missing keywords, sorted by importance (high to low).
+
+For each result, return a JSON object with:
 - "keyword": the exact keyword or phrase missing
 - "importance": "high", "medium", or "low"
 - "section": which resume section to place it in ("summary", "experience", "skills", or "education")
-- "suggestion": a brief sentence showing how to naturally incorporate this keyword
+- "suggestion": one concise, natural resume-ready sentence showing how to incorporate the keyword without keyword stuffing
 
 Return a JSON array of objects. If no keywords are missing, return [].
 Return ONLY the JSON array. No markdown, no explanation, no code fences.
@@ -227,7 +262,6 @@ ${resumeText}
 ${jobDescription}`;
 }
 
-// ── Achievement Builder ─────────────────────────────────────────────────────
 
 export function buildAchievementBuilderPrompt(
   jobTitle: string,
@@ -236,20 +270,25 @@ export function buildAchievementBuilderPrompt(
   targetRole?: string,
 ): string {
   const roleHint = targetRole ? `The candidate is targeting a role as: ${targetRole}.` : "";
-  return `You are a professional resume writer specializing in accomplishment-based bullet points. ${roleHint}
+  return `You are a senior resume writer specializing in accomplishment-based bullets. ${roleHint}
 
 The candidate worked as "${jobTitle}" at "${employer}". Their current description is:
 "${description}"
 
-Transform this into 3-5 powerful accomplishment bullet points. Each bullet should:
-- Start with a strong action verb (e.g. Spearheaded, Delivered, Optimized, Architected)
-- Include a quantified metric or a placeholder like [X%], [X+], [$Xk] where the candidate can fill in real numbers
-- Show business impact, not just responsibility
+Transform this into exactly 4 high-impact accomplishment bullets.
 
-Return ONLY the bullet points, one per line, each starting with "- ". No explanation, no markdown headers, no numbering.`;
+Requirements for each bullet:
+- Starts with a strong action verb.
+- Includes outcome + metric. If metric is unavailable, use a realistic placeholder like [X%], [X], [$X], [X hrs/week].
+- Focuses on impact, scale, or efficiency, not routine duties.
+- Uses concrete tools/processes only if present in the source.
+- Max 28 words per bullet.
+- No first-person pronouns.
+- No fabricated claims.
+
+Return ONLY the bullet points, one per line, each starting with "• ". No explanation, no markdown headers, no numbering.`;
 }
 
-// ── Cover Letter ────────────────────────────────────────────────────────────
 
 export function buildCoverLetterPrompt(
   resumeText: string,
@@ -272,7 +311,7 @@ Guidelines:
 - Highlight 2-3 relevant achievements from the resume that match the job requirements
 - Close with a confident call to action
 - Keep it to 3-4 paragraphs, under 350 words
-- Do NOT include the date, address block, or "Sincerely" signature — just the letter body
+- Do NOT include the date, address block, or "Sincerely" signature - just the letter body
 
 Return ONLY the cover letter text. No markdown, no explanation, no quotes.
 
@@ -283,7 +322,6 @@ ${resumeText}
 ${jobDescription}`;
 }
 
-// ── Resume text extraction ──────────────────────────────────────────────────
 
 export interface ResumeTextField {
   field: string;
@@ -333,7 +371,6 @@ export function formatFieldsForPrompt(fields: ResumeTextField[]): string {
   return fields.map((f) => `[${f.field}]: ${f.value}`).join("\n");
 }
 
-// ── Cover Letter from Resume (no job description) ───────────────────────────
 
 export function buildCoverLetterFromResumePrompt(resumeText: string): string {
   return `You are a professional cover letter writer. Based ONLY on the resume below, write a compelling, versatile cover letter that the candidate can use for relevant job applications.
@@ -343,7 +380,7 @@ Guidelines:
 - Include a natural greeting and closing as part of the letter
 - Mention 2-3 standout achievements or skills from the resume with specific details
 - Keep it under 300 words total
-- Do NOT mention a specific company or job title — keep it general enough to adapt
+- Do NOT mention a specific company or job title - keep it general enough to adapt
 
 Return ONLY a JSON object with exactly this key. No markdown, no code fences, no explanation:
 {
@@ -354,7 +391,6 @@ Return ONLY a JSON object with exactly this key. No markdown, no code fences, no
 ${resumeText}`;
 }
 
-// ── Cover Letter from editor context (job-title targeted) ───────────────────
 
 export function buildCoverLetterFromEditorPrompt(input: {
   targetJobTitle: string;
@@ -387,3 +423,6 @@ ${input.candidateContext}
 Existing draft (optional):
 ${input.existingDraft?.trim() || "(none)"}`;
 }
+
+
+
