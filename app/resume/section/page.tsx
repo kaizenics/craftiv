@@ -30,6 +30,7 @@ import {
   ResumeStep,
   RESUME_STEPS,
   createEmptyResumeData,
+  normalizeSectionOrder,
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
@@ -103,7 +104,10 @@ export default function ResumeSectionPage() {
         try {
           const parsed = JSON.parse(savedData);
           if (parsed.templateId === templateId) {
-            setResumeData(parsed);
+            setResumeData({
+              ...parsed,
+              sectionOrder: normalizeSectionOrder(parsed.sectionOrder),
+            });
           } else {
             setResumeData(createEmptyResumeData(templateId));
           }

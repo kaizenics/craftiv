@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ResumePreview } from '@/components/resume/resume-preview';
 import { templates } from '@/lib/data/templates';
-import type { ResumeData } from '@/lib/types/resume';
+import { DEFAULT_SECTION_ORDER, normalizeSectionOrder, type ResumeData } from '@/lib/types/resume';
 import type { ResumeDataJSON } from '@/db/schema';
 
 const A4_WIDTH_PX = (210 / 25.4) * 96;
@@ -28,6 +28,7 @@ export function ResumeCardPreview({ templateId, data }: ResumeCardPreviewProps) 
     educations: data?.educations ?? [],
     skills: data?.skills ?? [],
     summary: data?.summary ?? '',
+    sectionOrder: normalizeSectionOrder(data?.sectionOrder ?? DEFAULT_SECTION_ORDER),
     finalize: data?.finalize ?? {
       languages: [],
       certifications: [],

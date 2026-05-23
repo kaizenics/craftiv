@@ -32,7 +32,7 @@ import {
   defaultDesignOptions,
 } from "@/components/resume/resume-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
-import { ResumeData, createEmptyResumeData } from "@/lib/types/resume";
+import { ResumeData, createEmptyResumeData, normalizeSectionOrder } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
 import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
@@ -43,6 +43,7 @@ import { ContentQualityTab } from "./tabs/content-quality-tab";
 import { VersionHistoryTab } from "./tabs/version-history-tab";
 import { JobTargetTab } from "./tabs/job-target-tab";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
+import { ResumeSectionKey } from "@/lib/types/resume";
 import {
   LayoutTemplate,
   Layers,
@@ -193,7 +194,10 @@ export default function FinalResumePage() {
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        initialResumeData = parsed;
+        initialResumeData = {
+          ...parsed,
+          sectionOrder: normalizeSectionOrder(parsed.sectionOrder),
+        };
       } catch {
         initialResumeData = null;
       }
@@ -201,10 +205,12 @@ export default function FinalResumePage() {
 
     if (!initialResumeData && savedResume?.data) {
       const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
-      initialResumeData = {
+      const hydratedFromDb: ResumeData = {
         ...createEmptyResumeData(dbTemplateId),
         ...(savedResume.data as any),
       };
+      hydratedFromDb.sectionOrder = normalizeSectionOrder((savedResume.data as any)?.sectionOrder);
+      initialResumeData = hydratedFromDb;
     }
 
     if (!initialResumeData || !resolvedTemplateId) {
@@ -522,6 +528,34 @@ export default function FinalResumePage() {
     return sections.filter((s) => s.active);
   };
 
+  const getVisibleSectionOrder = (): ResumeSectionKey[] => {
+    const visible = new Set<ResumeSectionKey>();
+    if (resumeData.summary.trim()) visible.add("summary");
+    if (resumeData.experiences.length > 0) visible.add("experience");
+    if (resumeData.educations.length > 0) visible.add("education");
+    if (resumeData.skills.length > 0) visible.add("skills");
+    if (resumeData.finalize.languages.length > 0) visible.add("languages");
+    if (resumeData.finalize.certifications.length > 0) visible.add("certifications");
+    if (resumeData.finalize.awards.length > 0) visible.add("awards");
+    if (resumeData.finalize.websites.length > 0) visible.add("websites");
+    if (resumeData.finalize.references.length > 0) visible.add("references");
+    if (resumeData.finalize.hobbies.length > 0) visible.add("hobbies");
+    if (resumeData.finalize.customSections.length > 0) visible.add("custom");
+
+    return resumeData.sectionOrder.filter((key) => visible.has(key));
+  };
+
+  const handleVisibleSectionOrderChange = (nextVisibleOrder: ResumeSectionKey[]) => {
+    const visibleSet = new Set(nextVisibleOrder);
+    const nextByVisible = [...nextVisibleOrder];
+    const mergedOrder = resumeData.sectionOrder.map((key) => {
+      if (!visibleSet.has(key)) return key;
+      return nextByVisible.shift() ?? key;
+    });
+
+    setResumeData({ ...resumeData, sectionOrder: mergedOrder });
+  };
+
   const handleTemplateChange = (templateId: string) => {
     setResumeData({ ...resumeData, templateId });
     localStorage.setItem("selectedTemplateId", templateId);
@@ -804,8 +838,11 @@ export default function FinalResumePage() {
 
             {activeTab === "sections" && (
               <SectionsTab
-                sections={getActiveSections()}
-                onEditSections={() => router.push("/resume/section")}
+                onEditSections={() =>
+                  router.push(currentResumeId ? `/resume/section/${currentResumeId}` : "/resume/section")
+                }
+                visibleSectionOrder={getVisibleSectionOrder()}
+                onVisibleSectionOrderChange={handleVisibleSectionOrderChange}
               />
             )}
 

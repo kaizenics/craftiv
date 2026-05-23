@@ -54,7 +54,7 @@ import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
 import type { ResumeDataJSON } from "@/db/schema";
 import type { CoverLetterData } from "@/lib/types/cover-letter";
-import type { ResumeData } from "@/lib/types/resume";
+import { DEFAULT_SECTION_ORDER, normalizeSectionOrder, type ResumeData } from "@/lib/types/resume";
 
 type ResumeListItem = {
   id: string;
@@ -91,6 +91,7 @@ function buildResumeDataForDownload(
     educations: data.educations ?? [],
     skills: data.skills ?? [],
     summary: data.summary ?? "",
+    sectionOrder: normalizeSectionOrder(data.sectionOrder ?? DEFAULT_SECTION_ORDER),
     finalize: data.finalize ?? {
       languages: [],
       certifications: [],

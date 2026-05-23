@@ -29,6 +29,7 @@ import {
   ResumeStep,
   RESUME_STEPS,
   createEmptyResumeData,
+  normalizeSectionOrder,
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
@@ -85,6 +86,7 @@ export default function ResumeSectionDynamicPage() {
       ...createEmptyResumeData(templateId),
       ...(resume.data as any),
     };
+    data.sectionOrder = normalizeSectionOrder((resume.data as any)?.sectionOrder);
 
     setResumeData(data);
     localStorage.setItem("selectedTemplateId", templateId);

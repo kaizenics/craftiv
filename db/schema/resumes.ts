@@ -66,6 +66,19 @@ export interface ResumeDataJSON {
     showLevel: boolean;
   }>;
   summary: string;
+  sectionOrder?: Array<
+    | "summary"
+    | "experience"
+    | "education"
+    | "skills"
+    | "languages"
+    | "certifications"
+    | "awards"
+    | "websites"
+    | "references"
+    | "hobbies"
+    | "custom"
+  >;
   finalize: {
     languages: Array<{
       id: string;

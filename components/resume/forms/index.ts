@@ -4,3 +4,4 @@ export { EducationForm } from './education-form';
 export { SkillsForm } from './skills-form';
 export { SummaryForm } from './summary-form';
 export { FinalizeForm } from './finalize-form';
+export { SectionOrderForm } from './section-order-form';
