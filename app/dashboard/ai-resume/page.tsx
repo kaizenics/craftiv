@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
@@ -28,10 +28,16 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/trpc/client";
 import type { ResumeDataJSON } from "@/db/schema";
 
-// ── Types ───────────────────────────────────────────────────────────────────
 
 type Tool = "improver" | "keywords" | "achievements";
 type Goal = "summary" | "experience" | "full";
+const EXPERIENCE_SPLIT_TOKEN = "<<<EXP_SPLIT>>>";
+type FullImprovedBlock = {
+  key: string;
+  label: string;
+  value: string;
+  type: "summary" | "experience" | "education";
+};
 
 const TOOLS: { id: Tool; label: string; description: string; icon: typeof Sparkles }[] = [
   { id: "improver", label: "Resume Improver", description: "AI-rewrite your summary, experience, or full resume", icon: Sparkles },
@@ -64,7 +70,6 @@ function readStoredJobTargetDraft(): { role: string; jobDescription: string } {
   }
 }
 
-// ── Shared helpers ──────────────────────────────────────────────────────────
 
 function formatDate(date: Date | string): string {
   const d = new Date(date);
@@ -79,12 +84,23 @@ function formatDate(date: Date | string): string {
 function parseContentBlocks(content: string, fallbackLabel: string): Array<{ label: string; value: string }> {
   const normalized = content.replace(/\r\n/g, "\n").trim();
   if (!normalized) return [];
-  const chunks = normalized.split(/\n{2,}/).map((c) => c.trim()).filter(Boolean);
+  const chunks = normalized
+    .split(/\n{2,}/)
+    .map((c) => c.trim())
+    .filter((c) => Boolean(c) && c !== "---" && c !== EXPERIENCE_SPLIT_TOKEN);
   return chunks.map((chunk, i) => {
     const labeled = chunk.match(/^([^:\n]{2,100}):\s*\n([\s\S]*)$/);
     if (labeled) return { label: labeled[1].trim(), value: labeled[2].trim() };
     return { label: chunks.length === 1 ? fallbackLabel : `${fallbackLabel} ${i + 1}`, value: chunk };
   });
+}
+
+function getBulletLines(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-•*]\s*/, ""));
 }
 
 function formatResumeDataAsText(d: Record<string, any>): string {
@@ -103,7 +119,6 @@ function formatResumeDataAsText(d: Record<string, any>): string {
   return parts.join("\n\n");
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
 
 export default function AIAssistantPage() {
   const initialTargetDraft = readStoredJobTargetDraft();
@@ -123,7 +138,11 @@ export default function AIAssistantPage() {
     initialTargetDraft.jobDescription,
   );
   const [improverResult, setImproverResult] = useState<string | null>(null);
+  const [improvedExperienceParts, setImprovedExperienceParts] = useState<string[] | null>(null);
+  const [selectedImproverExperienceBlocks, setSelectedImproverExperienceBlocks] = useState<number[]>([]);
   const [fullResumeImproved, setFullResumeImproved] = useState<Record<string, any> | null>(null);
+  const [fullImprovedBlocks, setFullImprovedBlocks] = useState<FullImprovedBlock[]>([]);
+  const [selectedFullImprovedKeys, setSelectedFullImprovedKeys] = useState<string[]>([]);
   const [improverOriginal, setImproverOriginal] = useState<string | null>(null);
   const [improverApplied, setImproverApplied] = useState(false);
 
@@ -205,14 +224,77 @@ export default function AIAssistantPage() {
     return null;
   }, [data, goal]);
 
+  const experienceApplyTargets = useMemo(() => {
+    if (!data?.experiences) return [];
+    return data.experiences
+      .filter((exp) => exp.description?.trim())
+      .map((exp, blockIndex) => ({ ...exp, blockIndex }));
+  }, [data]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  function buildFullImprovedBlocks(improved: Record<string, any>): FullImprovedBlock[] {
+    const blocks: FullImprovedBlock[] = [];
+
+    if (typeof improved.summary === "string" && improved.summary.trim()) {
+      blocks.push({
+        key: "summary",
+        label: "Summary",
+        value: improved.summary.trim(),
+        type: "summary",
+      });
+    }
+
+    if (Array.isArray(improved.experiences)) {
+      improved.experiences.forEach((exp: any, index: number) => {
+        if (!exp?.description?.trim()) return;
+        const title = exp.jobTitle || data?.experiences?.[index]?.jobTitle || `Experience ${index + 1}`;
+        blocks.push({
+          key: `experience:${index}`,
+          label: `Experience ${index + 1} · ${title}`,
+          value: exp.description.trim(),
+          type: "experience",
+        });
+      });
+    }
+
+    if (Array.isArray(improved.educations)) {
+      improved.educations.forEach((edu: any, index: number) => {
+        if (!edu?.description?.trim()) return;
+        const title = edu.degree || data?.educations?.[index]?.degree || `Education ${index + 1}`;
+        blocks.push({
+          key: `education:${index}`,
+          label: `Education ${index + 1} · ${title}`,
+          value: edu.description.trim(),
+          type: "education",
+        });
+      });
+    }
+
+    return blocks;
+  }
+
+
 
   function clearResults() {
     setImproverResult(null); setFullResumeImproved(null); setImproverOriginal(null); setImproverApplied(false);
+    setImprovedExperienceParts(null);
+    setSelectedImproverExperienceBlocks([]);
+    setFullImprovedBlocks([]);
+    setSelectedFullImprovedKeys([]);
     setKeywordResults(null);
     setAchievementResult(null); setAchievementApplied(false);
     setError(null); setCopied(false);
+  }
+
+  function toggleImproverExperienceBlock(index: number) {
+    setSelectedImproverExperienceBlocks((prev) =>
+      prev.includes(index) ? prev.filter((item) => item !== index) : [...prev, index].sort((a, b) => a - b),
+    );
+  }
+
+  function toggleFullImprovedKey(key: string) {
+    setSelectedFullImprovedKeys((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
+    );
   }
 
   function selectResume(id: string) {
@@ -224,7 +306,7 @@ export default function AIAssistantPage() {
 
   async function handleImproverGenerate() {
     if (!activeResumeId || !currentContent || !data) return;
-    setError(null); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false);
+    setError(null); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false); setImprovedExperienceParts(null); setFullImprovedBlocks([]); setSelectedFullImprovedKeys([]);
     setImproverOriginal(currentContent);
     try {      if (goal === "summary") {
         const res = await improveSection.mutateAsync({
@@ -236,7 +318,10 @@ export default function AIAssistantPage() {
         });
         setImproverResult(res.improved);
       } else if (goal === "experience") {
-        const all = (data.experiences ?? []).filter((e) => e.description?.trim()).map((e) => e.description).join("\n\n---\n\n");
+        const all = (data.experiences ?? [])
+          .filter((e) => e.description?.trim())
+          .map((e) => e.description)
+          .join(`\n\n${EXPERIENCE_SPLIT_TOKEN}\n\n`);
         const res = await improveSection.mutateAsync({
           resumeId: activeResumeId,
           section: "experience",
@@ -244,7 +329,19 @@ export default function AIAssistantPage() {
           targetRole: targetRole || undefined,
           jobDescription: jobDescriptionImprover.trim() || undefined,
         });
-        setImproverResult(res.improved);
+        const parts = res.improved
+          .split(EXPERIENCE_SPLIT_TOKEN)
+          .map((p) => p.trim())
+          .filter(Boolean);
+        if (parts.length > 0) {
+          setImprovedExperienceParts(parts);
+          setSelectedImproverExperienceBlocks(parts.map((_, index) => index));
+          setImproverResult(parts.join("\n\n"));
+        } else {
+          setImprovedExperienceParts(null);
+          setSelectedImproverExperienceBlocks([]);
+          setImproverResult(res.improved.replaceAll(EXPERIENCE_SPLIT_TOKEN, "").trim());
+        }
       } else {
         const res = await improveFullResume.mutateAsync({
           resumeId: activeResumeId,
@@ -252,6 +349,9 @@ export default function AIAssistantPage() {
           jobDescription: jobDescriptionImprover.trim() || undefined,
         });
         setFullResumeImproved(res.improved);
+        const blocks = buildFullImprovedBlocks(res.improved);
+        setFullImprovedBlocks(blocks);
+        setSelectedFullImprovedKeys(blocks.map((block) => block.key));
         setImproverResult(formatResumeDataAsText(res.improved));
       }
     } catch (e: any) { setError(e.message || "Something went wrong. Please try again."); }
@@ -263,15 +363,60 @@ export default function AIAssistantPage() {
       if (goal === "summary") {
         await updateResume.mutateAsync({ id: activeResumeId, data: { ...data, summary: improverResult } });
       } else if (goal === "experience") {
-        const parts = improverResult.split(/\n\n---\n\n|\n\n(?=[A-Z])/);
+        const parts = (improvedExperienceParts && improvedExperienceParts.length > 0
+          ? [...improvedExperienceParts]
+          : improverResult
+              .split(/\n\n---\n\n|\n{2,}/)
+              .map((p) => p.trim())
+              .filter(Boolean));
+        const selectedSet = new Set(selectedImproverExperienceBlocks);
+        if (selectedSet.size === 0) {
+          setError("Select at least one experience block to apply.");
+          return;
+        }
+
+        let partIndex = 0;
         const updated = data.experiences.map((exp) => {
           if (!exp.description?.trim()) return exp;
-          const improved = parts.shift();
-          return improved ? { ...exp, description: improved } : exp;
+          const improved = parts[partIndex];
+          const shouldApply = selectedSet.has(partIndex);
+          partIndex += 1;
+          return shouldApply && improved ? { ...exp, description: improved } : exp;
         });
         await updateResume.mutateAsync({ id: activeResumeId, data: { ...data, experiences: updated } });
       } else if (fullResumeImproved) {
-        await updateResume.mutateAsync({ id: activeResumeId, data: { ...data, ...fullResumeImproved } });
+        if (selectedFullImprovedKeys.length === 0) {
+          setError("Select at least one output block to apply.");
+          return;
+        }
+        const selected = new Set(selectedFullImprovedKeys);
+        const improved = fullResumeImproved as any;
+
+        let nextData: any = { ...data };
+
+        if (selected.has("summary") && typeof improved.summary === "string") {
+          nextData.summary = improved.summary;
+        }
+
+        if (Array.isArray(improved.experiences) && Array.isArray(data.experiences)) {
+          nextData.experiences = data.experiences.map((exp: any, index: number) => {
+            if (!selected.has(`experience:${index}`)) return exp;
+            const improvedExp = improved.experiences[index];
+            if (!improvedExp?.description) return exp;
+            return { ...exp, description: improvedExp.description };
+          });
+        }
+
+        if (Array.isArray(improved.educations) && Array.isArray(data.educations)) {
+          nextData.educations = data.educations.map((edu: any, index: number) => {
+            if (!selected.has(`education:${index}`)) return edu;
+            const improvedEdu = improved.educations[index];
+            if (!improvedEdu?.description) return edu;
+            return { ...edu, description: improvedEdu.description };
+          });
+        }
+
+        await updateResume.mutateAsync({ id: activeResumeId, data: nextData });
       }
       setImproverApplied(true);
     } catch (e: any) { setError(e.message || "Failed to apply changes."); }
@@ -309,7 +454,6 @@ export default function AIAssistantPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // ── Loading / Empty ───────────────────────────────────────────────────────
 
   if (resumesLoading) {
     return (
@@ -339,7 +483,6 @@ export default function AIAssistantPage() {
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
 
   const canImprove = !!activeResumeId && !!currentContent && !isGenerating;
   const canKeyword = !!activeResumeId && !!jobDescriptionKw.trim() && !isGenerating;
@@ -431,7 +574,7 @@ export default function AIAssistantPage() {
         </div>
       )}
 
-      {/* ═══════════ TOOL 1: Resume Improver ═══════════ */}
+      {/* TOOL 1: Resume Improver */}
       {activeTool === "improver" && (
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-card p-5 space-y-5">
@@ -441,7 +584,7 @@ export default function AIAssistantPage() {
                 {GOALS.map((g) => {
                   const active = goal === g.id;
                   return (
-                    <button key={g.id} onClick={() => { setGoal(g.id); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false); setError(null); }}
+                    <button key={g.id} onClick={() => { setGoal(g.id); setImproverResult(null); setFullResumeImproved(null); setImprovedExperienceParts(null); setSelectedImproverExperienceBlocks([]); setFullImprovedBlocks([]); setSelectedFullImprovedKeys([]); setImproverApplied(false); setError(null); }}
                       className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${active ? "border-foreground bg-foreground/5 text-foreground" : "border-border hover:bg-muted/10 text-muted-foreground"}`}>
                       <g.icon className="h-4 w-4" /> {g.label}
                     </button>
@@ -508,16 +651,142 @@ export default function AIAssistantPage() {
                 </div>
                 <div className="rounded-xl border border-green-300 bg-green-50 p-5 space-y-3">
                   <h3 className="text-sm font-semibold text-green-900 uppercase tracking-wide">After</h3>
-                  {parseContentBlocks(improverResult, goal === "summary" ? "Summary" : goal === "experience" ? "Experience" : "Section").map((block, i) => (
-                    <div key={`aft-${i}`} className="rounded-lg border border-green-200 bg-white/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-green-800">{block.label}</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-green-950">{block.value}</p>
-                    </div>
-                  ))}
+                  {goal === "experience" && improvedExperienceParts ? (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedImproverExperienceBlocks(improvedExperienceParts.map((_, index) => index))}
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedImproverExperienceBlocks([])}
+                        >
+                          Clear Selection
+                        </Button>
+                        <p className="text-xs text-green-800">
+                          {selectedImproverExperienceBlocks.length} of {improvedExperienceParts.length} selected for apply
+                        </p>
+                      </div>
+                      {improvedExperienceParts.map((value, i) => {
+                        const meta = experienceApplyTargets[i];
+                        const isSelected = selectedImproverExperienceBlocks.includes(i);
+                        return (
+                          <div key={`aft-exp-${i}`} className="rounded-lg border border-green-200 bg-white/80 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
+                                Experience {i + 1}
+                                {meta?.jobTitle ? ` · ${meta.jobTitle}` : ""}
+                              </p>
+                              <label className="flex items-center gap-2 text-xs text-green-900">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-green-400"
+                                  checked={isSelected}
+                                  onChange={() => toggleImproverExperienceBlock(i)}
+                                />
+                                Apply this
+                              </label>
+                            </div>
+                            {/^(\s*[-•*]\s+).+/m.test(value) ? (
+                              <ul className="mt-1 list-disc pl-5 text-sm leading-relaxed text-green-950 space-y-1">
+                                {getBulletLines(value).map((line, idx) => (
+                                  <li key={`aft-b-${i}-${idx}`}>{line}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-green-950">{value}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : goal === "full" && fullImprovedBlocks.length > 0 ? (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedFullImprovedKeys(fullImprovedBlocks.map((block) => block.key))}
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedFullImprovedKeys([])}
+                        >
+                          Clear Selection
+                        </Button>
+                        <p className="text-xs text-green-800">
+                          {selectedFullImprovedKeys.length} of {fullImprovedBlocks.length} selected for apply
+                        </p>
+                      </div>
+                      {fullImprovedBlocks.map((block) => {
+                        const isSelected = selectedFullImprovedKeys.includes(block.key);
+                        return (
+                          <div key={`aft-full-${block.key}`} className="rounded-lg border border-green-200 bg-white/80 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-green-800">{block.label}</p>
+                              <label className="flex items-center gap-2 text-xs text-green-900">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-green-400"
+                                  checked={isSelected}
+                                  onChange={() => toggleFullImprovedKey(block.key)}
+                                />
+                                Apply this
+                              </label>
+                            </div>
+                            {/^(\s*[-•*]\s+).+/m.test(block.value) ? (
+                              <ul className="mt-1 list-disc pl-5 text-sm leading-relaxed text-green-950 space-y-1">
+                                {getBulletLines(block.value).map((line, idx) => (
+                                  <li key={`aft-full-b-${block.key}-${idx}`}>{line}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-green-950">{block.value}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    parseContentBlocks(improverResult, goal === "summary" ? "Summary" : goal === "experience" ? "Experience" : "Section").map((block, i) => (
+                      <div key={`aft-${i}`} className="rounded-lg border border-green-200 bg-white/80 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-green-800">{block.label}</p>
+                        {goal === "experience" && /^(\s*[-•*]\s+).+/m.test(block.value) ? (
+                          <ul className="mt-1 list-disc pl-5 text-sm leading-relaxed text-green-950 space-y-1">
+                            {getBulletLines(block.value).map((line, idx) => (
+                              <li key={`aft-b-${i}-${idx}`}>{line}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-green-950">{block.value}</p>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button onClick={handleImproverApply} disabled={improverApplied || updateResume.isPending}>
+                <Button
+                  onClick={handleImproverApply}
+                  disabled={
+                    improverApplied ||
+                    updateResume.isPending ||
+                    (goal === "experience" && improvedExperienceParts !== null && selectedImproverExperienceBlocks.length === 0) ||
+                    (goal === "full" && fullImprovedBlocks.length > 0 && selectedFullImprovedKeys.length === 0)
+                  }
+                >
                   {updateResume.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applying...</> : improverApplied ? <><Check className="mr-2 h-4 w-4" /> Applied</> : "Apply to Resume"}
                 </Button>
                 <Button variant="outline" onClick={() => handleCopy(improverResult)} className="hover:bg-muted/10 hover:text-foreground">
@@ -535,7 +804,7 @@ export default function AIAssistantPage() {
         </div>
       )}
 
-      {/* ═══════════ TOOL 2: Keyword Booster ═══════════ */}
+      {/* TOOL 2: Keyword Booster */}
       {activeTool === "keywords" && (
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -612,7 +881,7 @@ export default function AIAssistantPage() {
         </div>
       )}
 
-      {/* ═══════════ TOOL 3: Achievement Builder ═══════════ */}
+      {/* TOOL 3: Achievement Builder */}
       {activeTool === "achievements" && (
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -715,6 +984,9 @@ export default function AIAssistantPage() {
     </div>
   );
 }
+
+
+
 
 
 

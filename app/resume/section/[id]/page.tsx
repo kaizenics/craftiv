@@ -231,6 +231,7 @@ export default function ResumeSectionDynamicPage() {
 
   const handleDataUpdate = (updates: Partial<ResumeData>) => {
     const newData = { ...resumeData, ...updates };
+    latestResumeDataRef.current = newData;
     setResumeData(newData);
   };
 
@@ -238,11 +239,12 @@ export default function ResumeSectionDynamicPage() {
     if (!completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
+    const latestData = latestResumeDataRef.current ?? resumeData;
     try {
       setSaveState("saving");
       await updateResume.mutateAsync({
         id: resumeId,
-        data: resumeData,
+        data: latestData,
         lastEditedSection: currentStep,
       });
       setSaveState("saved");
@@ -316,11 +318,12 @@ export default function ResumeSectionDynamicPage() {
             variant="ghost"
             size="sm"
             onClick={async () => {
+              const latestData = latestResumeDataRef.current ?? resumeData;
               try {
                 setSaveState("saving");
                 await updateResume.mutateAsync({
                   id: resumeId,
-                  data: resumeData,
+                  data: latestData,
                   lastEditedSection: currentStep,
                 });
                 setSaveState("saved");

@@ -242,7 +242,7 @@ export const aiRouter = createTRPCRouter({
         const { content: improved } = await callWithFallback({
           messages: [{ role: "user", content: prompt }],
           maxTokens: 2000,
-          temperature: 0.7,
+          temperature: 0.45,
         });
         return { improved };
       } catch (error) {
@@ -277,7 +277,7 @@ export const aiRouter = createTRPCRouter({
         const { content } = await callWithFallback({
           messages: [{ role: "user", content: prompt }],
           maxTokens: 4000,
-          temperature: 0.7,
+          temperature: 0.45,
         });
 
         const improved = extractJsonObject(content);
@@ -415,7 +415,7 @@ export const aiRouter = createTRPCRouter({
         const { content } = await callWithFallback({
           messages: [{ role: "user", content: prompt }],
           maxTokens: 3000,
-          temperature: 0.4,
+          temperature: 0.3,
         });
 
         const parsed = extractJsonArray(content);
@@ -480,7 +480,7 @@ export const aiRouter = createTRPCRouter({
         const { content: bullets } = await callWithFallback({
           messages: [{ role: "user", content: prompt }],
           maxTokens: 1500,
-          temperature: 0.7,
+          temperature: 0.5,
         });
         return { bullets };
       } catch (error) {
