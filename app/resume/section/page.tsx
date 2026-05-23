@@ -36,6 +36,7 @@ import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
+import { AnimatePresence, motion } from "motion/react";
 
 export default function ResumeSectionPage() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function ResumeSectionPage() {
   const [showPhoto, setShowPhoto] = useState(false);
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
+  const [transitionDirection, setTransitionDirection] = useState<1 | -1>(1);
 
   // Add tRPC mutations
   const createResume = trpc.resume.create.useMutation();
@@ -146,6 +148,11 @@ export default function ResumeSectionPage() {
   }, [resumeData]);
 
   useEffect(() => {
+    if (!resumeData) return;
+    localStorage.setItem("resumeData", JSON.stringify(resumeData));
+  }, [resumeData]);
+
+  useEffect(() => {
     latestStepRef.current = currentStep;
   }, [currentStep]);
 
@@ -238,6 +245,7 @@ export default function ResumeSectionPage() {
 
   const goToNextStep = () => {
     if (!isLastStep) {
+      setTransitionDirection(1);
       // Mark current step as completed
       if (!completedSteps.includes(currentStep)) {
         setCompletedSteps([...completedSteps, currentStep]);
@@ -248,11 +256,16 @@ export default function ResumeSectionPage() {
 
   const goToPreviousStep = () => {
     if (!isFirstStep) {
+      setTransitionDirection(-1);
       setCurrentStep(RESUME_STEPS[currentStepIndex - 1].id);
     }
   };
 
   const handleStepClick = (step: ResumeStep) => {
+    const targetIndex = RESUME_STEPS.findIndex((s) => s.id === step);
+    if (targetIndex !== -1 && targetIndex !== currentStepIndex) {
+      setTransitionDirection(targetIndex > currentStepIndex ? 1 : -1);
+    }
     setCurrentStep(step);
   };
 
@@ -347,7 +360,17 @@ export default function ResumeSectionPage() {
 
               {/* Form Content */}
               <div className={cn("bg-background rounded-lg border p-4 sm:p-6 mb-4", compactEditorEnabled && "p-3 sm:p-4 mb-3")}>
-                {renderCurrentForm()}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={currentStep}
+                    initial={{ opacity: 0, x: transitionDirection * 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: transitionDirection * -16 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    {renderCurrentForm()}
+                  </motion.div>
+                </AnimatePresence>
               </div>
 
               {/* Bottom Navigation - Fixed at Bottom of Form Section */}

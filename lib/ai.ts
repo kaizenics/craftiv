@@ -13,7 +13,7 @@ export const openrouter = new OpenAI({
 });
 
 export const AI_MODEL = "google/gemini-2.5-flash";
-export const AI_MODEL_FALLBACK = "google/gemini-3-flash-preview";
+export const AI_MODEL_FALLBACK = "moonshotai/kimi-k2.5";
 
 // ── Response helpers ────────────────────────────────────────────────────────
 

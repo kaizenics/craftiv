@@ -173,7 +173,7 @@ export default function FinalResumePage() {
   );
 
   useEffect(() => {
-    // Prefer local snapshot, then fall back to server data.
+    // Prefer server data for accuracy, then fall back to local snapshot.
     const savedData = localStorage.getItem("resumeData");
     const templateId = localStorage.getItem("selectedTemplateId");
     const resumeId = localStorage.getItem("currentResumeId");
@@ -191,7 +191,17 @@ export default function FinalResumePage() {
     let initialJobTargetDescription = "";
     let initialSnapshots: ResumeSnapshot[] = [];
 
-    if (savedData) {
+    if (savedResume?.data) {
+      const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
+      const hydratedFromDb: ResumeData = {
+        ...createEmptyResumeData(dbTemplateId),
+        ...(savedResume.data as any),
+      };
+      hydratedFromDb.sectionOrder = normalizeSectionOrder((savedResume.data as any)?.sectionOrder);
+      initialResumeData = hydratedFromDb;
+    }
+
+    if (!initialResumeData && savedData) {
       try {
         const parsed = JSON.parse(savedData);
         initialResumeData = {
@@ -201,16 +211,6 @@ export default function FinalResumePage() {
       } catch {
         initialResumeData = null;
       }
-    }
-
-    if (!initialResumeData && savedResume?.data) {
-      const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
-      const hydratedFromDb: ResumeData = {
-        ...createEmptyResumeData(dbTemplateId),
-        ...(savedResume.data as any),
-      };
-      hydratedFromDb.sectionOrder = normalizeSectionOrder((savedResume.data as any)?.sectionOrder);
-      initialResumeData = hydratedFromDb;
     }
 
     if (!initialResumeData || !resolvedTemplateId) {

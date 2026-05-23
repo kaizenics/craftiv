@@ -1,10 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarIcon } from "@/components/ui/icons"
+import { CalendarIcon, ChevronLeft, ChevronRight } from "@/components/ui/icons"
 
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -39,6 +38,11 @@ function formatMonthYear(date: Date): string {
   return `${month}/${date.getFullYear()}`
 }
 
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
 export function MonthPicker({
   value,
   onChange,
@@ -47,8 +51,14 @@ export function MonthPicker({
 }: MonthPickerProps) {
   const [open, setOpen] = useState(false)
   const [manualValue, setManualValue] = useState(value)
-
   const selectedDate = useMemo(() => parseMonthYear(value), [value])
+  const [viewYear, setViewYear] = useState(selectedDate?.getFullYear() ?? new Date().getFullYear())
+
+  useEffect(() => {
+    if (selectedDate) {
+      setViewYear(selectedDate.getFullYear())
+    }
+  }, [selectedDate])
 
   useEffect(() => {
     setManualValue(value)
@@ -98,21 +108,50 @@ export function MonthPicker({
             className="h-8"
           />
         </div>
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          defaultMonth={selectedDate}
-          captionLayout="dropdown"
-          fromYear={1950}
-          toYear={new Date().getFullYear() + 10}
-          onSelect={(date) => {
-            if (!date) return
-            const formatted = formatMonthYear(new Date(date.getFullYear(), date.getMonth(), 1))
-            setManualValue(formatted)
-            onChange(formatted)
-            setOpen(false)
-          }}
-        />
+        <div className="p-3 w-[280px]">
+          <div className="mb-3 flex items-center justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setViewYear((prev) => prev - 1)}
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium">{viewYear}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setViewYear((prev) => prev + 1)}
+              aria-label="Next year"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {MONTHS.map((month, index) => {
+              const formatted = `${String(index + 1).padStart(2, "0")}/${viewYear}`
+              const isActive = value === formatted
+              return (
+                <Button
+                  key={month}
+                  type="button"
+                  variant={isActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setManualValue(formatted)
+                    onChange(formatted)
+                    setOpen(false)
+                  }}
+                >
+                  {month}
+                </Button>
+              )
+            })}
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   )

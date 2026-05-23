@@ -26,7 +26,7 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
       isCurrentJob: false,
       description: '',
     };
-    onChange([...data, newExperience]);
+    onChange([newExperience, ...data]);
   };
 
   const updateExperience = (id: string, field: keyof Experience, value: string | boolean) => {
@@ -199,10 +199,12 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
       ))}
 
       {data.length > 0 && (
-        <Button onClick={addExperience} variant="outline" className="w-full">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Work Experience
-        </Button>
+        <div className="sticky bottom-3 z-20">
+          <Button onClick={addExperience} variant="outline" className="w-full">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Work Experience
+          </Button>
+        </div>
       )}
     </div>
   );
