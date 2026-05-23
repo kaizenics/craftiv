@@ -303,7 +303,7 @@ export function ResumePreview({
       {/* Professional Summary */}
       {data.summary && (
         <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Professional Summary" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
+          <SectionHeader title="Summary" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
           <p className="text-zinc-700 whitespace-pre-line">{data.summary}</p>
         </div>
       )}
@@ -1440,7 +1440,7 @@ export function ResumePreview({
         <div className="col-span-3 p-6">
           {data.summary && (
             <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-              <SectionHeader title="Professional Summary" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <SectionHeader title="Summary" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
               <p className="text-zinc-600">{data.summary}</p>
             </div>
           )}

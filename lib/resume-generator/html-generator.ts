@@ -67,7 +67,7 @@ function generateHeader(data: ResumeData, layout: TemplateLayout): string {
 function generateSummarySection(summary: string): string {
   return `
     <div class="section">
-      <div class="section-title">Professional Summary</div>
+      <div class="section-title">Summary</div>
       <div class="summary">${summary}</div>
     </div>
   `;
