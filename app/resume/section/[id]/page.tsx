@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
@@ -29,14 +29,16 @@ import {
   ResumeStep,
   RESUME_STEPS,
   createEmptyResumeData,
+  normalizeSectionOrder,
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from "@/components/ui/icons";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 
 export default function ResumeSectionDynamicPage() {
   const router = useRouter();
+  const utils = trpc.useUtils();
   const params = useParams();
   const resumeId = params.id as string;
   
@@ -47,6 +49,7 @@ export default function ResumeSectionDynamicPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [showPhoto, setShowPhoto] = useState(false);
+  const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
 
   // Fetch resume data from database
   const { data: resume, isLoading: isLoadingResume } = trpc.resume.getById.useQuery({ id: resumeId });
@@ -57,6 +60,11 @@ export default function ResumeSectionDynamicPage() {
   const autoSaveDraftsEnabled = preferences?.autoSaveDrafts ?? DEFAULT_USER_PREFERENCES.autoSaveDrafts;
   const showResumeScoreEnabled = preferences?.showResumeScore ?? DEFAULT_USER_PREFERENCES.showResumeScore;
   const compactEditorEnabled = preferences?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor;
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestResumeDataRef = useRef<ResumeData | null>(null);
+  const latestStepRef = useRef<ResumeStep>("contacts");
+  const latestLoadingRef = useRef(true);
+  const latestAutoSaveEnabledRef = useRef(autoSaveDraftsEnabled);
 
   useEffect(() => {
     if (!resume) return;
@@ -78,30 +86,96 @@ export default function ResumeSectionDynamicPage() {
       ...createEmptyResumeData(templateId),
       ...(resume.data as any),
     };
+    data.sectionOrder = normalizeSectionOrder((resume.data as any)?.sectionOrder);
 
     setResumeData(data);
-    localStorage.setItem("resumeData", JSON.stringify(data));
     localStorage.setItem("selectedTemplateId", templateId);
     localStorage.setItem("currentResumeId", resumeId);
 
     setIsLoading(false);
   }, [resume, resumeId]);
 
+  useEffect(() => {
+    latestResumeDataRef.current = resumeData;
+  }, [resumeData]);
+
+  useEffect(() => {
+    latestStepRef.current = currentStep;
+  }, [currentStep]);
+
+  useEffect(() => {
+    latestLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    latestAutoSaveEnabledRef.current = autoSaveDraftsEnabled;
+  }, [autoSaveDraftsEnabled]);
+
+  const flushAutosave = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
+    }
+    if (!latestAutoSaveEnabledRef.current || latestLoadingRef.current || !latestResumeDataRef.current) {
+      return;
+    }
+    setSaveState("saving");
+    updateResume.mutate({
+      id: resumeId,
+      data: latestResumeDataRef.current,
+      lastEditedSection: latestStepRef.current,
+    }, {
+      onSuccess: () => {
+        setSaveState("saved");
+        utils.resume.listSummary.invalidate();
+      },
+      onError: () => setSaveState("error"),
+    });
+  }, [resumeId, updateResume, utils.resume.listSummary]);
+
   // Auto-save to database when resume data changes
   useEffect(() => {
     if (!resumeData || isLoading) return;
     if (!autoSaveDraftsEnabled) return;
 
-    const timeoutId = setTimeout(() => {
+    debounceTimeoutRef.current = setTimeout(() => {
+      setSaveState("saving");
       updateResume.mutate({
         id: resumeId,
         data: resumeData,
         lastEditedSection: currentStep,
+      }, {
+        onSuccess: () => {
+          setSaveState("saved");
+          utils.resume.listSummary.invalidate();
+        },
+        onError: () => setSaveState("error"),
       });
     }, 1000); // Debounce for 1 second
 
-    return () => clearTimeout(timeoutId);
-  }, [autoSaveDraftsEnabled, resumeData, currentStep, resumeId, isLoading]);
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+    };
+  }, [autoSaveDraftsEnabled, resumeData, currentStep, resumeId, isLoading, updateResume, utils.resume.listSummary]);
+
+  useEffect(() => {
+    const handleVisibilityOrPageHide = () => flushAutosave();
+    const handleBeforeUnload = () => flushAutosave();
+
+    window.addEventListener("visibilitychange", handleVisibilityOrPageHide);
+    window.addEventListener("pagehide", handleVisibilityOrPageHide);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("visibilitychange", handleVisibilityOrPageHide);
+      window.removeEventListener("pagehide", handleVisibilityOrPageHide);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      flushAutosave();
+    };
+  }, [flushAutosave]);
 
   if (isLoading || isLoadingResume || !resumeData) {
     return (
@@ -145,14 +219,23 @@ export default function ResumeSectionDynamicPage() {
   const handleDataUpdate = (updates: Partial<ResumeData>) => {
     const newData = { ...resumeData, ...updates };
     setResumeData(newData);
-    localStorage.setItem("resumeData", JSON.stringify(newData));
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (!completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
-    localStorage.setItem("resumeData", JSON.stringify(resumeData));
+    try {
+      setSaveState("saving");
+      await updateResume.mutateAsync({
+        id: resumeId,
+        data: resumeData,
+        lastEditedSection: currentStep,
+      });
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
     router.push("/resume/final-resume");
   };
 
@@ -219,7 +302,21 @@ export default function ResumeSectionDynamicPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/dashboard")}
+            onClick={async () => {
+              try {
+                setSaveState("saving");
+                await updateResume.mutateAsync({
+                  id: resumeId,
+                  data: resumeData,
+                  lastEditedSection: currentStep,
+                });
+                setSaveState("saved");
+                await utils.resume.listSummary.invalidate();
+              } catch {
+                setSaveState("error");
+              }
+              router.push("/dashboard");
+            }}
             className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -231,6 +328,26 @@ export default function ResumeSectionDynamicPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground">
+            {saveState === "saving" && (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Saving...</span>
+              </>
+            )}
+            {saveState === "saved" && (
+              <>
+                <Check className="h-4 w-4 text-green-500" />
+                <span>Saved</span>
+              </>
+            )}
+            {saveState === "error" && (
+              <>
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <span>Save failed</span>
+              </>
+            )}
+          </div>
           <Button
             variant="outline"
             size="sm"

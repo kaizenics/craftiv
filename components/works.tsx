@@ -42,7 +42,7 @@ function NonAtsResume() {
 
           <section>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-              Professional Summary
+              Summary
             </p>
             <p className="mt-3 text-[15px] leading-relaxed text-zinc-700">
               Looking for a job where I can use my skills and help a company with admin work,
@@ -121,7 +121,7 @@ function NonAtsResume() {
 
         <div className="mt-3">
           <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-            Professional Summary
+            Summary
           </p>
           <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-700">
             Looking for a job where I can use my skills and help a company with admin work,

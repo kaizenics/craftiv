@@ -100,7 +100,45 @@ export interface ResumeData {
   educations: Education[];
   skills: Skill[];
   summary: string;
+  sectionOrder: ResumeSectionKey[];
   finalize: FinalizeOptions;
+}
+
+export type ResumeSectionKey =
+  | 'summary'
+  | 'experience'
+  | 'education'
+  | 'skills'
+  | 'languages'
+  | 'certifications'
+  | 'awards'
+  | 'websites'
+  | 'references'
+  | 'hobbies'
+  | 'custom';
+
+export const DEFAULT_SECTION_ORDER: ResumeSectionKey[] = [
+  'summary',
+  'experience',
+  'education',
+  'skills',
+  'languages',
+  'certifications',
+  'awards',
+  'websites',
+  'references',
+  'hobbies',
+  'custom',
+];
+
+export function normalizeSectionOrder(order?: string[] | null): ResumeSectionKey[] {
+  const validSet = new Set<ResumeSectionKey>(DEFAULT_SECTION_ORDER);
+  const requested = Array.isArray(order)
+    ? order.filter((item): item is ResumeSectionKey => validSet.has(item as ResumeSectionKey))
+    : [];
+  const deduped = Array.from(new Set(requested));
+  const missing = DEFAULT_SECTION_ORDER.filter((item) => !deduped.includes(item));
+  return [...deduped, ...missing];
 }
 
 export type TemplateLayout = 'classic' | 'modern' | 'sidebar' | 'bold' | 'minimal' | 'executive' | 'harvard';
@@ -139,6 +177,7 @@ export const createEmptyResumeData = (templateId: string): ResumeData => ({
   educations: [],
   skills: [],
   summary: '',
+  sectionOrder: [...DEFAULT_SECTION_ORDER],
   finalize: {
     languages: [],
     certifications: [],

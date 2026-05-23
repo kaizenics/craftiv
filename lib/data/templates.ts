@@ -1,4 +1,4 @@
-import { ResumeData, TemplateLayout } from '../types/resume';
+import { DEFAULT_SECTION_ORDER, ResumeData, TemplateLayout } from '../types/resume';
 
 export interface TemplateData {
   id: string;
@@ -120,6 +120,7 @@ export function createSampleResumeForTemplate(templateId: string, withPhoto = fa
       showLevel: false,
     })),
     summary: sampleResumeData.summary,
+    sectionOrder: [...DEFAULT_SECTION_ORDER],
     finalize: {
       languages: (sampleResumeData.languages || []).map((lang, index) => ({
         id: `sample-lang-${index + 1}`,

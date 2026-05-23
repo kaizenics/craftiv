@@ -32,7 +32,7 @@ import {
   defaultDesignOptions,
 } from "@/components/resume/resume-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
-import { ResumeData } from "@/lib/types/resume";
+import { ResumeData, createEmptyResumeData, normalizeSectionOrder } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
 import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
@@ -43,6 +43,7 @@ import { ContentQualityTab } from "./tabs/content-quality-tab";
 import { VersionHistoryTab } from "./tabs/version-history-tab";
 import { JobTargetTab } from "./tabs/job-target-tab";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
+import { ResumeSectionKey } from "@/lib/types/resume";
 import {
   LayoutTemplate,
   Layers,
@@ -172,16 +173,13 @@ export default function FinalResumePage() {
   );
 
   useEffect(() => {
-    // Get resume data from localStorage
+    // Prefer local snapshot, then fall back to server data.
     const savedData = localStorage.getItem("resumeData");
     const templateId = localStorage.getItem("selectedTemplateId");
     const resumeId = localStorage.getItem("currentResumeId");
+    const serverTemplateId = savedResume?.templateId;
+    const resolvedTemplateId = templateId || serverTemplateId || null;
 
-    if (!savedData || !templateId) {
-      router.push("/resume/templates");
-      return;
-    }
-    
     // Keep localStorage key warm for downstream flows if present.
     if (resumeId) localStorage.setItem("currentResumeId", resumeId);
 
@@ -193,24 +191,45 @@ export default function FinalResumePage() {
     let initialJobTargetDescription = "";
     let initialSnapshots: ResumeSnapshot[] = [];
 
-    try {
-      const parsed = JSON.parse(savedData);
-      initialResumeData = parsed;
-
-      // Set initial color from template
-      const template = resumeTemplates.find((t) => t.id === parsed.templateId);
-      if (template) {
-        const savedSelectedColor = localStorage.getItem("selectedColor");
-        const defaultColor =
-          template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
-        const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
-        const preferredColor =
-          isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
-        initialSelectedColor = preferredColor;
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        initialResumeData = {
+          ...parsed,
+          sectionOrder: normalizeSectionOrder(parsed.sectionOrder),
+        };
+      } catch {
+        initialResumeData = null;
       }
-    } catch {
+    }
+
+    if (!initialResumeData && savedResume?.data) {
+      const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
+      const hydratedFromDb: ResumeData = {
+        ...createEmptyResumeData(dbTemplateId),
+        ...(savedResume.data as any),
+      };
+      hydratedFromDb.sectionOrder = normalizeSectionOrder((savedResume.data as any)?.sectionOrder);
+      initialResumeData = hydratedFromDb;
+    }
+
+    if (!initialResumeData || !resolvedTemplateId) {
+      // If resume id exists but data query is still pending, wait.
+      if (resumeId && !savedResume) return;
       router.push("/resume/templates");
       return;
+    }
+
+    // Set initial color from template
+    const template = resumeTemplates.find((t) => t.id === initialResumeData.templateId);
+    if (template) {
+      const savedSelectedColor = localStorage.getItem("selectedColor");
+      const defaultColor =
+        template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
+      const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
+      const preferredColor =
+        isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
+      initialSelectedColor = preferredColor;
     }
 
     // Load saved design options if any
@@ -274,7 +293,7 @@ export default function FinalResumePage() {
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [router, jobTargetStorageKey, snapshotStorageKey]);
+  }, [router, jobTargetStorageKey, snapshotStorageKey, savedResume]);
 
   // Save design options to localStorage and database
   useEffect(() => {
@@ -507,6 +526,34 @@ export default function FinalResumePage() {
     });
 
     return sections.filter((s) => s.active);
+  };
+
+  const getVisibleSectionOrder = (): ResumeSectionKey[] => {
+    const visible = new Set<ResumeSectionKey>();
+    if (resumeData.summary.trim()) visible.add("summary");
+    if (resumeData.experiences.length > 0) visible.add("experience");
+    if (resumeData.educations.length > 0) visible.add("education");
+    if (resumeData.skills.length > 0) visible.add("skills");
+    if (resumeData.finalize.languages.length > 0) visible.add("languages");
+    if (resumeData.finalize.certifications.length > 0) visible.add("certifications");
+    if (resumeData.finalize.awards.length > 0) visible.add("awards");
+    if (resumeData.finalize.websites.length > 0) visible.add("websites");
+    if (resumeData.finalize.references.length > 0) visible.add("references");
+    if (resumeData.finalize.hobbies.length > 0) visible.add("hobbies");
+    if (resumeData.finalize.customSections.length > 0) visible.add("custom");
+
+    return resumeData.sectionOrder.filter((key) => visible.has(key));
+  };
+
+  const handleVisibleSectionOrderChange = (nextVisibleOrder: ResumeSectionKey[]) => {
+    const visibleSet = new Set(nextVisibleOrder);
+    const nextByVisible = [...nextVisibleOrder];
+    const mergedOrder = resumeData.sectionOrder.map((key) => {
+      if (!visibleSet.has(key)) return key;
+      return nextByVisible.shift() ?? key;
+    });
+
+    setResumeData({ ...resumeData, sectionOrder: mergedOrder });
   };
 
   const handleTemplateChange = (templateId: string) => {
@@ -791,8 +838,11 @@ export default function FinalResumePage() {
 
             {activeTab === "sections" && (
               <SectionsTab
-                sections={getActiveSections()}
-                onEditSections={() => router.push("/resume/section")}
+                onEditSections={() =>
+                  router.push(currentResumeId ? `/resume/section/${currentResumeId}` : "/resume/section")
+                }
+                visibleSectionOrder={getVisibleSectionOrder()}
+                onVisibleSectionOrderChange={handleVisibleSectionOrderChange}
               />
             )}
 

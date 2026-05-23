@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
@@ -30,9 +30,10 @@ import {
   ResumeStep,
   RESUME_STEPS,
   createEmptyResumeData,
+  normalizeSectionOrder,
 } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
-import { ArrowLeft, ArrowRight, Download, Eye, EyeOff } from "@/components/ui/icons";
+import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 
@@ -47,6 +48,7 @@ export default function ResumeSectionPage() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [showPhoto, setShowPhoto] = useState(false);
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
 
   // Add tRPC mutations
   const createResume = trpc.resume.create.useMutation();
@@ -57,6 +59,11 @@ export default function ResumeSectionPage() {
   const autoSaveDraftsEnabled = preferences?.autoSaveDrafts ?? DEFAULT_USER_PREFERENCES.autoSaveDrafts;
   const showResumeScoreEnabled = preferences?.showResumeScore ?? DEFAULT_USER_PREFERENCES.showResumeScore;
   const compactEditorEnabled = preferences?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor;
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestResumeDataRef = useRef<ResumeData | null>(null);
+  const latestStepRef = useRef<ResumeStep>("contacts");
+  const latestResumeIdRef = useRef<string | null>(null);
+  const latestAutoSaveEnabledRef = useRef(autoSaveDraftsEnabled);
 
   useEffect(() => {
     // Get the selected template from localStorage
@@ -97,7 +104,10 @@ export default function ResumeSectionPage() {
         try {
           const parsed = JSON.parse(savedData);
           if (parsed.templateId === templateId) {
-            setResumeData(parsed);
+            setResumeData({
+              ...parsed,
+              sectionOrder: normalizeSectionOrder(parsed.sectionOrder),
+            });
           } else {
             setResumeData(createEmptyResumeData(templateId));
           }
@@ -131,27 +141,85 @@ export default function ResumeSectionPage() {
     }
   }, [router]);
 
+  useEffect(() => {
+    latestResumeDataRef.current = resumeData;
+  }, [resumeData]);
+
+  useEffect(() => {
+    latestStepRef.current = currentStep;
+  }, [currentStep]);
+
+  useEffect(() => {
+    latestResumeIdRef.current = currentResumeId;
+  }, [currentResumeId]);
+
+  useEffect(() => {
+    latestAutoSaveEnabledRef.current = autoSaveDraftsEnabled;
+  }, [autoSaveDraftsEnabled]);
+
+  const flushAutosave = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
+    }
+    if (!latestAutoSaveEnabledRef.current || !latestResumeIdRef.current || !latestResumeDataRef.current) {
+      return;
+    }
+    setSaveState("saving");
+    updateResume.mutate({
+      id: latestResumeIdRef.current,
+      data: latestResumeDataRef.current,
+      lastEditedSection: latestStepRef.current,
+      status: "draft",
+    }, {
+      onSuccess: () => setSaveState("saved"),
+      onError: () => setSaveState("error"),
+    });
+  }, [updateResume]);
+
   // Auto-save to localStorage and database
   useEffect(() => {
     if (resumeData) {
-      // Save to localStorage for quick access
-      localStorage.setItem("resumeData", JSON.stringify(resumeData));
-      
       // Auto-save to database with debounce
       if (currentResumeId && autoSaveDraftsEnabled) {
-        const timeoutId = setTimeout(() => {
+        debounceTimeoutRef.current = setTimeout(() => {
+          setSaveState("saving");
           updateResume.mutate({
             id: currentResumeId,
             data: resumeData,
             lastEditedSection: currentStep,
             status: "draft",
+          }, {
+            onSuccess: () => setSaveState("saved"),
+            onError: () => setSaveState("error"),
           });
         }, 1000);
 
-        return () => clearTimeout(timeoutId);
+        return () => {
+          if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
+          }
+        };
       }
     }
-  }, [autoSaveDraftsEnabled, resumeData, currentResumeId, currentStep]);
+  }, [autoSaveDraftsEnabled, resumeData, currentResumeId, currentStep, updateResume]);
+
+  useEffect(() => {
+    const handleVisibilityOrPageHide = () => flushAutosave();
+    const handleBeforeUnload = () => flushAutosave();
+
+    window.addEventListener("visibilitychange", handleVisibilityOrPageHide);
+    window.addEventListener("pagehide", handleVisibilityOrPageHide);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("visibilitychange", handleVisibilityOrPageHide);
+      window.removeEventListener("pagehide", handleVisibilityOrPageHide);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      flushAutosave();
+    };
+  }, [flushAutosave]);
 
   if (isLoading || !resumeData) {
     return (
@@ -356,7 +424,23 @@ export default function ResumeSectionPage() {
                     {/* Next/Download Button */}
                     {isLastStep ? (
                       <Button
-                        onClick={() => router.push("/resume/final-resume")}
+                        onClick={async () => {
+                          if (currentResumeId && resumeData && autoSaveDraftsEnabled) {
+                            try {
+                              setSaveState("saving");
+                              await updateResume.mutateAsync({
+                                id: currentResumeId,
+                                data: resumeData,
+                                lastEditedSection: currentStep,
+                                status: "draft",
+                              });
+                              setSaveState("saved");
+                            } catch {
+                              setSaveState("error");
+                            }
+                          }
+                          router.push("/resume/final-resume");
+                        }}
                         size="sm"
                         className="sm:size-default"
                       >
@@ -369,6 +453,26 @@ export default function ResumeSectionPage() {
                         <span className="sm:hidden">Next</span>
                         <ArrowRight className="ml-1 sm:ml-2 h-4 w-4" />
                       </Button>
+                    )}
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground">
+                    {saveState === "saving" && (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span>Saving...</span>
+                      </>
+                    )}
+                    {saveState === "saved" && (
+                      <>
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>Saved</span>
+                      </>
+                    )}
+                    {saveState === "error" && (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <span>Save failed</span>
+                      </>
                     )}
                   </div>
                 </div>

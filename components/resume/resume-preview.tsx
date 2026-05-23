@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import { ResumeData, TemplateLayout } from '@/lib/types/resume';
+import { ResumeData, ResumeSectionKey, TemplateLayout, normalizeSectionOrder } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -231,6 +231,7 @@ export function ResumePreview({
   const isSidebarLayout = layout === 'sidebar' && templateId === 'astral';
   const shouldShowFooter = showFooter ?? !renderAllPages;
   const shouldShowScore = showScore && !renderAllPages;
+  const orderedSections = normalizeSectionOrder(data.sectionOrder);
 
   // Render the appropriate layout
   const renderResumeContent = () => {
@@ -274,6 +275,196 @@ export function ResumePreview({
     }
   };
 
+  const renderOrderedSectionBlocks = (
+    layoutType: TemplateLayout,
+    options?: {
+      summaryTitle?: string;
+      experienceTitle?: string;
+      educationTitle?: string;
+      skillsTitle?: string;
+      summaryNoHeader?: boolean;
+      skillsAsList?: boolean;
+    },
+  ) => (
+    <>
+      {orderedSections.map((sectionKey) => {
+        if (sectionKey === 'summary' && data.summary) {
+          if (options?.summaryNoHeader) {
+            return (
+              <div key="summary" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+                <p className="text-zinc-600 italic border-l-4 pl-4" style={{ borderColor: activeColor }}>
+                  {data.summary}
+                </p>
+              </div>
+            );
+          }
+          return (
+            <div key="summary" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title={options?.summaryTitle || "Summary"} layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <p className="text-zinc-600 whitespace-pre-line">{data.summary}</p>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'experience' && data.experiences.length > 0) {
+          return (
+            <div key="experience" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title={options?.experienceTitle || "Experience"} layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.experiences.map((exp) => (
+                  <div key={exp.id}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
+                        <p className="text-zinc-700">{exp.employer || 'Company'}{exp.location ? `, ${exp.location}` : ''}</p>
+                      </div>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                    </div>
+                    {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'education' && data.educations.length > 0) {
+          return (
+            <div key="education" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title={options?.educationTitle || "Education"} layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.educations.map((edu) => (
+                  <div key={edu.id}>
+                    <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
+                    <p className="text-zinc-700">{edu.schoolName || 'School'}{edu.location ? `, ${edu.location}` : ''}</p>
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'skills' && data.skills.length > 0) {
+          return (
+            <div key="skills" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title={options?.skillsTitle || "Skills"} layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              {options?.skillsAsList ? (
+                <p className="text-zinc-700">{data.skills.map((skill) => skill.name).join(', ')}</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {data.skills.map((skill) => (
+                    <span key={skill.id} className="rounded bg-gray-100 px-2 py-1 text-zinc-700">
+                      {skill.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (sectionKey === 'languages' && data.finalize.languages.length > 0) {
+          return (
+            <div key="languages" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Languages" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div className="flex flex-wrap gap-3">
+                {data.finalize.languages.map((lang) => (
+                  <span key={lang.id}>{lang.name} ({lang.proficiency})</span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'certifications' && data.finalize.certifications.length > 0) {
+          return (
+            <div key="certifications" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Certifications" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {data.finalize.certifications.map((cert) => (
+                  <p key={cert.id}>{cert.name}{cert.issuer ? ` - ${cert.issuer}` : ''}{cert.date ? ` (${cert.date})` : ''}</p>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'awards' && data.finalize.awards.length > 0) {
+          return (
+            <div key="awards" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Awards & Honors" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {data.finalize.awards.map((award) => (
+                  <p key={award.id}>{award.title} - {award.issuer}{award.date ? ` (${award.date})` : ''}</p>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'websites' && data.finalize.websites.length > 0) {
+          return (
+            <div key="websites" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Links" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div className="flex flex-wrap gap-4">
+                {data.finalize.websites.map((site) => (
+                  <span key={site.id} className="text-blue-600">{site.label}: {site.url}</span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'references' && data.finalize.references.length > 0) {
+          return (
+            <div key="references" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="References" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
+                {data.finalize.references.map((ref) => (
+                  <div key={ref.id}>
+                    <p className="font-semibold">{ref.name}</p>
+                    <p className="text-gray-600">{ref.position}{ref.company ? `, ${ref.company}` : ''}</p>
+                    <p className="text-gray-500">{ref.email} {ref.phone && `| ${ref.phone}`}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'hobbies' && data.finalize.hobbies.length > 0) {
+          return (
+            <div key="hobbies" style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+              <SectionHeader title="Hobbies & Interests" layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <div className="flex flex-wrap gap-2">
+                {data.finalize.hobbies.map((hobby) => (
+                  <span key={hobby.id} className="bg-gray-100 px-2 py-1 rounded">{hobby.name}</span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (sectionKey === 'custom' && data.finalize.customSections.length > 0) {
+          return (
+            <div key="custom-group">
+              {data.finalize.customSections.map((section) => (
+                <div key={section.id} style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
+                  <SectionHeader title={section.sectionName} layout={layoutType} color={activeColor} spacing={designOptions.paragraphSpacing} />
+                  <p className="text-gray-600">{section.description}</p>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        return null;
+      })}
+    </>
+  );
+
   // Harvard Layout - Education first, clean professional format
   const renderHarvardLayout = () => (
     <div
@@ -293,6 +484,9 @@ export function ResumePreview({
         <h1 className="text-2xl font-bold uppercase tracking-wide text-zinc-900">
           {data.contact.firstName || 'YOUR'} {data.contact.lastName || 'NAME'}
         </h1>
+        {data.contact.desiredJobTitle && (
+          <p className="mt-1 text-zinc-600 text-[1.08em]">{data.contact.desiredJobTitle}</p>
+        )}
         <div className="flex justify-center items-center gap-3 mt-2 text-sm text-zinc-600">
           {data.contact.email && <span>{data.contact.email}</span>}
           {data.contact.email && data.contact.phone && <span>•</span>}
@@ -300,72 +494,13 @@ export function ResumePreview({
         </div>
       </div>
 
-      {/* Professional Summary */}
-      {data.summary && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Professional Summary" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-700 whitespace-pre-line">{data.summary}</p>
-        </div>
-      )}
-
-      {/* Education Section - Harvard puts education first */}
-      {data.educations.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Education" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.educations.map((edu) => (
-              <div key={edu.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-bold text-zinc-900">{edu.schoolName || 'University'}</p>
-                    <p className="text-zinc-700 italic">{edu.degree || 'Degree'}</p>
-                    {edu.location && <p className="text-zinc-600 text-[0.92em]">{edu.location}</p>}
-                  </div>
-                  <p className="text-zinc-600 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                </div>
-                {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Experience Section */}
-      {data.experiences.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Experience" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.experiences.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-bold text-zinc-900">{exp.employer || 'Company'}</p>
-                    <p className="text-zinc-700 italic">{exp.jobTitle || 'Position'}</p>
-                    {exp.location && <p className="text-zinc-600 text-[0.92em]">{exp.location}</p>}
-                  </div>
-                  <p className="text-zinc-600 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                </div>
-                {exp.description && (
-                  <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Skills Section */}
-      {data.skills.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Skills & Interests" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-700">
-            {data.skills.map((skill) => skill.name).join(', ')}
-          </p>
-        </div>
-      )}
-
-      {/* Additional Sections */}
-      {renderAdditionalSections('harvard')}
+      {renderOrderedSectionBlocks('harvard', {
+        summaryTitle: 'Summary',
+        experienceTitle: 'Experience',
+        educationTitle: 'Education',
+        skillsTitle: 'Skills & Interests',
+        skillsAsList: true,
+      })}
     </div>
   );
 
@@ -391,7 +526,7 @@ export function ResumePreview({
               {data.contact.firstName || 'YOUR'} {data.contact.lastName || 'NAME'}
             </h1>
             {data.contact.desiredJobTitle && (
-              <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>
+              <p className="text-zinc-600 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>
             )}
             <div className="flex gap-4 mt-2 text-sm text-zinc-500">
               {data.contact.email && <span>{data.contact.email}</span>}
@@ -424,9 +559,9 @@ export function ResumePreview({
                       <div>
                         <p className="font-semibold text-zinc-800">{exp.jobTitle || 'Job Title'}</p>
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
-                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                        {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && (
                       <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
@@ -449,7 +584,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-800">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName}</p>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -643,7 +778,7 @@ export function ResumePreview({
               {data.experiences.map((exp) => (
                 <div key={exp.id} className="grid grid-cols-[128px_1fr] gap-4">
                   <div className="text-[0.82rem] text-[#6b7280]">
-                    <p>{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                    <p className="text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     <p className="mt-1 text-[0.9rem]">{exp.employer || 'Company'}</p>
                   </div>
                   <div>
@@ -669,7 +804,7 @@ export function ResumePreview({
               {data.educations.map((edu) => (
                 <div key={edu.id} className="grid grid-cols-[128px_1fr] gap-4">
                   <div className="text-[0.82rem] text-[#6b7280]">
-                    <p>{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    <p className="text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                     <p className="mt-1 text-[0.9rem]">{edu.schoolName || 'School'}</p>
                   </div>
                   <div>
@@ -751,74 +886,9 @@ export function ResumePreview({
 
       {/* Content */}
       <div className="p-6">
-        {/* Summary */}
-        {data.summary && (
-          <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-            <SectionHeader title="Profile" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
-            <p className="text-zinc-600">{data.summary}</p>
-          </div>
-        )}
-
-        {/* Experience */}
-        {data.experiences.length > 0 && (
-          <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-            <SectionHeader title="Experience" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-              {data.experiences.map((exp) => (
-                <div key={exp.id} className="border-l-4 pl-4" style={{ borderColor: activeColor }}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-zinc-800">{exp.jobTitle}</p>
-                      <p className="font-semibold" style={{ color: activeColor }}>{exp.employer}</p>
-                      {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
-                    </div>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                  </div>
-                  {exp.description && (
-                    <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Education */}
-        {data.educations.length > 0 && (
-          <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-            <SectionHeader title="Education" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-              {data.educations.map((edu) => (
-                <div key={edu.id} className="border-l-4 pl-4" style={{ borderColor: activeColor }}>
-                  <p className="font-bold text-zinc-800">{edu.degree}</p>
-                  <p style={{ color: activeColor }}>{edu.schoolName}</p>
-                  <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Skills */}
-        {data.skills.length > 0 && (
-          <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-            <SectionHeader title="Skills" layout="bold" color={activeColor} spacing={designOptions.paragraphSpacing} />
-            <div className="flex flex-wrap gap-2">
-              {data.skills.map((skill) => (
-                <span
-                  key={skill.id}
-                  className="px-3 py-1 text-white rounded"
-                  style={{ backgroundColor: activeColor }}
-                >
-                  {skill.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Additional Sections */}
-        {renderAdditionalSections('bold')}
+        {renderOrderedSectionBlocks('bold', {
+          summaryTitle: 'Profile',
+        })}
       </div>
     </div>
   );
@@ -843,7 +913,7 @@ export function ResumePreview({
           {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
         </h1>
         {data.contact.desiredJobTitle && (
-          <p className="text-zinc-500 mt-1">{data.contact.desiredJobTitle}</p>
+          <p className="text-zinc-500 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>
         )}
         <div className="flex justify-center gap-4 mt-2 text-sm text-zinc-400">
           {data.contact.email && <span>{data.contact.email}</span>}
@@ -851,65 +921,9 @@ export function ResumePreview({
         </div>
       </div>
 
-      {/* Summary */}
-      {data.summary && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Summary" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-600">{data.summary}</p>
-        </div>
-      )}
-
-      {/* Experience */}
-      {data.experiences.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Experience" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.experiences.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-zinc-800">{exp.jobTitle}</p>
-                    <p className="text-zinc-600">{exp.employer}</p>
-                  </div>
-                  <p className="text-zinc-400 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                </div>
-                {exp.description && (
-                  <p className="text-zinc-500 mt-1 whitespace-pre-line">{exp.description}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Education */}
-      {data.educations.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Education" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.educations.map((edu) => (
-              <div key={edu.id}>
-                <p className="font-medium text-zinc-800">{edu.degree}</p>
-                <p className="text-zinc-600">{edu.schoolName}</p>
-                <p className="text-zinc-400 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Skills */}
-      {data.skills.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Skills" layout="minimal" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-600">
-            {data.skills.map((skill) => skill.name).join(" • ")}
-          </p>
-        </div>
-      )}
-
-      {/* Additional Sections */}
-      {renderAdditionalSections('minimal')}
+      {renderOrderedSectionBlocks('minimal', {
+        skillsAsList: true,
+      })}
     </div>
   );
 
@@ -945,75 +959,11 @@ export function ResumePreview({
         </div>
       </div>
 
-      {/* Summary */}
-      {data.summary && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <p className="text-zinc-600 italic border-l-4 pl-4" style={{ borderColor: activeColor }}>
-            {data.summary}
-          </p>
-        </div>
-      )}
-
-      {/* Experience */}
-      {data.experiences.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Professional Experience" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.experiences.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-bold text-zinc-800">{exp.employer}</p>
-                    <p className="font-semibold" style={{ color: activeColor }}>{exp.jobTitle}</p>
-                    {exp.location && <p className="text-zinc-500">{exp.location}</p>}
-                  </div>
-                  <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                </div>
-                {exp.description && (
-                  <p className="text-zinc-600 mt-2 whitespace-pre-line">{exp.description}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Education */}
-      {data.educations.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Education" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.educations.map((edu) => (
-              <div key={edu.id}>
-                <p className="font-bold text-zinc-800">{edu.schoolName}</p>
-                <p style={{ color: activeColor }}>{edu.degree}</p>
-                <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Skills & Expertise */}
-      {data.skills.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Core Competencies" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div className="grid grid-cols-3 gap-2">
-            {data.skills.map((skill) => (
-              <div
-                key={skill.id}
-                className="text-center py-1 border rounded"
-                style={{ borderColor: activeColor, color: activeColor }}
-              >
-                {skill.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Additional Sections */}
-      {renderAdditionalSections('executive')}
+      {renderOrderedSectionBlocks('executive', {
+        summaryNoHeader: true,
+        experienceTitle: 'Professional Experience',
+        skillsTitle: 'Core Competencies',
+      })}
     </div>
   );
 
@@ -1041,7 +991,7 @@ export function ResumePreview({
           {data.contact.firstName || 'YOUR'} {data.contact.lastName || 'NAME'}
         </h1>
         {data.contact.desiredJobTitle && (
-          <p className="text-gray-600 mt-1">{data.contact.desiredJobTitle}</p>
+          <p className="text-gray-600 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>
         )}
         <div className="flex justify-center gap-4 mt-2 text-gray-500">
           {data.contact.email && <span>{data.contact.email}</span>}
@@ -1049,86 +999,7 @@ export function ResumePreview({
         </div>
       </div>
 
-      {/* Summary */}
-      {data.summary && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Summary" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-gray-600">{data.summary}</p>
-        </div>
-      )}
-
-      {/* Experience */}
-      {data.experiences.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Experience" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.experiences.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold">
-                      {exp.jobTitle || 'Job Title'}, {exp.employer || 'Company name'}
-                    </p>
-                    <p className="text-gray-500">{exp.location}</p>
-                  </div>
-                  <p className="text-gray-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                </div>
-                {exp.description && (
-                  <p className="text-gray-600 mt-1 whitespace-pre-line">
-                    {exp.description}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Education */}
-      {data.educations.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Education" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.educations.map((edu) => (
-              <div key={edu.id}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold">{edu.degree || 'Degree'}</p>
-                    <p className="text-gray-500">
-                      {edu.schoolName || 'School'}, {edu.location}
-                    </p>
-                  </div>
-                  <p className="text-gray-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Skills */}
-      {data.skills.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Skills" layout="classic" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div className="flex flex-wrap gap-2">
-            {data.skills.map((skill) => (
-              <span
-                key={skill.id}
-                className="px-2 py-1 bg-gray-100 rounded"
-                style={{ color: activeColor }}
-              >
-                {skill.name}
-                {skill.showLevel && skill.level && (
-                  <span className="text-gray-500"> • {skill.level}</span>
-                )}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Additional Sections */}
-      {renderAdditionalSections('classic')}
+      {renderOrderedSectionBlocks('classic')}
     </div>
   );
 
@@ -1325,7 +1196,7 @@ export function ResumePreview({
             <h1 className="text-3xl font-bold text-zinc-900">
               {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
             </h1>
-            {data.contact.desiredJobTitle && <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>}
+            {data.contact.desiredJobTitle && <p className="text-zinc-600 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>}
             <div className="flex flex-wrap gap-3 mt-2 text-sm text-zinc-500">
               {data.contact.email && <span>{data.contact.email}</span>}
               {data.contact.phone && <span>{data.contact.phone}</span>}
@@ -1368,9 +1239,9 @@ export function ResumePreview({
                       <div>
                         <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
-                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                        {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1387,8 +1258,8 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
                   </div>
                 ))}
               </div>
@@ -1420,7 +1291,7 @@ export function ResumePreview({
             <h1 className="text-3xl font-bold text-zinc-900">
               {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
             </h1>
-            {data.contact.desiredJobTitle && <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>}
+            {data.contact.desiredJobTitle && <p className="text-zinc-600 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>}
           </div>
           <div className="min-w-[180px] border-l pl-4 text-sm text-zinc-500" style={{ borderColor: `${activeColor}25` }}>
             <p className="font-semibold uppercase tracking-[0.22em]" style={{ color: activeColor }}>Contact</p>
@@ -1440,7 +1311,7 @@ export function ResumePreview({
         <div className="col-span-3 p-6">
           {data.summary && (
             <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-              <SectionHeader title="Professional Summary" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
+              <SectionHeader title="Summary" layout="sidebar" color={activeColor} spacing={designOptions.paragraphSpacing} />
               <p className="text-zinc-600">{data.summary}</p>
             </div>
           )}
@@ -1455,9 +1326,9 @@ export function ResumePreview({
                       <div>
                         <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
-                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                        {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1474,8 +1345,8 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
                   </div>
                 ))}
               </div>
@@ -1571,7 +1442,7 @@ export function ResumePreview({
               {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
             </h1>
             {data.contact.desiredJobTitle && (
-              <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>
+              <p className="text-zinc-600 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>
             )}
           </div>
           <div className="text-right text-sm text-zinc-500">
@@ -1596,66 +1467,11 @@ export function ResumePreview({
         </div>
       </div>
 
-      {data.summary && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Executive Summary" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-600 border-l-4 pl-4" style={{ borderColor: activeColor }}>
-            {data.summary}
-          </p>
-        </div>
-      )}
-
-      {data.experiences.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Professional Experience" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.experiences.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <p className="font-bold text-zinc-900">{exp.jobTitle || 'Role'}</p>
-                    <p className="text-zinc-700">{exp.employer || 'Company'}</p>
-                    {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
-                  </div>
-                  <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                </div>
-                {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.educations.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Education" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.educations.map((edu) => (
-              <div key={edu.id}>
-                <p className="font-semibold text-zinc-900">{edu.schoolName || 'School'}</p>
-                <p style={{ color: activeColor }}>{edu.degree || 'Degree'}</p>
-                <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.skills.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Core Competencies" layout="executive" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div className="grid grid-cols-2 gap-2">
-            {data.skills.map((skill) => (
-              <div key={skill.id} className="rounded border px-3 py-1 text-center" style={{ borderColor: `${activeColor}50`, color: activeColor }}>
-                {skill.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {renderAdditionalSections('executive')}
+      {renderOrderedSectionBlocks('executive', {
+        summaryTitle: 'Executive Summary',
+        experienceTitle: 'Professional Experience',
+        skillsTitle: 'Core Competencies',
+      })}
     </div>
   );
 
@@ -1674,7 +1490,7 @@ export function ResumePreview({
               {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
             </h1>
             {data.contact.desiredJobTitle && (
-              <p className="mt-1 text-zinc-600">{data.contact.desiredJobTitle}</p>
+              <p className="mt-1 text-zinc-600 text-[1.08em]">{data.contact.desiredJobTitle}</p>
             )}
           </div>
           <div className="text-right text-sm text-zinc-500">
@@ -1703,9 +1519,9 @@ export function ResumePreview({
                       <div>
                         <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
-                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                        {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-2 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1724,7 +1540,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -1774,7 +1590,7 @@ export function ResumePreview({
               {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
             </h1>
             {data.contact.desiredJobTitle && (
-              <p className="text-zinc-600 mt-1">{data.contact.desiredJobTitle}</p>
+              <p className="text-zinc-600 mt-1 text-[1.08em]">{data.contact.desiredJobTitle}</p>
             )}
           </div>
         </div>
@@ -1784,58 +1600,9 @@ export function ResumePreview({
         </div>
       </div>
 
-      {data.summary && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Summary" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-700">{data.summary}</p>
-        </div>
-      )}
-
-      {data.experiences.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Experience" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.experiences.map((exp) => (
-              <div key={exp.id}>
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
-                    <p className="text-zinc-700">{exp.employer || 'Company'}{exp.location ? `, ${exp.location}` : ''}</p>
-                  </div>
-                  <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
-                </div>
-                {exp.description && <p className="text-zinc-700 mt-1 whitespace-pre-line">{exp.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.educations.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Education" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${designOptions.paragraphSpacing}px` }}>
-            {data.educations.map((edu) => (
-              <div key={edu.id} className="flex justify-between items-start gap-3">
-                <div>
-                  <p className="font-semibold text-zinc-900">{edu.schoolName || 'School'}</p>
-                  <p className="text-zinc-700">{edu.degree || 'Degree'}</p>
-                </div>
-                <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.skills.length > 0 && (
-        <div style={{ marginBottom: `${designOptions.sectionSpacing}px` }}>
-          <SectionHeader title="Skills" layout="harvard" color={activeColor} spacing={designOptions.paragraphSpacing} />
-          <p className="text-zinc-700">{data.skills.map((skill) => skill.name).join(', ')}</p>
-        </div>
-      )}
-
-      {renderAdditionalSections('harvard')}
+      {renderOrderedSectionBlocks('harvard', {
+        skillsAsList: true,
+      })}
     </div>
   );
 
@@ -1857,7 +1624,7 @@ export function ResumePreview({
           <h1 className="text-2xl font-bold leading-tight">
             {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
           </h1>
-          {data.contact.desiredJobTitle && <p className="text-white/80 mt-2">{data.contact.desiredJobTitle}</p>}
+          {data.contact.desiredJobTitle && <p className="text-white/80 mt-2 text-[1.08em]">{data.contact.desiredJobTitle}</p>}
 
           <div className="mt-5 space-y-1 text-sm text-white/85">
             {data.contact.email && <p>{data.contact.email}</p>}
@@ -1898,9 +1665,9 @@ export function ResumePreview({
                       <div>
                         <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
                         <p className="text-zinc-600">{exp.employer || 'Company'}</p>
-                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                        {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -1917,7 +1684,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p className="text-zinc-600">{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -1946,7 +1713,7 @@ export function ResumePreview({
                 {data.contact.firstName || 'Your'} {data.contact.lastName || 'Name'}
               </h1>
               {data.contact.desiredJobTitle && (
-                <p className="text-zinc-600 mt-2">{data.contact.desiredJobTitle}</p>
+                <p className="text-zinc-600 mt-2 text-[1.08em]">{data.contact.desiredJobTitle}</p>
               )}
             </div>
             <div className="text-right text-sm text-zinc-500">
@@ -2000,9 +1767,9 @@ export function ResumePreview({
                       <div>
                         <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
                         <p style={{ color: activeColor }}>{exp.employer || 'Company'}</p>
-                        {exp.location && <p className="text-zinc-500 text-sm">{exp.location}</p>}
+                        {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
                       </div>
-                      <p className="text-zinc-500 text-sm">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
+                      <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>
                     {exp.description && <p className="text-zinc-600 mt-1 whitespace-pre-line">{exp.description}</p>}
                   </div>
@@ -2019,8 +1786,8 @@ export function ResumePreview({
                   <div key={edu.id} className="border-b pb-3" style={{ borderColor: `${activeColor}20` }}>
                     <p className="font-semibold text-zinc-900">{edu.degree || 'Degree'}</p>
                     <p style={{ color: activeColor }}>{edu.schoolName || 'School'}</p>
-                    <p className="text-zinc-500 text-sm">{formatDateRange(edu.startDate, edu.endDate)}</p>
-                    {edu.description && <p className="text-zinc-600 mt-1">{edu.description}</p>}
+                    <p className="text-zinc-500 text-[0.92em]">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    {edu.description && <p className="text-zinc-600 mt-1 text-[1.08em]">{edu.description}</p>}
                   </div>
                 ))}
               </div>
@@ -2134,7 +1901,7 @@ export function ResumePreview({
                   <div key={edu.id}>
                     <p className="font-bold text-[#565d66]">{edu.schoolName || 'School'}</p>
                     <p className="text-[0.88rem] text-[#7a8087]">{edu.degree || 'Degree'}</p>
-                    <p className="text-[0.82rem] text-[#8a8f96]">{formatDateRange(edu.startDate, edu.endDate)}</p>
+                    <p className="text-[0.92em] text-[#8a8f96]">{formatDateRange(edu.startDate, edu.endDate)}</p>
                   </div>
                 ))}
               </div>
@@ -2352,7 +2119,7 @@ export function ResumePreview({
             <div className="bg-cyan-500 text-white text-xs font-bold px-2 py-1 rounded">
               {calculateScore(data)}%
             </div>
-            <span className="text-sm text-gray-600">Your resume score 😊</span>
+            <span className="text-sm text-gray-600">Your resume score ??</span>
           </div>
         </div>
       )}
@@ -2506,6 +2273,7 @@ function calculateScore(data: ResumeData): number {
 
   return Math.min(score, maxScore);
 }
+
 
 
 
