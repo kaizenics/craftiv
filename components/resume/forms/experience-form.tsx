@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, ChevronUp, ChevronDown } from '@/components/ui/icons';
 import { MonthPicker } from './month-picker';
+import { motion } from 'motion/react';
 
 interface ExperienceFormProps {
   data: Experience[];
@@ -68,8 +69,10 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
       )}
 
       {data.map((experience, index) => (
-        <div
+        <motion.div
           key={experience.id}
+          layout
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="border rounded-lg p-4 space-y-4 bg-card"
         >
           <div className="flex items-start justify-between">
@@ -192,7 +195,7 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
               Use bullet points to highlight key achievements. Start with action verbs.
             </p>
           </div>
-        </div>
+        </motion.div>
       ))}
 
       {data.length > 0 && (

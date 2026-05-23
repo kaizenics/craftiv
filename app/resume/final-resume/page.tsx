@@ -32,7 +32,7 @@ import {
   defaultDesignOptions,
 } from "@/components/resume/resume-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
-import { ResumeData } from "@/lib/types/resume";
+import { ResumeData, createEmptyResumeData } from "@/lib/types/resume";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
 import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
@@ -172,16 +172,13 @@ export default function FinalResumePage() {
   );
 
   useEffect(() => {
-    // Get resume data from localStorage
+    // Prefer local snapshot, then fall back to server data.
     const savedData = localStorage.getItem("resumeData");
     const templateId = localStorage.getItem("selectedTemplateId");
     const resumeId = localStorage.getItem("currentResumeId");
+    const serverTemplateId = savedResume?.templateId;
+    const resolvedTemplateId = templateId || serverTemplateId || null;
 
-    if (!savedData || !templateId) {
-      router.push("/resume/templates");
-      return;
-    }
-    
     // Keep localStorage key warm for downstream flows if present.
     if (resumeId) localStorage.setItem("currentResumeId", resumeId);
 
@@ -193,24 +190,40 @@ export default function FinalResumePage() {
     let initialJobTargetDescription = "";
     let initialSnapshots: ResumeSnapshot[] = [];
 
-    try {
-      const parsed = JSON.parse(savedData);
-      initialResumeData = parsed;
-
-      // Set initial color from template
-      const template = resumeTemplates.find((t) => t.id === parsed.templateId);
-      if (template) {
-        const savedSelectedColor = localStorage.getItem("selectedColor");
-        const defaultColor =
-          template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
-        const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
-        const preferredColor =
-          isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
-        initialSelectedColor = preferredColor;
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        initialResumeData = parsed;
+      } catch {
+        initialResumeData = null;
       }
-    } catch {
+    }
+
+    if (!initialResumeData && savedResume?.data) {
+      const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
+      initialResumeData = {
+        ...createEmptyResumeData(dbTemplateId),
+        ...(savedResume.data as any),
+      };
+    }
+
+    if (!initialResumeData || !resolvedTemplateId) {
+      // If resume id exists but data query is still pending, wait.
+      if (resumeId && !savedResume) return;
       router.push("/resume/templates");
       return;
+    }
+
+    // Set initial color from template
+    const template = resumeTemplates.find((t) => t.id === initialResumeData.templateId);
+    if (template) {
+      const savedSelectedColor = localStorage.getItem("selectedColor");
+      const defaultColor =
+        template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
+      const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
+      const preferredColor =
+        isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
+      initialSelectedColor = preferredColor;
     }
 
     // Load saved design options if any
@@ -274,7 +287,7 @@ export default function FinalResumePage() {
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [router, jobTargetStorageKey, snapshotStorageKey]);
+  }, [router, jobTargetStorageKey, snapshotStorageKey, savedResume]);
 
   // Save design options to localStorage and database
   useEffect(() => {

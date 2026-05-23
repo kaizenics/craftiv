@@ -36,6 +36,7 @@ import {
   ChevronUp,
 } from '@/components/ui/icons';
 import { useState } from 'react';
+import { motion } from 'motion/react';
 
 interface FinalizeFormProps {
   data: FinalizeOptions;
@@ -549,7 +550,12 @@ export function FinalizeForm({ data, onChange }: FinalizeFormProps) {
         >
           <div className="space-y-3 pt-4">
             {data.customSections.map((section, index) => (
-              <div key={section.id} className="space-y-2 p-3 border rounded-lg">
+              <motion.div
+                key={section.id}
+                layout
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-2 p-3 border rounded-lg"
+              >
                 <div className="flex justify-between">
                   <Label>Custom Section</Label>
                   <div className="flex items-center gap-1">
@@ -593,7 +599,7 @@ export function FinalizeForm({ data, onChange }: FinalizeFormProps) {
                     updateCustomSection(section.id, 'description', e.target.value)
                   }
                 />
-              </div>
+              </motion.div>
             ))}
             <Button onClick={addCustomSection} variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />

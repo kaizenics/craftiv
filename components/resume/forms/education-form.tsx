@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, ChevronUp, ChevronDown } from '@/components/ui/icons';
 import { MonthPicker } from './month-picker';
+import { motion } from 'motion/react';
 
 interface EducationFormProps {
   data: Education[];
@@ -66,8 +67,10 @@ export function EducationForm({ data, onChange }: EducationFormProps) {
       )}
 
       {data.map((education, index) => (
-        <div
+        <motion.div
           key={education.id}
+          layout
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="border rounded-lg p-4 space-y-4 bg-card"
         >
           <div className="flex items-start justify-between">
@@ -175,7 +178,7 @@ export function EducationForm({ data, onChange }: EducationFormProps) {
               }
             />
           </div>
-        </div>
+        </motion.div>
       ))}
 
       {data.length > 0 && (
