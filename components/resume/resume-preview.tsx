@@ -316,7 +316,14 @@ export function ResumePreview({
                     <div className="flex justify-between items-start gap-3">
                       <div>
                         <p className="font-semibold text-zinc-900">{exp.jobTitle || 'Role'}</p>
-                        <p className="text-zinc-700">{exp.employer || 'Company'}{exp.location ? `, ${exp.location}` : ''}</p>
+                        {layoutType === 'harvard' ? (
+                          <>
+                            <p className="text-zinc-700">{exp.employer || 'Company'}</p>
+                            {exp.location && <p className="text-zinc-500 text-[0.92em]">{exp.location}</p>}
+                          </>
+                        ) : (
+                          <p className="text-zinc-700">{exp.employer || 'Company'}{exp.location ? `, ${exp.location}` : ''}</p>
+                        )}
                       </div>
                       <p className="text-zinc-500 text-[0.92em]">{formatDateRange(exp.startDate, exp.isCurrentJob ? 'Present' : exp.endDate)}</p>
                     </div>

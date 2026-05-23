@@ -35,6 +35,7 @@ import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
+import { AnimatePresence, motion } from "motion/react";
 
 export default function ResumeSectionDynamicPage() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function ResumeSectionDynamicPage() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [showPhoto, setShowPhoto] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
+  const [transitionDirection, setTransitionDirection] = useState<1 | -1>(1);
 
   // Fetch resume data from database
   const { data: resume, isLoading: isLoadingResume } = trpc.resume.getById.useQuery({ id: resumeId });
@@ -97,6 +99,11 @@ export default function ResumeSectionDynamicPage() {
 
   useEffect(() => {
     latestResumeDataRef.current = resumeData;
+  }, [resumeData]);
+
+  useEffect(() => {
+    if (!resumeData) return;
+    localStorage.setItem("resumeData", JSON.stringify(resumeData));
   }, [resumeData]);
 
   useEffect(() => {
@@ -194,6 +201,7 @@ export default function ResumeSectionDynamicPage() {
 
   const handleNext = () => {
     if (!isLastStep) {
+      setTransitionDirection(1);
       if (!completedSteps.includes(currentStep)) {
         setCompletedSteps([...completedSteps, currentStep]);
       }
@@ -203,11 +211,16 @@ export default function ResumeSectionDynamicPage() {
 
   const handleBack = () => {
     if (!isFirstStep) {
+      setTransitionDirection(-1);
       setCurrentStep(RESUME_STEPS[currentStepIndex - 1].id);
     }
   };
 
   const handleStepClick = (step: ResumeStep) => {
+    const targetIndex = RESUME_STEPS.findIndex((s) => s.id === step);
+    if (targetIndex !== -1 && targetIndex !== currentStepIndex) {
+      setTransitionDirection(targetIndex > currentStepIndex ? 1 : -1);
+    }
     setCurrentStep(step);
   };
 
@@ -388,7 +401,17 @@ export default function ResumeSectionDynamicPage() {
           {/* Form Content */}
           <div className={cn("flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 pb-20 lg:pb-6", compactEditorEnabled && "px-3 sm:px-5 py-3 sm:py-4")}>
             <div className="max-w-2xl mx-auto">
-              {renderStepContent()}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentStep}
+                  initial={{ opacity: 0, x: transitionDirection * 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: transitionDirection * -16 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {renderStepContent()}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
 
