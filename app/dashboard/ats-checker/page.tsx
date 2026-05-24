@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { trpc } from "@/trpc/client";
 import { readSharedJobTargetDraft, writeSharedJobTargetDraft } from "@/lib/job-target";
 
@@ -45,6 +54,31 @@ type AtsReport = {
 };
 
 const MAX_SIZE_MB = 10;
+const ATS_REPORT_STORAGE_KEY = "craftiv:ats-checker:last-report";
+
+type PersistedAtsReport = {
+  report: AtsReport;
+  sourceLabel: string;
+  savedAt: string;
+};
+
+function readPersistedAtsReport(): PersistedAtsReport | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(ATS_REPORT_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedAtsReport>;
+    if (!parsed.report) return null;
+    return {
+      report: parsed.report,
+      sourceLabel: parsed.sourceLabel || "Saved ATS analysis",
+      savedAt: parsed.savedAt || "",
+    };
+  } catch {
+    return null;
+  }
+}
 
 function readInitialJobDescription() {
   if (typeof window === "undefined") return "";
@@ -52,12 +86,14 @@ function readInitialJobDescription() {
 }
 
 export default function AtsCheckerPage() {
+  const persistedState = readPersistedAtsReport();
   const [file, setFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState(readInitialJobDescription);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<AtsReport | null>(null);
-  const [sourceLabel, setSourceLabel] = useState<string>("");
+  const [report, setReport] = useState<AtsReport | null>(persistedState?.report ?? null);
+  const [sourceLabel, setSourceLabel] = useState<string>(persistedState?.sourceLabel ?? "");
+  const [isReportDrawerOpen, setIsReportDrawerOpen] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [resumeQuery, setResumeQuery] = useState("");
 
@@ -92,6 +128,16 @@ export default function AtsCheckerPage() {
       jobDescription,
     });
   }, [jobDescription]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !report) return;
+    const payload: PersistedAtsReport = {
+      report,
+      sourceLabel,
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(ATS_REPORT_STORAGE_KEY, JSON.stringify(payload));
+  }, [report, sourceLabel]);
 
   async function runAnalysis(mode: "upload" | "current") {
     if (mode === "upload" && !file) return;
@@ -128,12 +174,154 @@ export default function AtsCheckerPage() {
       const body = await response.json();
       setReport(body.report as AtsReport);
       setSourceLabel(mode === "current" ? "Saved resume analysis" : `Uploaded file analysis: ${file?.name || ""}`);
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Something went wrong while analyzing your resume.");
+      setIsReportDrawerOpen(true);
+    } catch (analysisError: unknown) {
+      setError(analysisError instanceof Error ? analysisError.message : "Something went wrong while analyzing your resume.");
     } finally {
       setIsAnalyzing(false);
     }
   }
+
+  const reportContent = report ? (
+    <div className="space-y-6 pb-2">
+      <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Source:</span> {sourceLabel}
+        <span className="mx-2">&middot;</span>
+        <span className="font-medium text-foreground">Scoring version:</span> {report.scoringVersion}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Overall ATS Score</p>
+          <p className="mt-1 text-3xl font-bold text-foreground">{report.overallScore}/100</p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Compatibility</p>
+          <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+            <ShieldCheck className="h-4 w-4" />
+            {report.atsCompatibility}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Top Priority</p>
+          <p className="mt-1 text-sm text-foreground">{report.topActions?.[0] || "Improve work impact bullets"}</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Score is computed using the same deterministic ATS analyzer that powers AI Resume Assistant impact previews.
+      </p>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h2 className="text-lg font-semibold text-foreground">Recruiter Summary</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{report.summary}</p>
+      </div>
+
+      {(report.placeholderWarnings.length > 0 || report.parseWarnings.length > 0) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {report.placeholderWarnings.length > 0 && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+              <h3 className="text-base font-semibold text-foreground">Blocking Placeholders</h3>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-red-700">
+                {report.placeholderWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {report.parseWarnings.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <h3 className="text-base font-semibold text-foreground">Parse Notes</h3>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-amber-700">
+                {report.parseWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="text-base font-semibold text-foreground">Strengths</h3>
+          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            {(report.strengths || []).map((item, idx) => (
+              <li key={`${item}-${idx}`} className="flex gap-2">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="text-base font-semibold text-foreground">Matched Keywords</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(report.matchedKeywords || []).map((keyword, idx) => (
+              <span
+                key={`${keyword}-${idx}`}
+                className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs text-green-700"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">Missing Keywords</h3>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(report.missingKeywords || []).map((keyword, idx) => (
+            <span
+              key={`${keyword}-${idx}`}
+              className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-700"
+            >
+              {keyword}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">Section Scores</h3>
+        <div className="mt-3 space-y-3">
+          {(report.sectionScores || []).map((s, idx) => (
+            <div key={`${s.section}-${idx}`} className="rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-foreground">{s.section}</p>
+                <p className="text-sm font-semibold text-foreground">{s.score}/100</p>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{s.notes}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-base font-semibold text-foreground">How To Improve</h3>
+        <div className="mt-3 space-y-3">
+          {(report.improvements || []).map((item, idx) => (
+            <div key={`${item.title}-${idx}`} className="rounded-lg border border-border p-3">
+              <p className="font-medium text-foreground">{item.title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{item.why}</p>
+              <p className="mt-2 rounded-md bg-muted/40 px-2 py-2 text-sm text-foreground">
+                Example: {item.example}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h3 className="text-base font-semibold text-foreground">Improved Summary Suggestion</h3>
+        <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{report.rewrittenSummary}</p>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="space-y-8">
@@ -301,145 +489,34 @@ export default function AtsCheckerPage() {
       </div>
 
       {report && (
-        <div className="space-y-6">
-          <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Source:</span> {sourceLabel}
-            <span className="mx-2">·</span>
-            <span className="font-medium text-foreground">Scoring version:</span> {report.scoringVersion}
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Overall ATS Score</p>
-              <p className="mt-1 text-3xl font-bold text-foreground">{report.overallScore}/100</p>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Compatibility</p>
-              <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
-                <ShieldCheck className="h-4 w-4" />
-                {report.atsCompatibility}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Top Priority</p>
-              <p className="mt-1 text-sm text-foreground">{report.topActions?.[0] || "Improve work impact bullets"}</p>
-            </div>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Score is computed using the same deterministic ATS analyzer that powers AI Resume Assistant impact previews.
-          </p>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-lg font-semibold text-foreground">Recruiter Summary</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{report.summary}</p>
-          </div>
-
-          {(report.placeholderWarnings.length > 0 || report.parseWarnings.length > 0) && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {report.placeholderWarnings.length > 0 && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-5">
-                  <h3 className="text-base font-semibold text-foreground">Blocking Placeholders</h3>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-red-700">
-                    {report.placeholderWarnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {report.parseWarnings.length > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-                  <h3 className="text-base font-semibold text-foreground">Parse Notes</h3>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-amber-700">
-                    {report.parseWarnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-base font-semibold text-foreground">Strengths</h3>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                {(report.strengths || []).map((item, idx) => (
-                  <li key={`${item}-${idx}`} className="flex gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-base font-semibold text-foreground">Matched Keywords</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(report.matchedKeywords || []).map((keyword, idx) => (
-                  <span
-                    key={`${keyword}-${idx}`}
-                    className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs text-green-700"
-                  >
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-base font-semibold text-foreground">Missing Keywords</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {(report.missingKeywords || []).map((keyword, idx) => (
-                <span
-                  key={`${keyword}-${idx}`}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-700"
-                >
-                  {keyword}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-base font-semibold text-foreground">Section Scores</h3>
-            <div className="mt-3 space-y-3">
-              {(report.sectionScores || []).map((s, idx) => (
-                <div key={`${s.section}-${idx}`} className="rounded-lg border border-border p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-foreground">{s.section}</p>
-                    <p className="text-sm font-semibold text-foreground">{s.score}/100</p>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{s.notes}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-base font-semibold text-foreground">How To Improve</h3>
-            <div className="mt-3 space-y-3">
-              {(report.improvements || []).map((item, idx) => (
-                <div key={`${item.title}-${idx}`} className="rounded-lg border border-border p-3">
-                  <p className="font-medium text-foreground">{item.title}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.why}</p>
-                  <p className="mt-2 rounded-md bg-muted/40 px-2 py-2 text-sm text-foreground">
-                    Example: {item.example}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <h3 className="text-base font-semibold text-foreground">Improved Summary Suggestion</h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{report.rewrittenSummary}</p>
-          </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          Latest ATS result is ready.
+          <Button
+            variant="link"
+            className="h-auto px-1 text-foreground"
+            onClick={() => setIsReportDrawerOpen(true)}
+          >
+            Open result drawer
+          </Button>
         </div>
       )}
+
+      <Drawer open={isReportDrawerOpen} onOpenChange={setIsReportDrawerOpen}>
+        <DrawerContent className="max-h-[88vh]">
+          <DrawerHeader>
+            <DrawerTitle>ATS Checker Result</DrawerTitle>
+            <DrawerDescription>
+              Review the latest ATS analysis report and recommendations.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="overflow-y-auto px-4 pb-2">{reportContent}</div>
+          <DrawerFooter>
+            <DrawerClose asChild>
+              <Button variant="outline">Close</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
