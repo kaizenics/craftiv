@@ -3,13 +3,13 @@ import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { resumes } from "@/db/schema";
+import { resumes, type ResumeDataJSON } from "@/db/schema";
 import {
   buildAchievementBuilderPrompt,
   buildCoverLetterPrompt,
   buildImproveFullResumePrompt,
   buildImproveSectionPrompt,
-  buildKeywordBoosterPrompt,
+  buildKeywordSuggestionPrompt,
   buildSpellCheckPrompt,
   buildSuggestionPrompt,
   callWithFallback,
@@ -18,6 +18,7 @@ import {
   extractResumeTextFields,
   formatFieldsForPrompt,
 } from "@/lib/ai";
+import { analyzeResumeData, buildAtsImpact } from "@/lib/ats";
 import {
   CHATBOT_NO_CODE_REPLY,
   CHATBOT_SYSTEM_PROMPT,
@@ -54,8 +55,8 @@ async function getOwnedResume(db: any, resumeId: string, userId: string) {
   return resume;
 }
 
-function getResumeData(resume: any): Record<string, unknown> {
-  const data = resume.data as Record<string, unknown> | null;
+function getResumeData(resume: any): ResumeDataJSON {
+  const data = resume.data as ResumeDataJSON | null;
   if (!data) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -63,6 +64,55 @@ function getResumeData(resume: any): Record<string, unknown> {
     });
   }
   return data;
+}
+
+function cloneResumeData(data: ResumeDataJSON) {
+  return JSON.parse(JSON.stringify(data)) as ResumeDataJSON;
+}
+
+function applyDelimitedDescriptions<T extends { description: string }>(
+  items: T[],
+  improvedText: string,
+  splitToken: string,
+) {
+  const parts = improvedText
+    .split(splitToken)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return items;
+  }
+
+  let partIndex = 0;
+  return items.map((item) => {
+    if (!item.description?.trim()) return item;
+    const nextDescription = parts[partIndex];
+    partIndex += 1;
+    return nextDescription ? { ...item, description: nextDescription } : item;
+  });
+}
+
+function getChangedContentSections(before: ResumeDataJSON, after: ResumeDataJSON) {
+  const changed = new Set<string>();
+
+  if (before.summary !== after.summary) changed.add("Summary");
+  if (
+    before.experiences.some(
+      (experience, index) => experience.description !== after.experiences[index]?.description,
+    )
+  ) {
+    changed.add("Experience");
+  }
+  if (
+    before.educations.some(
+      (education, index) => education.description !== after.educations[index]?.description,
+    )
+  ) {
+    changed.add("Education");
+  }
+
+  return [...changed];
 }
 
 function isIgnoredSpellCheckField(field: string): boolean {
@@ -222,7 +272,8 @@ export const aiRouter = createTRPCRouter({
     .input(improveSectionInput)
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "improveSection");
-      await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      const resumeData = getResumeData(resume) as ResumeDataJSON;
 
       const prompt = buildImproveSectionPrompt(
         input.section,
@@ -244,7 +295,33 @@ export const aiRouter = createTRPCRouter({
           maxTokens: 2000,
           temperature: 0.45,
         });
-        return { improved };
+
+        const beforeReport = analyzeResumeData(resumeData, input.jobDescription);
+        const nextData = cloneResumeData(resumeData);
+
+        if (input.section === "summary") {
+          nextData.summary = improved.trim();
+        } else if (input.section === "experience") {
+          nextData.experiences = applyDelimitedDescriptions(
+            nextData.experiences,
+            improved,
+            "<<<EXP_SPLIT>>>",
+          );
+        } else {
+          nextData.educations = applyDelimitedDescriptions(
+            nextData.educations,
+            improved,
+            "<<<EXP_SPLIT>>>",
+          );
+        }
+
+        const afterReport = analyzeResumeData(nextData, input.jobDescription);
+        const atsImpact = buildAtsImpact(beforeReport, afterReport);
+        if (atsImpact.changedSections.length === 0) {
+          atsImpact.changedSections = [input.section[0].toUpperCase() + input.section.slice(1)];
+        }
+
+        return { improved, atsImpact };
       } catch (error) {
         await refundAiAction({
           userId: ctx.user.id,
@@ -262,7 +339,7 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "improveFullResume");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const data = getResumeData(resume);
+      const data = getResumeData(resume) as ResumeDataJSON;
 
       const prompt = buildImproveFullResumePrompt(data, input.targetRole, input.jobDescription);
 
@@ -287,7 +364,19 @@ export const aiRouter = createTRPCRouter({
             message: "AI returned invalid format. Please try again.",
           });
         }
-        return { improved };
+
+        const nextData = {
+          ...cloneResumeData(data),
+          ...improved,
+        } as ResumeDataJSON;
+        const beforeReport = analyzeResumeData(data, input.jobDescription);
+        const afterReport = analyzeResumeData(nextData, input.jobDescription);
+        const atsImpact = buildAtsImpact(beforeReport, afterReport);
+        if (atsImpact.changedSections.length === 0) {
+          atsImpact.changedSections = getChangedContentSections(data, nextData);
+        }
+
+        return { improved, atsImpact };
       } catch (error) {
         await refundAiAction({
           userId: ctx.user.id,
@@ -398,11 +487,12 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "keywordBooster");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const data = getResumeData(resume);
+      const data = getResumeData(resume) as ResumeDataJSON;
 
       const textFields = extractResumeTextFields(data);
       const resumeText = formatFieldsForPrompt(textFields);
-      const prompt = buildKeywordBoosterPrompt(resumeText, input.jobDescription);
+      const analyzerReport = analyzeResumeData(data, input.jobDescription);
+      const missingKeywords = analyzerReport.missingKeywords.slice(0, 12);
 
       const charge = await prechargeAiAction({
         userId: ctx.user.id,
@@ -412,6 +502,15 @@ export const aiRouter = createTRPCRouter({
       });
 
       try {
+        if (missingKeywords.length === 0) {
+          return { keywords: [] };
+        }
+
+        const prompt = buildKeywordSuggestionPrompt(
+          resumeText,
+          input.jobDescription,
+          missingKeywords,
+        );
         const { content } = await callWithFallback({
           messages: [{ role: "user", content: prompt }],
           maxTokens: 3000,
@@ -425,6 +524,11 @@ export const aiRouter = createTRPCRouter({
 
         const keywords = parsed
           .filter((item: any) => item.keyword && item.importance && item.section && item.suggestion)
+          .filter((item: any) =>
+            missingKeywords.some(
+              (keyword) => keyword.toLowerCase() === String(item.keyword).toLowerCase(),
+            ),
+          )
           .map((item: any) => ({
             keyword: item.keyword,
             importance: item.importance,
@@ -450,7 +554,7 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "achievementBuilder");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const data = getResumeData(resume) as any;
+      const data = getResumeData(resume) as ResumeDataJSON;
 
       const experiences = data.experiences ?? [];
       if (input.experienceIndex >= experiences.length) {
@@ -482,7 +586,19 @@ export const aiRouter = createTRPCRouter({
           maxTokens: 1500,
           temperature: 0.5,
         });
-        return { bullets };
+        const beforeReport = analyzeResumeData(data);
+        const nextData = cloneResumeData(data);
+        nextData.experiences[input.experienceIndex] = {
+          ...nextData.experiences[input.experienceIndex],
+          description: bullets.trim(),
+        };
+        const afterReport = analyzeResumeData(nextData);
+        const atsImpact = buildAtsImpact(beforeReport, afterReport);
+        if (atsImpact.changedSections.length === 0) {
+          atsImpact.changedSections = ["Experience"];
+        }
+
+        return { bullets, atsImpact };
       } catch (error) {
         await refundAiAction({
           userId: ctx.user.id,

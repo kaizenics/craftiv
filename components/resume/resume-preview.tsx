@@ -2143,7 +2143,7 @@ export function ResumePreview({
             <div className="bg-cyan-500 text-white text-xs font-bold px-2 py-1 rounded">
               {calculateScore(data)}%
             </div>
-            <span className="text-sm text-gray-600">Your resume score ??</span>
+            <span className="text-sm text-gray-600">Profile completeness</span>
           </div>
         </div>
       )}
