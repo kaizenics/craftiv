@@ -109,7 +109,7 @@ function buildWordHtml(content: string): string {
   `;
 }
 
-export async function generateDOCX({
+export async function generateDOC({
   data,
   template,
   fileName,

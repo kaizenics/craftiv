@@ -44,6 +44,7 @@ import { VersionHistoryTab } from "./tabs/version-history-tab";
 import { JobTargetTab } from "./tabs/job-target-tab";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 import { ResumeSectionKey } from "@/lib/types/resume";
+import { writeSharedJobTargetDraft } from "@/lib/job-target";
 import {
   LayoutTemplate,
   Layers,
@@ -648,25 +649,18 @@ export default function FinalResumePage() {
   };
 
   const pushJobTargetToAssistant = () => {
-    localStorage.setItem(
-      "resumeAiJobTarget",
-      JSON.stringify({
-        role: jobTargetRole,
-        jobDescription: jobTargetDescription,
-        updatedAt: new Date().toISOString(),
-      }),
-    );
+    writeSharedJobTargetDraft(localStorage, {
+      role: jobTargetRole,
+      jobDescription: jobTargetDescription,
+    });
     router.push("/dashboard/ai-resume");
   };
 
   const openAtsCheckerWithTarget = () => {
-    localStorage.setItem(
-      "atsJobDescriptionDraft",
-      JSON.stringify({
-        jobDescription: jobTargetDescription,
-        updatedAt: new Date().toISOString(),
-      }),
-    );
+    writeSharedJobTargetDraft(localStorage, {
+      role: jobTargetRole,
+      jobDescription: jobTargetDescription,
+    });
     router.push("/dashboard/ats-checker");
   };
 

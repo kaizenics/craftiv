@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/trpc/client";
 import type { ResumeDataJSON } from "@/db/schema";
+import type { AtsImpact } from "@/lib/ats";
+import { readSharedJobTargetDraft, writeSharedJobTargetDraft } from "@/lib/job-target";
 
 
 type Tool = "improver" | "keywords" | "achievements";
@@ -50,25 +52,6 @@ const GOALS: { id: Goal; label: string; icon: typeof ScrollText }[] = [
   { id: "experience", label: "Improve Experience", icon: Briefcase },
   { id: "full", label: "Improve Full Resume", icon: FileText },
 ];
-
-function readStoredJobTargetDraft(): { role: string; jobDescription: string } {
-  if (typeof window === "undefined") {
-    return { role: "", jobDescription: "" };
-  }
-
-  const raw = localStorage.getItem("resumeAiJobTarget");
-  if (!raw) return { role: "", jobDescription: "" };
-
-  try {
-    const parsed = JSON.parse(raw) as { role?: string; jobDescription?: string };
-    return {
-      role: parsed.role?.trim() || "",
-      jobDescription: parsed.jobDescription?.trim() || "",
-    };
-  } catch {
-    return { role: "", jobDescription: "" };
-  }
-}
 
 
 function formatDate(date: Date | string): string {
@@ -119,9 +102,69 @@ function formatResumeDataAsText(d: Record<string, any>): string {
   return parts.join("\n\n");
 }
 
+function renderAtsImpactSummary(impact: AtsImpact | null) {
+  if (!impact) return null;
+
+  const delta = impact.afterScore - impact.beforeScore;
+  const deltaLabel = delta > 0 ? `+${delta}` : `${delta}`;
+  const deltaTone =
+    delta > 0
+      ? "bg-green-100 text-green-700"
+      : delta < 0
+        ? "bg-red-100 text-red-700"
+        : "bg-zinc-100 text-zinc-700";
+
+  return (
+    <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Projected ATS Impact</p>
+          <p className="text-xs text-muted-foreground">Uses the same analyzer as ATS Checker.</p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${deltaTone}`}>
+          {impact.beforeScore} to {impact.afterScore} ({deltaLabel})
+        </span>
+      </div>
+      {impact.changedSections.length > 0 && (
+        <p className="text-sm text-foreground">
+          <span className="font-medium">Changed sections:</span> {impact.changedSections.join(", ")}
+        </p>
+      )}
+      {impact.matchedKeywordsAdded.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">New matched keywords</p>
+          <div className="flex flex-wrap gap-2">
+            {impact.matchedKeywordsAdded.map((keyword) => (
+              <span
+                key={keyword}
+                className="rounded-full border border-green-200 bg-green-100 px-2.5 py-1 text-xs text-green-800"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {impact.warnings.length > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <p className="font-medium">Apply is blocked until these are fixed:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {impact.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function AIAssistantPage() {
-  const initialTargetDraft = readStoredJobTargetDraft();
+  const initialTargetDraft =
+    typeof window === "undefined"
+      ? { role: "", jobDescription: "" }
+      : readSharedJobTargetDraft(localStorage);
   const [activeTool, setActiveTool] = useState<Tool>("improver");
 
   // Resume selector state
@@ -145,6 +188,7 @@ export default function AIAssistantPage() {
   const [selectedFullImprovedKeys, setSelectedFullImprovedKeys] = useState<string[]>([]);
   const [improverOriginal, setImproverOriginal] = useState<string | null>(null);
   const [improverApplied, setImproverApplied] = useState(false);
+  const [improverImpact, setImproverImpact] = useState<AtsImpact | null>(null);
 
   // Keyword Booster state
   const [jobDescriptionKw, setJobDescriptionKw] = useState(
@@ -159,6 +203,7 @@ export default function AIAssistantPage() {
   );
   const [achievementResult, setAchievementResult] = useState<string | null>(null);
   const [achievementApplied, setAchievementApplied] = useState(false);
+  const [achievementImpact, setAchievementImpact] = useState<AtsImpact | null>(null);
 
   // Shared
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +250,14 @@ export default function AIAssistantPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    writeSharedJobTargetDraft(localStorage, {
+      role: targetRole || achievementTargetRole,
+      jobDescription: jobDescriptionImprover || jobDescriptionKw,
+    });
+  }, [achievementTargetRole, jobDescriptionImprover, jobDescriptionKw, targetRole]);
 
   // Current content for improver
   const currentContent = useMemo(() => {
@@ -276,12 +329,13 @@ export default function AIAssistantPage() {
 
   function clearResults() {
     setImproverResult(null); setFullResumeImproved(null); setImproverOriginal(null); setImproverApplied(false);
+    setImproverImpact(null);
     setImprovedExperienceParts(null);
     setSelectedImproverExperienceBlocks([]);
     setFullImprovedBlocks([]);
     setSelectedFullImprovedKeys([]);
     setKeywordResults(null);
-    setAchievementResult(null); setAchievementApplied(false);
+    setAchievementResult(null); setAchievementApplied(false); setAchievementImpact(null);
     setError(null); setCopied(false);
   }
 
@@ -306,7 +360,7 @@ export default function AIAssistantPage() {
 
   async function handleImproverGenerate() {
     if (!activeResumeId || !currentContent || !data) return;
-    setError(null); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false); setImprovedExperienceParts(null); setFullImprovedBlocks([]); setSelectedFullImprovedKeys([]);
+    setError(null); setImproverResult(null); setFullResumeImproved(null); setImproverApplied(false); setImproverImpact(null); setImprovedExperienceParts(null); setFullImprovedBlocks([]); setSelectedFullImprovedKeys([]);
     setImproverOriginal(currentContent);
     try {      if (goal === "summary") {
         const res = await improveSection.mutateAsync({
@@ -317,6 +371,7 @@ export default function AIAssistantPage() {
           jobDescription: jobDescriptionImprover.trim() || undefined,
         });
         setImproverResult(res.improved);
+        setImproverImpact(res.atsImpact);
       } else if (goal === "experience") {
         const all = (data.experiences ?? [])
           .filter((e) => e.description?.trim())
@@ -329,6 +384,7 @@ export default function AIAssistantPage() {
           targetRole: targetRole || undefined,
           jobDescription: jobDescriptionImprover.trim() || undefined,
         });
+        setImproverImpact(res.atsImpact);
         const parts = res.improved
           .split(EXPERIENCE_SPLIT_TOKEN)
           .map((p) => p.trim())
@@ -349,6 +405,7 @@ export default function AIAssistantPage() {
           jobDescription: jobDescriptionImprover.trim() || undefined,
         });
         setFullResumeImproved(res.improved);
+        setImproverImpact(res.atsImpact);
         const blocks = buildFullImprovedBlocks(res.improved);
         setFullImprovedBlocks(blocks);
         setSelectedFullImprovedKeys(blocks.map((block) => block.key));
@@ -360,6 +417,10 @@ export default function AIAssistantPage() {
   async function handleImproverApply() {
     if (!activeResumeId || !improverResult || !data) return;
     try {
+      if (improverImpact?.warnings.length) {
+        setError("Resolve the ATS warnings before applying this output.");
+        return;
+      }
       if (goal === "summary") {
         await updateResume.mutateAsync({ id: activeResumeId, data: { ...data, summary: improverResult } });
       } else if (goal === "experience") {
@@ -432,15 +493,20 @@ export default function AIAssistantPage() {
 
   async function handleAchievementGenerate() {
     if (!activeResumeId) return;
-    setError(null); setAchievementResult(null); setAchievementApplied(false);
+    setError(null); setAchievementResult(null); setAchievementApplied(false); setAchievementImpact(null);
     try {      const res = await achievementBuilder.mutateAsync({ resumeId: activeResumeId, experienceIndex: selectedExpIndex, targetRole: achievementTargetRole || undefined });
       setAchievementResult(res.bullets);
+      setAchievementImpact(res.atsImpact);
     } catch (e: any) { setError(e.message || "Something went wrong."); }
   }
 
   async function handleAchievementApply() {
     if (!activeResumeId || !achievementResult || !data) return;
     try {
+      if (achievementImpact?.warnings.length) {
+        setError("Resolve the ATS warnings before applying these bullets.");
+        return;
+      }
       const updated = [...data.experiences];
       updated[selectedExpIndex] = { ...updated[selectedExpIndex], description: achievementResult };
       await updateResume.mutateAsync({ id: activeResumeId, data: { ...data, experiences: updated } });
@@ -584,7 +650,7 @@ export default function AIAssistantPage() {
                 {GOALS.map((g) => {
                   const active = goal === g.id;
                   return (
-                    <button key={g.id} onClick={() => { setGoal(g.id); setImproverResult(null); setFullResumeImproved(null); setImprovedExperienceParts(null); setSelectedImproverExperienceBlocks([]); setFullImprovedBlocks([]); setSelectedFullImprovedKeys([]); setImproverApplied(false); setError(null); }}
+                    <button key={g.id} onClick={() => { setGoal(g.id); setImproverResult(null); setFullResumeImproved(null); setImprovedExperienceParts(null); setSelectedImproverExperienceBlocks([]); setFullImprovedBlocks([]); setSelectedFullImprovedKeys([]); setImproverApplied(false); setImproverImpact(null); setError(null); }}
                       className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${active ? "border-foreground bg-foreground/5 text-foreground" : "border-border hover:bg-muted/10 text-muted-foreground"}`}>
                       <g.icon className="h-4 w-4" /> {g.label}
                     </button>
@@ -777,12 +843,14 @@ export default function AIAssistantPage() {
                   )}
                 </div>
               </div>
+              {renderAtsImpactSummary(improverImpact)}
               <div className="flex flex-wrap gap-3">
                 <Button
                   onClick={handleImproverApply}
                   disabled={
                     improverApplied ||
                     updateResume.isPending ||
+                    !!improverImpact?.warnings.length ||
                     (goal === "experience" && improvedExperienceParts !== null && selectedImproverExperienceBlocks.length === 0) ||
                     (goal === "full" && fullImprovedBlocks.length > 0 && selectedFullImprovedKeys.length === 0)
                   }
@@ -891,7 +959,7 @@ export default function AIAssistantPage() {
                   <label className="text-sm font-medium text-foreground">Select Experience</label>
                   <div className="space-y-2">
                     {data.experiences.map((exp, i) => (
-                      <button key={exp.id} onClick={() => { setSelectedExpIndex(i); setAchievementResult(null); setAchievementApplied(false); setError(null); }}
+                      <button key={exp.id} onClick={() => { setSelectedExpIndex(i); setAchievementResult(null); setAchievementApplied(false); setAchievementImpact(null); setError(null); }}
                         className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                           selectedExpIndex === i ? "border-foreground bg-foreground/5" : "border-border hover:bg-muted/10"
                         }`}>
@@ -963,8 +1031,9 @@ export default function AIAssistantPage() {
                   </div>
                 </div>
               </div>
+              {renderAtsImpactSummary(achievementImpact)}
               <div className="flex flex-wrap gap-3">
-                <Button onClick={handleAchievementApply} disabled={achievementApplied || updateResume.isPending}>
+                <Button onClick={handleAchievementApply} disabled={achievementApplied || updateResume.isPending || !!achievementImpact?.warnings.length}>
                   {updateResume.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applying...</> : achievementApplied ? <><Check className="mr-2 h-4 w-4" /> Applied</> : "Apply to Resume"}
                 </Button>
                 <Button variant="outline" onClick={() => handleCopy(achievementResult)} className="hover:bg-muted/10 hover:text-foreground">

@@ -17,9 +17,9 @@ import { ResumeData } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { ResumePreview } from '@/components/resume/resume-preview';
 import { Download, FileText, File } from '@/components/ui/icons';
-import { 
+import {
   generatePDF, 
-  generateDOCX, 
+  generateDOC, 
   type DesignOptions, 
   defaultDesignOptions 
 } from '@/lib/resume-generator';
@@ -88,7 +88,7 @@ export function DownloadDialog({
           customColor
         });
       } else {
-        blob = await generateDOCX({
+        blob = await generateDOC({
           data,
           template,
           fileName,

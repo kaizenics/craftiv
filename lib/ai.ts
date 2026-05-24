@@ -127,7 +127,8 @@ Hard requirements:
 - Keep first-person pronouns out.
 - Remove filler phrases, buzzwords, and repeated ideas.
 - Use direct action-result language.
-- If a strong metric is not provided, use a realistic placeholder like [X%], [$X], [X users], [X projects].
+- Use only metrics that are already present in the source content.
+- If no metric is available, keep the line qualitative and specific instead of adding placeholders.
 - Keep tense consistent (present for current role, past for previous roles).
 - Keep output ready to paste into a resume.
 
@@ -144,7 +145,7 @@ ${content}`;
 }
 
 export function buildImproveFullResumePrompt(
-  data: Record<string, unknown>,
+  data: unknown,
   targetRole?: string,
   jobDescription?: string,
 ): string {
@@ -162,7 +163,8 @@ Hard requirements:
 - Do not change names, emails, phone numbers, employers, schools, dates, locations, or existing tools/technologies unless correcting obvious grammar/formatting.
 - Improve only narrative fields (summary, experience.description, education.description, and short text fields where needed).
 - Remove fluff and vague claims.
-- Prioritize measurable outcomes; if missing, add realistic placeholders like [X%], [$X], [X users], [X projects].
+- Prioritize measurable outcomes only when they are already supported by the source content.
+- If no metric exists, improve clarity and specificity without inventing placeholders.
 - Keep writing concise, professional, and role-relevant.
 - No first-person pronouns.
 
@@ -232,28 +234,33 @@ Keep it concise and professional.`;
 }
 
 
-export function buildKeywordBoosterPrompt(
+export function buildKeywordSuggestionPrompt(
   resumeText: string,
   jobDescription: string,
+  missingKeywords: string[],
 ): string {
-  return `You are an expert ATS keyword analyst.
-Compare the resume and job description and return only truly missing high-value keywords.
+  return `You are an expert ATS resume writer.
+The ATS analyzer has already determined the exact missing keywords below.
+Do not add, remove, or rename keywords.
 
 Rules:
-- Include only keywords/phrases that appear in the job description and are absent or materially underrepresented in the resume.
-- Prefer skills, tools, domain terms, certifications, methods, and role-critical responsibilities.
-- Exclude generic soft skills unless explicitly central in the job description.
-- Remove duplicates and near-duplicates.
-- Limit output to the top 12 most impactful missing keywords, sorted by importance (high to low).
+- Use every keyword exactly once.
+- Keep each suggestion natural and resume-ready.
+- Do not suggest placeholder metrics or bracketed placeholders.
+- Use "high", "medium", or "low" for importance.
+- Use only these sections: "summary", "experience", "skills", or "education".
 
 For each result, return a JSON object with:
-- "keyword": the exact keyword or phrase missing
-- "importance": "high", "medium", or "low"
+- "keyword": the exact keyword provided below
+- "importance": "high", "medium", or "low" based on job relevance
 - "section": which resume section to place it in ("summary", "experience", "skills", or "education")
-- "suggestion": one concise, natural resume-ready sentence showing how to incorporate the keyword without keyword stuffing
+- "suggestion": one concise, natural resume-ready sentence showing how to incorporate the keyword without keyword stuffing or invented metrics
 
-Return a JSON array of objects. If no keywords are missing, return [].
+Return a JSON array of objects in the same order as the keyword list below.
 Return ONLY the JSON array. No markdown, no explanation, no code fences.
+
+--- MISSING KEYWORDS ---
+${JSON.stringify(missingKeywords)}
 
 --- RESUME ---
 ${resumeText}
@@ -279,7 +286,9 @@ Transform this into exactly 4 high-impact accomplishment bullets.
 
 Requirements for each bullet:
 - Starts with a strong action verb.
-- Includes outcome + metric. If metric is unavailable, use a realistic placeholder like [X%], [X], [$X], [X hrs/week].
+- Includes an outcome when supported by the source.
+- Use only metrics already present in the source description.
+- If no metric is available, keep the bullet specific and qualitative without brackets or placeholders.
 - Focuses on impact, scale, or efficiency, not routine duties.
 - Uses concrete tools/processes only if present in the source.
 - Max 28 words per bullet.
