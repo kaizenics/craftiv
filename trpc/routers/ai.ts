@@ -231,6 +231,35 @@ async function refundAiAction(params: {
   });
 }
 
+/**
+ * Precharges credits for an AI action, runs it, and refunds automatically if it
+ * throws. Callers do their rate-limit check and prompt building first, then wrap
+ * the model call so a failure never leaves the user charged.
+ */
+async function chargeAndRun<T>(
+  params: {
+    userId: string;
+    eventType: string;
+    costUnits: number;
+    metadata?: Record<string, unknown>;
+  },
+  run: () => Promise<T>,
+): Promise<T> {
+  const charge = await prechargeAiAction(params);
+  try {
+    return await run();
+  } catch (error) {
+    await refundAiAction({
+      userId: params.userId,
+      eventType: params.eventType,
+      costUnits: params.costUnits,
+      idempotencyKey: charge.idempotencyKey,
+      reason: "ai_failure",
+    });
+    throw error;
+  }
+}
+
 const improveSectionInput = z.object({
   resumeId: z.string(),
   section: z.enum(["summary", "experience", "education"]),
@@ -293,7 +322,7 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "improveSection");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const resumeData = getResumeData(resume) as ResumeDataJSON;
+      const resumeData = getResumeData(resume);
 
       const prompt = buildImproveSectionPrompt(
         input.section,
@@ -302,56 +331,48 @@ export const aiRouter = createTRPCRouter({
         input.jobDescription,
       );
 
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_resume_improver",
-        costUnits: AI_RESUME_IMPROVER_COST,
-        metadata: { mutation: "improveSection", resumeId: input.resumeId },
-      });
-
-      try {
-        const { content: improved } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 2000,
-          temperature: 0.45,
-        });
-
-        const beforeReport = analyzeResumeData(resumeData, input.jobDescription);
-        const nextData = cloneResumeData(resumeData);
-
-        if (input.section === "summary") {
-          nextData.summary = improved.trim();
-        } else if (input.section === "experience") {
-          nextData.experiences = applyDelimitedDescriptions(
-            nextData.experiences,
-            improved,
-            "<<<EXP_SPLIT>>>",
-          );
-        } else {
-          nextData.educations = applyDelimitedDescriptions(
-            nextData.educations,
-            improved,
-            "<<<EXP_SPLIT>>>",
-          );
-        }
-
-        const afterReport = analyzeResumeData(nextData, input.jobDescription);
-        const atsImpact = buildAtsImpact(beforeReport, afterReport);
-        if (atsImpact.changedSections.length === 0) {
-          atsImpact.changedSections = [input.section[0].toUpperCase() + input.section.slice(1)];
-        }
-
-        return { improved, atsImpact };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_resume_improver",
           costUnits: AI_RESUME_IMPROVER_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "improveSection", resumeId: input.resumeId },
+        },
+        async () => {
+          const { content: improved } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 2000,
+            temperature: 0.45,
+          });
+
+          const beforeReport = analyzeResumeData(resumeData, input.jobDescription);
+          const nextData = cloneResumeData(resumeData);
+
+          if (input.section === "summary") {
+            nextData.summary = improved.trim();
+          } else if (input.section === "experience") {
+            nextData.experiences = applyDelimitedDescriptions(
+              nextData.experiences,
+              improved,
+              "<<<EXP_SPLIT>>>",
+            );
+          } else {
+            nextData.educations = applyDelimitedDescriptions(
+              nextData.educations,
+              improved,
+              "<<<EXP_SPLIT>>>",
+            );
+          }
+
+          const afterReport = analyzeResumeData(nextData, input.jobDescription);
+          const atsImpact = buildAtsImpact(beforeReport, afterReport);
+          if (atsImpact.changedSections.length === 0) {
+            atsImpact.changedSections = [input.section[0].toUpperCase() + input.section.slice(1)];
+          }
+
+          return { improved, atsImpact };
+        },
+      );
     }),
 
   improveFullResume: protectedProcedure
@@ -359,54 +380,46 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "improveFullResume");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const data = getResumeData(resume) as ResumeDataJSON;
+      const data = getResumeData(resume);
 
       const prompt = buildImproveFullResumePrompt(data, input.targetRole, input.jobDescription);
 
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_resume_improver",
-        costUnits: AI_RESUME_IMPROVER_COST,
-        metadata: { mutation: "improveFullResume", resumeId: input.resumeId },
-      });
-
-      try {
-        const { content } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 4000,
-          temperature: 0.45,
-        });
-
-        const improved = extractJsonObject(content);
-        if (!improved) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "AI returned invalid format. Please try again.",
-          });
-        }
-
-        const nextData = {
-          ...cloneResumeData(data),
-          ...improved,
-        } as ResumeDataJSON;
-        const beforeReport = analyzeResumeData(data, input.jobDescription);
-        const afterReport = analyzeResumeData(nextData, input.jobDescription);
-        const atsImpact = buildAtsImpact(beforeReport, afterReport);
-        if (atsImpact.changedSections.length === 0) {
-          atsImpact.changedSections = getChangedContentSections(data, nextData);
-        }
-
-        return { improved, atsImpact };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_resume_improver",
           costUnits: AI_RESUME_IMPROVER_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "improveFullResume", resumeId: input.resumeId },
+        },
+        async () => {
+          const { content } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 4000,
+            temperature: 0.45,
+          });
+
+          const improved = extractJsonObject(content);
+          if (!improved) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "AI returned invalid format. Please try again.",
+            });
+          }
+
+          const nextData = {
+            ...cloneResumeData(data),
+            ...improved,
+          } as ResumeDataJSON;
+          const beforeReport = analyzeResumeData(data, input.jobDescription);
+          const afterReport = analyzeResumeData(nextData, input.jobDescription);
+          const atsImpact = buildAtsImpact(beforeReport, afterReport);
+          if (atsImpact.changedSections.length === 0) {
+            atsImpact.changedSections = getChangedContentSections(data, nextData);
+          }
+
+          return { improved, atsImpact };
+        },
+      );
     }),
 
   spellCheck: protectedProcedure
@@ -424,47 +437,39 @@ export const aiRouter = createTRPCRouter({
       }
 
       const prompt = buildSpellCheckPrompt(formatFieldsForPrompt(textFields));
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_spell_check",
-        costUnits: AI_SPELL_CHECK_COST,
-        metadata: { mutation: "spellCheck", resumeId: input.resumeId },
-      });
-
-      try {
-        const { content } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 4000,
-          temperature: 0.3,
-        });
-
-        const parsed = extractJsonArray(content);
-        if (!parsed) {
-          return { issues: [] };
-        }
-
-        const issues = (parsed as RawSpellIssue[])
-          .filter((item) => item.field && item.original && item.corrected && item.context)
-          .map((item) => ({
-            type: item.type || "spelling",
-            field: item.field,
-            original: item.original,
-            corrected: item.corrected,
-            context: item.context,
-          }))
-          .filter((issue) => !isIgnoredSpellCheckField(issue.field));
-
-        return { issues };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_spell_check",
           costUnits: AI_SPELL_CHECK_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "spellCheck", resumeId: input.resumeId },
+        },
+        async () => {
+          const { content } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 4000,
+            temperature: 0.3,
+          });
+
+          const parsed = extractJsonArray(content);
+          if (!parsed) {
+            return { issues: [] };
+          }
+
+          const issues = (parsed as RawSpellIssue[])
+            .filter((item) => item.field && item.original && item.corrected && item.context)
+            .map((item) => ({
+              type: item.type || "spelling",
+              field: item.field,
+              original: item.original,
+              corrected: item.corrected,
+              context: item.context,
+            }))
+            .filter((issue) => !isIgnoredSpellCheckField(issue.field));
+
+          return { issues };
+        },
+      );
     }),
 
   generateSuggestion: protectedProcedure
@@ -476,30 +481,22 @@ export const aiRouter = createTRPCRouter({
       const jobTitle = d?.contact?.desiredJobTitle || "";
 
       const prompt = buildSuggestionPrompt(input.field, input.currentContent, jobTitle);
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_suggestion",
-        costUnits: AI_SUGGESTION_COST,
-        metadata: { mutation: "generateSuggestion", resumeId: input.resumeId },
-      });
-
-      try {
-        const { content: suggestion } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 1000,
-          temperature: 0.7,
-        });
-        return { suggestion };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_suggestion",
           costUnits: AI_SUGGESTION_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "generateSuggestion", resumeId: input.resumeId },
+        },
+        async () => {
+          const { content: suggestion } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 1000,
+            temperature: 0.7,
+          });
+          return { suggestion };
+        },
+      );
     }),
 
   keywordBooster: protectedProcedure
@@ -507,66 +504,58 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "keywordBooster");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const data = getResumeData(resume) as ResumeDataJSON;
+      const data = getResumeData(resume);
 
       const textFields = extractResumeTextFields(data);
       const resumeText = formatFieldsForPrompt(textFields);
       const analyzerReport = analyzeResumeData(data, input.jobDescription);
       const missingKeywords = analyzerReport.missingKeywords.slice(0, 12);
 
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_keyword_booster",
-        costUnits: AI_KEYWORD_BOOSTER_COST,
-        metadata: { mutation: "keywordBooster", resumeId: input.resumeId },
-      });
-
-      try {
-        if (missingKeywords.length === 0) {
-          return { keywords: [] };
-        }
-
-        const prompt = buildKeywordSuggestionPrompt(
-          resumeText,
-          input.jobDescription,
-          missingKeywords,
-        );
-        const { content } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 3000,
-          temperature: 0.3,
-        });
-
-        const parsed = extractJsonArray(content);
-        if (!parsed) {
-          return { keywords: [] };
-        }
-
-        const keywords = (parsed as RawKeyword[])
-          .filter((item) => item.keyword && item.importance && item.section && item.suggestion)
-          .filter((item) =>
-            missingKeywords.some(
-              (keyword) => keyword.toLowerCase() === String(item.keyword).toLowerCase(),
-            ),
-          )
-          .map((item) => ({
-            keyword: item.keyword,
-            importance: item.importance,
-            section: item.section,
-            suggestion: item.suggestion,
-          }));
-
-        return { keywords };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_keyword_booster",
           costUnits: AI_KEYWORD_BOOSTER_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "keywordBooster", resumeId: input.resumeId },
+        },
+        async () => {
+          if (missingKeywords.length === 0) {
+            return { keywords: [] };
+          }
+
+          const prompt = buildKeywordSuggestionPrompt(
+            resumeText,
+            input.jobDescription,
+            missingKeywords,
+          );
+          const { content } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 3000,
+            temperature: 0.3,
+          });
+
+          const parsed = extractJsonArray(content);
+          if (!parsed) {
+            return { keywords: [] };
+          }
+
+          const keywords = (parsed as RawKeyword[])
+            .filter((item) => item.keyword && item.importance && item.section && item.suggestion)
+            .filter((item) =>
+              missingKeywords.some(
+                (keyword) => keyword.toLowerCase() === String(item.keyword).toLowerCase(),
+              ),
+            )
+            .map((item) => ({
+              keyword: item.keyword,
+              importance: item.importance,
+              section: item.section,
+              suggestion: item.suggestion,
+            }));
+
+          return { keywords };
+        },
+      );
     }),
 
   achievementBuilder: protectedProcedure
@@ -574,7 +563,7 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "achievementBuilder");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const data = getResumeData(resume) as ResumeDataJSON;
+      const data = getResumeData(resume);
 
       const experiences = data.experiences ?? [];
       if (input.experienceIndex >= experiences.length) {
@@ -593,42 +582,34 @@ export const aiRouter = createTRPCRouter({
         input.targetRole,
       );
 
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_achievement_builder",
-        costUnits: AI_ACHIEVEMENT_BUILDER_COST,
-        metadata: { mutation: "achievementBuilder", resumeId: input.resumeId },
-      });
-
-      try {
-        const { content: bullets } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 1500,
-          temperature: 0.5,
-        });
-        const beforeReport = analyzeResumeData(data);
-        const nextData = cloneResumeData(data);
-        nextData.experiences[input.experienceIndex] = {
-          ...nextData.experiences[input.experienceIndex],
-          description: bullets.trim(),
-        };
-        const afterReport = analyzeResumeData(nextData);
-        const atsImpact = buildAtsImpact(beforeReport, afterReport);
-        if (atsImpact.changedSections.length === 0) {
-          atsImpact.changedSections = ["Experience"];
-        }
-
-        return { bullets, atsImpact };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_achievement_builder",
           costUnits: AI_ACHIEVEMENT_BUILDER_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "achievementBuilder", resumeId: input.resumeId },
+        },
+        async () => {
+          const { content: bullets } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 1500,
+            temperature: 0.5,
+          });
+          const beforeReport = analyzeResumeData(data);
+          const nextData = cloneResumeData(data);
+          nextData.experiences[input.experienceIndex] = {
+            ...nextData.experiences[input.experienceIndex],
+            description: bullets.trim(),
+          };
+          const afterReport = analyzeResumeData(nextData);
+          const atsImpact = buildAtsImpact(beforeReport, afterReport);
+          if (atsImpact.changedSections.length === 0) {
+            atsImpact.changedSections = ["Experience"];
+          }
+
+          return { bullets, atsImpact };
+        },
+      );
     }),
 
   chatbotReply: protectedProcedure
@@ -640,44 +621,36 @@ export const aiRouter = createTRPCRouter({
         return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
       }
 
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "chatbot_stream",
-        costUnits: CHATBOT_STREAM_COST,
-        metadata: { mutation: "chatbotReply" },
-      });
-
       const historyMessages = (input.history ?? []).map((item) => ({
         role: item.role,
         content: item.content,
       }));
 
-      try {
-        const { content } = await callWithFallback({
-          messages: [
-            { role: "system", content: CHATBOT_SYSTEM_PROMPT },
-            ...historyMessages,
-            { role: "user", content: input.message },
-          ],
-          maxTokens: 900,
-          temperature: 0.7,
-        });
-
-        if (looksLikeCodeOutput(content)) {
-          return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
-        }
-
-        return { reply: content, blocked: false };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "chatbot_stream",
           costUnits: CHATBOT_STREAM_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "chatbotReply" },
+        },
+        async () => {
+          const { content } = await callWithFallback({
+            messages: [
+              { role: "system", content: CHATBOT_SYSTEM_PROMPT },
+              ...historyMessages,
+              { role: "user", content: input.message },
+            ],
+            maxTokens: 900,
+            temperature: 0.7,
+          });
+
+          if (looksLikeCodeOutput(content)) {
+            return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
+          }
+
+          return { reply: content, blocked: false };
+        },
+      );
     }),
 
   coverLetter: protectedProcedure
@@ -697,29 +670,21 @@ export const aiRouter = createTRPCRouter({
         input.tone,
       );
 
-      const charge = await prechargeAiAction({
-        userId: ctx.user.id,
-        eventType: "ai_cover_letter",
-        costUnits: AI_COVER_LETTER_COST,
-        metadata: { mutation: "coverLetter", resumeId: input.resumeId },
-      });
-
-      try {
-        const { content: letter } = await callWithFallback({
-          messages: [{ role: "user", content: prompt }],
-          maxTokens: 2000,
-          temperature: 0.7,
-        });
-        return { letter };
-      } catch (error) {
-        await refundAiAction({
+      return chargeAndRun(
+        {
           userId: ctx.user.id,
           eventType: "ai_cover_letter",
           costUnits: AI_COVER_LETTER_COST,
-          idempotencyKey: charge.idempotencyKey,
-          reason: "ai_failure",
-        });
-        throw error;
-      }
+          metadata: { mutation: "coverLetter", resumeId: input.resumeId },
+        },
+        async () => {
+          const { content: letter } = await callWithFallback({
+            messages: [{ role: "user", content: prompt }],
+            maxTokens: 2000,
+            temperature: 0.7,
+          });
+          return { letter };
+        },
+      );
     }),
 });
