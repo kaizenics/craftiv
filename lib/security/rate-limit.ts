@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { rateLimits } from "@/db/schema";
+import { isMissingTableError, isUniqueConstraintError } from "@/lib/db-errors";
 
 export type RateLimitScope =
   | "global_api"
@@ -39,17 +40,6 @@ function buildRateLimitKey(rule: RateLimitRule) {
     rule.windowName,
     String(rule.windowSizeSeconds),
   ].join(":");
-}
-
-function isUniqueConstraintError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.toLowerCase().includes("unique");
-}
-
-function isMissingRateLimitTableError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  const lower = message.toLowerCase();
-  return lower.includes("no such table: rate_limits");
 }
 
 export function evaluateFixedWindow(params: {
@@ -153,7 +143,7 @@ export async function consumeRateLimitRule(rule: RateLimitRule): Promise<RateLim
   try {
     return await consumeRuleInternal(rule, nowMs);
   } catch (error) {
-    if (isMissingRateLimitTableError(error)) {
+    if (isMissingTableError(error, "rate_limits")) {
       // Fail open during bootstrap/migration windows to avoid taking down auth/API.
       return {
         allowed: true,
