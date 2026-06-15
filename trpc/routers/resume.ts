@@ -7,6 +7,7 @@ import {
   protectedProcedure,
 } from "../init";
 import { resumes, users, type ResumeDataJSON } from "@/db/schema";
+import type { Database } from "@/db";
 
 function splitTitleBaseAndIndex(title: string): { base: string; index: number | null } {
   const match = title.match(/^(.*?)(?:_(\d+))?$/);
@@ -17,7 +18,7 @@ function splitTitleBaseAndIndex(title: string): { base: string; index: number | 
 }
 
 async function getUniqueResumeTitle(args: {
-  db: any;
+  db: Database;
   userId: string;
   requestedTitle: string;
   excludeId?: string;
@@ -34,8 +35,8 @@ async function getUniqueResumeTitle(args: {
 
   const existingTitles = new Set(
     existingResumes
-      .filter((r: any) => (args.excludeId ? r.id !== args.excludeId : true))
-      .map((r: any) => (r.title || "").trim().toLowerCase()),
+      .filter((r) => (args.excludeId ? r.id !== args.excludeId : true))
+      .map((r) => (r.title || "").trim().toLowerCase()),
   );
 
   if (!existingTitles.has(requested.toLowerCase())) {
@@ -52,7 +53,7 @@ async function getUniqueResumeTitle(args: {
   return `${base}_${next}`;
 }
 
-async function assertCanCreateResume(db: any, userId: string) {
+async function assertCanCreateResume(db: Database, userId: string) {
   const user = await db.query.users.findFirst({
     columns: {
       id: true,

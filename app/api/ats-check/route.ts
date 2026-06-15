@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import mammoth from "mammoth";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 
@@ -7,6 +6,8 @@ import { db } from "@/db";
 import { resumes, type ResumeDataJSON } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import { MAX_UPLOAD_BYTES } from "@/lib/constants/files";
+import { extractTextFromFile, getUploadKind } from "@/lib/file-parsing";
 import { analyzeResumeData, analyzeResumeText, formatResumeDataForAts, type AtsReport } from "@/lib/ats";
 import {
   ATS_CHECK_COST,
@@ -18,8 +19,6 @@ import {
 import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { assertContentLength } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function isLikelyResumeText(rawText: string) {
   const text = rawText.toLowerCase();
@@ -66,18 +65,6 @@ function isLikelyResumeText(rawText: string) {
   const isResume = resumeEvidence >= 3 && !(coverLetterHits >= 2 && resumeHits <= 1);
 
   return { isResume };
-}
-
-async function extractTextFromFile(buffer: Buffer, isPDF: boolean): Promise<string> {
-  if (isPDF) {
-    const pdfParseModule = await import("pdf-parse/lib/pdf-parse.js");
-    const pdfParse = pdfParseModule.default as (input: Buffer) => Promise<{ text: string }>;
-    const result = await pdfParse(buffer);
-    return result.text;
-  }
-
-  const result = await mammoth.extractRawText({ buffer });
-  return result.value;
 }
 
 function buildAtsPrompt(text: string, baseline: AtsReport, jobDescription: string): string {
@@ -208,15 +195,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
       }
 
-      if (file.size > MAX_FILE_SIZE) {
+      if (file.size > MAX_UPLOAD_BYTES) {
         return NextResponse.json({ error: "File size exceeds 10MB limit" }, { status: 400 });
       }
 
-      const fileName = file.name.toLowerCase();
-      const isPDF = fileName.endsWith(".pdf");
-      const isDOCX = fileName.endsWith(".docx");
+      const { isPDF, isSupported } = getUploadKind(file.name);
 
-      if (!isPDF && !isDOCX) {
+      if (!isSupported) {
         return NextResponse.json({ error: "Only PDF and DOCX files are supported" }, { status: 400 });
       }
 

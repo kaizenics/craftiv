@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { creditEvents, users } from "@/db/schema";
+import { isUniqueConstraintError } from "@/lib/db-errors";
 
 export const CREDIT_UNITS_PER_CREDIT = 100;
 
@@ -85,11 +86,6 @@ type CreditMutationResult = {
 function asSafeMetadata(metadata?: CreditEventMetadata): Record<string, unknown> | null {
   if (!metadata) return null;
   return metadata;
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.toLowerCase().includes("unique");
 }
 
 async function getReplayByIdempotencyKey(idempotencyKey: string): Promise<CreditMutationResult | null> {

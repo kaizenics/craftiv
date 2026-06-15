@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import mammoth from "mammoth";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import { MAX_UPLOAD_BYTES } from "@/lib/constants/files";
+import { extractTextFromFile, getUploadKind } from "@/lib/file-parsing";
 import {
   buildInsufficientCreditsPayload,
   consumeCredits,
@@ -14,24 +15,50 @@ import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { assertContentLength } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const VALID_SKILL_LEVELS = ["Beginner", "Intermediate", "Advanced", "Expert"];
 const VALID_PROFICIENCIES = ["Basic", "Conversational", "Fluent", "Native"];
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-async function extractTextFromFile(buffer: Buffer, isPDF: boolean): Promise<string> {
-  if (isPDF) {
-    const pdfParse = require("pdf-parse/lib/pdf-parse.js");
-    const result = await pdfParse(buffer);
-    return result.text;
-  }
-  const result = await mammoth.extractRawText({ buffer });
-  return result.value;
+/** Loose shape of the resume JSON returned by the AI (every field is best-effort). */
+interface RawParsedResume {
+  contact?: {
+    firstName?: string;
+    lastName?: string;
+    desiredJobTitle?: string;
+    phone?: string;
+    email?: string;
+  };
+  summary?: string;
+  experiences?: Array<{
+    jobTitle?: string;
+    employer?: string;
+    location?: string;
+    startDate?: string;
+    endDate?: string;
+    isCurrentJob?: boolean;
+    description?: string;
+  }>;
+  educations?: Array<{
+    schoolName?: string;
+    location?: string;
+    degree?: string;
+    startDate?: string;
+    endDate?: string;
+    description?: string;
+  }>;
+  skills?: Array<{ name?: string; level?: string }>;
+  languages?: Array<{ name?: string; proficiency?: string }>;
+  certifications?: Array<{ name?: string; issuer?: string; date?: string }>;
+  awards?: Array<{ title?: string; issuer?: string; date?: string }>;
+  websites?: Array<{ label?: string; url?: string }>;
+  references?: Array<{ name?: string; position?: string; company?: string; email?: string; phone?: string }>;
+  hobbies?: Array<{ name?: string } | string>;
+  customSections?: Array<{ sectionName?: string; description?: string }>;
 }
 
-function mapWithId(items: any[] | undefined, mapper: (item: any) => Record<string, any>) {
-  return (items || []).map((item: any) => ({ id: generateId(), ...mapper(item) }));
+function mapWithId<T>(items: T[] | undefined, mapper: (item: T) => Record<string, unknown>) {
+  return (items || []).map((item) => ({ id: generateId(), ...mapper(item) }));
 }
 
 function buildResumeParsePrompt(text: string): string {
@@ -173,18 +200,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
         { error: "File size exceeds 10MB limit" },
         { status: 400 }
       );
     }
 
-    const fileName = file.name.toLowerCase();
-    const isPDF = fileName.endsWith(".pdf");
-    const isDOCX = fileName.endsWith(".docx");
+    const { isPDF, isSupported } = getUploadKind(file.name);
 
-    if (!isPDF && !isDOCX) {
+    if (!isSupported) {
       return NextResponse.json(
         { error: "Only PDF and DOCX files are supported" },
         { status: 400 }
@@ -197,7 +222,7 @@ export async function POST(request: NextRequest) {
     let extractedText: string;
     try {
       extractedText = await extractTextFromFile(buffer, isPDF);
-    } catch (parseError: any) {
+    } catch (parseError) {
       console.error("[Resume Parse] File extraction error:", parseError);
       return NextResponse.json(
         { error: "Failed to read file content. The file may be corrupted or password-protected." },
@@ -248,22 +273,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Resume Parse] AI response from ${model} (${content.length} chars)`);
 
-    const parsed = extractJsonObject(content);
+    const parsed = extractJsonObject<RawParsedResume>(content);
 
     if (!parsed) {
       console.error("[Resume Parse] AI returned invalid JSON:", content.slice(0, 500));
       throw new Error("Failed to parse resume content. Please try again.");
     }
 
-    const c = parsed.contact || {};
-
     const resumeData = {
       contact: {
-        firstName: c.firstName || "",
-        lastName: c.lastName || "",
-        desiredJobTitle: c.desiredJobTitle || "",
-        phone: c.phone || "",
-        email: c.email || "",
+        firstName: parsed.contact?.firstName || "",
+        lastName: parsed.contact?.lastName || "",
+        desiredJobTitle: parsed.contact?.desiredJobTitle || "",
+        phone: parsed.contact?.phone || "",
+        email: parsed.contact?.email || "",
       },
       experiences: mapWithId(parsed.experiences, (exp) => ({
         jobTitle: exp.jobTitle || "",
@@ -284,14 +307,14 @@ export async function POST(request: NextRequest) {
       })),
       skills: mapWithId(parsed.skills, (skill) => ({
         name: skill.name || "",
-        level: VALID_SKILL_LEVELS.includes(skill.level) ? skill.level : "Intermediate",
+        level: skill.level && VALID_SKILL_LEVELS.includes(skill.level) ? skill.level : "Intermediate",
         showLevel: true,
       })),
       summary: parsed.summary || "",
       finalize: {
         languages: mapWithId(parsed.languages, (lang) => ({
           name: lang.name || "",
-          proficiency: VALID_PROFICIENCIES.includes(lang.proficiency) ? lang.proficiency : "Fluent",
+          proficiency: lang.proficiency && VALID_PROFICIENCIES.includes(lang.proficiency) ? lang.proficiency : "Fluent",
         })),
         certifications: mapWithId(parsed.certifications, (cert) => ({
           name: cert.name || "",
@@ -333,7 +356,7 @@ export async function POST(request: NextRequest) {
         balanceUnits: chargeResult.balanceUnits,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     if (chargedRequest) {
       await refundCredits({
         userId: chargedRequest.userId,
@@ -350,7 +373,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[Resume Parse] Error:", error);
     return NextResponse.json(
-      { error: error.message || "An unexpected error occurred" },
+      { error: (error instanceof Error ? error.message : "") || "An unexpected error occurred" },
       { status: 500 }
     );
   }

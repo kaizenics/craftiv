@@ -12,6 +12,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Download, FileText, File } from "@/components/ui/icons";
 import { getCoverLetterTemplate } from "@/lib/cover-letter-templates";
+import { escapeHtml, toSafeFileName } from "@/lib/html-sanitize";
 import type { CoverLetterData } from "@/lib/types/cover-letter";
 
 type CoverLetterDownloadFormat = "pdf" | "docx" | "txt";
@@ -24,27 +25,11 @@ interface CoverLetterDownloadDialogProps {
   onClose: () => void;
 }
 
-function escapeHtml(input: string) {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function plainToHtmlParagraphs(value: string) {
   return value
     .split(/\r?\n\s*\r?\n/)
     .map((p) => `<p>${escapeHtml(p).replaceAll(/\r?\n/g, "<br/>")}</p>`)
     .join("");
-}
-
-function toSafeFileName(value: string) {
-  return (value || "cover-letter")
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function toPdfContentHtml(value: string) {
@@ -242,7 +227,7 @@ export function CoverLetterDownloadDialog({
   const [format, setFormat] = useState<CoverLetterDownloadFormat>("pdf");
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const safeFileName = useMemo(() => toSafeFileName(fileName), [fileName]);
+  const safeFileName = useMemo(() => toSafeFileName(fileName, "cover-letter"), [fileName]);
 
   const handleDownload = async () => {
     try {
