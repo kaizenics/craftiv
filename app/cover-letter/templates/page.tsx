@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { absoluteUrl, createPageMetadata } from "@/lib/seo";
+import { absoluteUrl, breadcrumbJsonLd, createPageMetadata } from "@/lib/seo";
 import CoverLetterTemplatesPageClient from "./client";
 
 export const metadata = createPageMetadata({
@@ -18,13 +18,21 @@ const coverLetterTemplatesJsonLd = {
   url: absoluteUrl("/cover-letter/templates"),
 };
 
+const coverLetterBreadcrumbJsonLd = breadcrumbJsonLd([
+  { name: "Home", path: "/" },
+  { name: "Cover Letter Templates", path: "/cover-letter/templates" },
+]);
+
 export default function CoverLetterTemplatesPage() {
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(coverLetterTemplatesJsonLd),
+          __html: JSON.stringify([
+            coverLetterTemplatesJsonLd,
+            coverLetterBreadcrumbJsonLd,
+          ]),
         }}
       />
       <Suspense fallback={null}>

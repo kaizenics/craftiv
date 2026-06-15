@@ -187,9 +187,9 @@ export function Works() {
           transition={{ duration: 0.6, delay: 0.15 }}
         >
           <div className="mx-auto max-w-3xl text-center">
-            <h3 className="font-display text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
               See the difference AI optimization makes
-            </h3>
+            </h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-zinc-600 sm:text-base">
               Drag the slider to compare a weak resume against Craftiv&apos;s Harvard template preview,
               built for cleaner recruiter scanning and ATS readability.
