@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { consumeRateLimitRule, type RateLimitDecision, type RateLimitRule, type RateLimitScope } from "@/lib/security/rate-limit";
+import { consumeRateLimitRule, type RateLimitDecision, type RateLimitRule } from "@/lib/security/rate-limit";
+import { buildRateLimitRules, type SecurityCategory } from "@/lib/security/rate-limit-rules";
 import { getClientIp, getClientIpFromHeaders } from "@/lib/security/request";
 import { hashForLogs, recordSecurityAlertCounter, securityLog, securityRequestId } from "@/lib/security/logging";
 
-export type SecurityCategory =
-  | "global"
-  | "ai_heavy"
-  | "pdf_export"
-  | "auth_sensitive";
+export type { SecurityCategory };
 
 type RateLimitResult = {
   allowed: boolean;
@@ -16,200 +13,6 @@ type RateLimitResult = {
   blockedRule?: RateLimitRule;
   decisions: Array<{ rule: RateLimitRule; decision: RateLimitDecision }>;
 };
-
-function toScope(category: SecurityCategory): RateLimitScope {
-  if (category === "ai_heavy") return "ai_heavy";
-  if (category === "pdf_export") return "pdf_export";
-  if (category === "auth_sensitive") return "auth_sensitive";
-  return "global_api";
-}
-
-function buildRules(params: {
-  category: SecurityCategory;
-  route: string;
-  ipHash: string;
-  userHash: string | null;
-}): RateLimitRule[] {
-  const rules: RateLimitRule[] = [];
-  const scope = toScope(params.category);
-
-  rules.push({
-    scope: "global_api",
-    route: params.route,
-    subjectType: "ip",
-    subjectId: params.ipHash,
-    windowName: "minutely",
-    windowSizeSeconds: 60,
-    limit: 120,
-  });
-
-  if (params.userHash) {
-    rules.push({
-      scope: "global_api",
-      route: params.route,
-      subjectType: "user",
-      subjectId: params.userHash,
-      windowName: "minutely",
-      windowSizeSeconds: 60,
-      limit: 60,
-    });
-  }
-
-  if (scope === "ai_heavy") {
-    rules.push({
-      scope,
-      route: params.route,
-      subjectType: "ip",
-      subjectId: params.ipHash,
-      windowName: "minutely",
-      windowSizeSeconds: 60,
-      limit: 30,
-    });
-    rules.push({
-      scope,
-      route: params.route,
-      subjectType: "ip",
-      subjectId: params.ipHash,
-      windowName: "daily",
-      windowSizeSeconds: 24 * 60 * 60,
-      limit: 600,
-    });
-
-    if (params.userHash) {
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "user",
-        subjectId: params.userHash,
-        windowName: "minutely",
-        windowSizeSeconds: 60,
-        limit: 10,
-      });
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "user",
-        subjectId: params.userHash,
-        windowName: "daily",
-        windowSizeSeconds: 24 * 60 * 60,
-        limit: 200,
-      });
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "ip_user",
-        subjectId: `${params.ipHash}:${params.userHash}`,
-        windowName: "minutely",
-        windowSizeSeconds: 60,
-        limit: 12,
-      });
-    }
-  }
-
-  if (scope === "pdf_export") {
-    rules.push({
-      scope,
-      route: params.route,
-      subjectType: "ip",
-      subjectId: params.ipHash,
-      windowName: "minutely",
-      windowSizeSeconds: 60,
-      limit: 15,
-    });
-    rules.push({
-      scope,
-      route: params.route,
-      subjectType: "ip",
-      subjectId: params.ipHash,
-      windowName: "daily",
-      windowSizeSeconds: 24 * 60 * 60,
-      limit: 100,
-    });
-
-    if (params.userHash) {
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "user",
-        subjectId: params.userHash,
-        windowName: "minutely",
-        windowSizeSeconds: 60,
-        limit: 6,
-      });
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "user",
-        subjectId: params.userHash,
-        windowName: "daily",
-        windowSizeSeconds: 24 * 60 * 60,
-        limit: 40,
-      });
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "ip_user",
-        subjectId: `${params.ipHash}:${params.userHash}`,
-        windowName: "minutely",
-        windowSizeSeconds: 60,
-        limit: 7,
-      });
-    }
-  }
-
-  if (scope === "auth_sensitive") {
-    rules.push({
-      scope,
-      route: params.route,
-      subjectType: "ip",
-      subjectId: params.ipHash,
-      windowName: "minutely",
-      windowSizeSeconds: 60,
-      limit: 12,
-    });
-    rules.push({
-      scope,
-      route: params.route,
-      subjectType: "ip",
-      subjectId: params.ipHash,
-      windowName: "daily",
-      windowSizeSeconds: 24 * 60 * 60,
-      limit: 120,
-    });
-
-    if (params.userHash) {
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "user",
-        subjectId: params.userHash,
-        windowName: "minutely",
-        windowSizeSeconds: 60,
-        limit: 8,
-      });
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "user",
-        subjectId: params.userHash,
-        windowName: "daily",
-        windowSizeSeconds: 24 * 60 * 60,
-        limit: 80,
-      });
-      rules.push({
-        scope,
-        route: params.route,
-        subjectType: "ip_user",
-        subjectId: `${params.ipHash}:${params.userHash}`,
-        windowName: "minutely",
-        windowSizeSeconds: 60,
-        limit: 8,
-      });
-    }
-  }
-
-  return rules;
-}
 
 async function consumeRules(rules: RateLimitRule[]): Promise<RateLimitResult> {
   const decisions: Array<{ rule: RateLimitRule; decision: RateLimitDecision }> = [];
@@ -245,7 +48,7 @@ export async function enforceRouteRateLimits(params: {
   const ip = getClientIpFromHeaders(params.requestHeaders);
   const ipHash = hashForLogs(ip);
   const userHash = params.userId ? hashForLogs(params.userId) : null;
-  const rules = buildRules({
+  const rules = buildRateLimitRules({
     category: params.category,
     route: params.route,
     ipHash,
