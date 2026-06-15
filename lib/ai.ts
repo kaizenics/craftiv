@@ -1,6 +1,8 @@
 ﻿import OpenAI from "openai";
 import { TRPCError } from "@trpc/server";
 
+import type { ResumeDataJSON } from "@/db/schema";
+
 
 export const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -15,13 +17,22 @@ export const AI_MODEL = "google/gemini-2.5-flash";
 export const AI_MODEL_FALLBACK = "moonshotai/kimi-k2.5";
 
 
-export function extractContent(choice: any): string | null {
+export function extractContent(choice: unknown): string | null {
+  const c = choice as
+    | {
+        message?: { content?: string; reasoning_content?: string; reasoning?: string } | string;
+        text?: string;
+      }
+    | null
+    | undefined;
+  const message = c?.message;
+  const msgObject = message && typeof message === "object" ? message : undefined;
   return (
-    choice?.message?.content ??
-    choice?.message?.reasoning_content ??
-    choice?.message?.reasoning ??
-    choice?.text ??
-    (typeof choice?.message === "string" ? choice.message : null)
+    msgObject?.content ??
+    msgObject?.reasoning_content ??
+    msgObject?.reasoning ??
+    c?.text ??
+    (typeof message === "string" ? message : null)
   );
 }
 
@@ -43,13 +54,13 @@ export async function callWithFallback(
 
       const response = await openrouter.chat.completions.create({
         model,
-        messages: params.messages as any,
+        messages: params.messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
         max_tokens: params.maxTokens,
         temperature: params.temperature,
       });
 
       const elapsed = Date.now() - start;
-      const finish = (response.choices[0] as any)?.finish_reason ?? "N/A";
+      const finish = response.choices[0]?.finish_reason ?? "N/A";
       const tokens = response.usage?.total_tokens ?? "N/A";
       const content = extractContent(response.choices[0])?.trim();
 
@@ -64,8 +75,8 @@ export async function callWithFallback(
         `[AI] Empty content from ${model}. Choice:`,
         JSON.stringify(response.choices[0], null, 2).slice(0, 500),
       );
-    } catch (error: any) {
-      console.error(`[AI] Error from ${model}:`, error.message ?? error);
+    } catch (error) {
+      console.error(`[AI] Error from ${model}:`, error instanceof Error ? error.message : error);
     }
   }
 
@@ -76,22 +87,22 @@ export async function callWithFallback(
 }
 
 
-export function extractJsonObject(raw: string): Record<string, any> | null {
+export function extractJsonObject<T = Record<string, unknown>>(raw: string): T | null {
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try {
-    return JSON.parse(match[0]);
+    return JSON.parse(match[0]) as T;
   } catch {
     return null;
   }
 }
 
-export function extractJsonArray(raw: string): any[] | null {
+export function extractJsonArray<T = unknown>(raw: string): T[] | null {
   const match = raw.match(/\[[\s\S]*\]/);
   if (!match) return null;
   try {
     const parsed = JSON.parse(match[0]);
-    return Array.isArray(parsed) ? parsed : null;
+    return Array.isArray(parsed) ? (parsed as T[]) : null;
   } catch {
     return null;
   }
@@ -337,7 +348,7 @@ export interface ResumeTextField {
   value: string;
 }
 
-export function extractResumeTextFields(data: any): ResumeTextField[] {
+export function extractResumeTextFields(data: ResumeDataJSON): ResumeTextField[] {
   const fields: ResumeTextField[] = [];
 
   if (data.summary) fields.push({ field: "Summary", value: data.summary });
@@ -350,7 +361,7 @@ export function extractResumeTextFields(data: any): ResumeTextField[] {
   }
 
   if (Array.isArray(data.experiences)) {
-    data.experiences.forEach((exp: any, i: number) => {
+    data.experiences.forEach((exp, i) => {
       const n = i + 1;
       if (exp.jobTitle) fields.push({ field: `Experience ${n} - Job Title`, value: exp.jobTitle });
       if (exp.employer) fields.push({ field: `Experience ${n} - Employer`, value: exp.employer });
@@ -359,7 +370,7 @@ export function extractResumeTextFields(data: any): ResumeTextField[] {
   }
 
   if (Array.isArray(data.educations)) {
-    data.educations.forEach((edu: any, i: number) => {
+    data.educations.forEach((edu, i) => {
       const n = i + 1;
       if (edu.schoolName) fields.push({ field: `Education ${n} - School`, value: edu.schoolName });
       if (edu.degree) fields.push({ field: `Education ${n} - Degree`, value: edu.degree });
@@ -368,7 +379,7 @@ export function extractResumeTextFields(data: any): ResumeTextField[] {
   }
 
   if (Array.isArray(data.skills)) {
-    data.skills.forEach((skill: any, i: number) => {
+    data.skills.forEach((skill, i) => {
       if (skill.name) fields.push({ field: `Skill ${i + 1}`, value: skill.name });
     });
   }
