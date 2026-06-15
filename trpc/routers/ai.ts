@@ -5,6 +5,14 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { resumes, type ResumeDataJSON } from "@/db/schema";
 import {
+  callWithFallback,
+  extractJsonArray,
+  extractJsonObject,
+  extractResumeTextFields,
+  formatFieldsForPrompt,
+} from "@/lib/ai";
+import {
+  EXP_SPLIT_TOKEN,
   buildAchievementBuilderPrompt,
   buildCoverLetterPrompt,
   buildImproveFullResumePrompt,
@@ -12,12 +20,7 @@ import {
   buildKeywordSuggestionPrompt,
   buildSpellCheckPrompt,
   buildSuggestionPrompt,
-  callWithFallback,
-  extractJsonArray,
-  extractJsonObject,
-  extractResumeTextFields,
-  formatFieldsForPrompt,
-} from "@/lib/ai";
+} from "@/lib/prompts";
 import { analyzeResumeData, buildAtsImpact } from "@/lib/ats";
 import {
   CHATBOT_NO_CODE_REPLY,
@@ -354,13 +357,13 @@ export const aiRouter = createTRPCRouter({
             nextData.experiences = applyDelimitedDescriptions(
               nextData.experiences,
               improved,
-              "<<<EXP_SPLIT>>>",
+              EXP_SPLIT_TOKEN,
             );
           } else {
             nextData.educations = applyDelimitedDescriptions(
               nextData.educations,
               improved,
-              "<<<EXP_SPLIT>>>",
+              EXP_SPLIT_TOKEN,
             );
           }
 

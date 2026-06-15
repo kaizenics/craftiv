@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, ChevronUp, ChevronDown } from '@/components/ui/icons';
 import { MonthPicker } from './month-picker';
 import { motion } from 'motion/react';
+import { createArrayHandlers } from '@/lib/form-array';
 
 interface ExperienceFormProps {
   data: Experience[];
@@ -15,6 +16,12 @@ interface ExperienceFormProps {
 }
 
 export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
+  const {
+    update: updateExperience,
+    remove: removeExperience,
+    move: moveExperience,
+  } = createArrayHandlers(data, onChange);
+
   const addExperience = () => {
     const newExperience: Experience = {
       id: generateId(),
@@ -27,26 +34,6 @@ export function ExperienceForm({ data, onChange }: ExperienceFormProps) {
       description: '',
     };
     onChange([newExperience, ...data]);
-  };
-
-  const updateExperience = (id: string, field: keyof Experience, value: string | boolean) => {
-    onChange(
-      data.map((exp) =>
-        exp.id === id ? { ...exp, [field]: value } : exp
-      )
-    );
-  };
-
-  const removeExperience = (id: string) => {
-    onChange(data.filter((exp) => exp.id !== id));
-  };
-
-  const moveExperience = (index: number, direction: 'up' | 'down') => {
-    const newData = [...data];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= data.length) return;
-    [newData[index], newData[newIndex]] = [newData[newIndex], newData[index]];
-    onChange(newData);
   };
 
   return (

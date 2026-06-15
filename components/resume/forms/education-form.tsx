@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Trash2, ChevronUp, ChevronDown } from '@/components/ui/icons';
 import { MonthPicker } from './month-picker';
 import { motion } from 'motion/react';
+import { createArrayHandlers } from '@/lib/form-array';
 
 interface EducationFormProps {
   data: Education[];
@@ -14,6 +15,12 @@ interface EducationFormProps {
 }
 
 export function EducationForm({ data, onChange }: EducationFormProps) {
+  const {
+    update: updateEducation,
+    remove: removeEducation,
+    move: moveEducation,
+  } = createArrayHandlers(data, onChange);
+
   const addEducation = () => {
     const newEducation: Education = {
       id: generateId(),
@@ -25,26 +32,6 @@ export function EducationForm({ data, onChange }: EducationFormProps) {
       description: '',
     };
     onChange([...data, newEducation]);
-  };
-
-  const updateEducation = (id: string, field: keyof Education, value: string) => {
-    onChange(
-      data.map((edu) =>
-        edu.id === id ? { ...edu, [field]: value } : edu
-      )
-    );
-  };
-
-  const removeEducation = (id: string) => {
-    onChange(data.filter((edu) => edu.id !== id));
-  };
-
-  const moveEducation = (index: number, direction: 'up' | 'down') => {
-    const newData = [...data];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= data.length) return;
-    [newData[index], newData[newIndex]] = [newData[newIndex], newData[index]];
-    onChange(newData);
   };
 
   return (
