@@ -39,8 +39,28 @@ import {
 } from "@/lib/credits";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
+import type { Database } from "@/db";
 
-async function getOwnedResume(db: any, resumeId: string, userId: string) {
+type ResumeRow = typeof resumes.$inferSelect;
+
+/** Shape of a spell-check issue as returned by the AI (fields validated by filtering). */
+interface RawSpellIssue {
+  type?: string;
+  field: string;
+  original: string;
+  corrected: string;
+  context: string;
+}
+
+/** Shape of a keyword suggestion as returned by the AI (fields validated by filtering). */
+interface RawKeyword {
+  keyword: string;
+  importance: string;
+  section: string;
+  suggestion: string;
+}
+
+async function getOwnedResume(db: Database, resumeId: string, userId: string): Promise<ResumeRow> {
   const resume = await db.query.resumes.findFirst({
     where: eq(resumes.id, resumeId),
   });
@@ -55,8 +75,8 @@ async function getOwnedResume(db: any, resumeId: string, userId: string) {
   return resume;
 }
 
-function getResumeData(resume: any): ResumeDataJSON {
-  const data = resume.data as ResumeDataJSON | null;
+function getResumeData(resume: ResumeRow): ResumeDataJSON {
+  const data = resume.data;
   if (!data) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -423,9 +443,9 @@ export const aiRouter = createTRPCRouter({
           return { issues: [] };
         }
 
-        const issues = parsed
-          .filter((item: any) => item.field && item.original && item.corrected && item.context)
-          .map((item: any) => ({
+        const issues = (parsed as RawSpellIssue[])
+          .filter((item) => item.field && item.original && item.corrected && item.context)
+          .map((item) => ({
             type: item.type || "spelling",
             field: item.field,
             original: item.original,
@@ -452,7 +472,7 @@ export const aiRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await enforceAiMutationRateLimit(ctx, "generateSuggestion");
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-      const d = resume.data as any;
+      const d = resume.data;
       const jobTitle = d?.contact?.desiredJobTitle || "";
 
       const prompt = buildSuggestionPrompt(input.field, input.currentContent, jobTitle);
@@ -522,14 +542,14 @@ export const aiRouter = createTRPCRouter({
           return { keywords: [] };
         }
 
-        const keywords = parsed
-          .filter((item: any) => item.keyword && item.importance && item.section && item.suggestion)
-          .filter((item: any) =>
+        const keywords = (parsed as RawKeyword[])
+          .filter((item) => item.keyword && item.importance && item.section && item.suggestion)
+          .filter((item) =>
             missingKeywords.some(
               (keyword) => keyword.toLowerCase() === String(item.keyword).toLowerCase(),
             ),
           )
-          .map((item: any) => ({
+          .map((item) => ({
             keyword: item.keyword,
             importance: item.importance,
             section: item.section,
