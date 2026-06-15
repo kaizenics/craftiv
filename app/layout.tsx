@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Lora, Figtree } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -51,14 +51,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     url: "/",
     siteName: siteConfig.name,
-    images: [
-      {
-        url: "/craftiv.png",
-        width: 1200,
-        height: 630,
-        alt: "Craftiv AI resume builder and resume templates",
-      },
-    ],
+    // Social card image is provided by app/opengraph-image.tsx (1200x630).
     locale: "en_US",
     type: "website",
   },
@@ -66,7 +59,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteConfig.title,
     description: siteConfig.description,
-    images: ["/craftiv.png"],
+    // Card image is provided by app/twitter-image.tsx (1200x630).
   },
   robots: {
     index: true,
@@ -79,6 +72,11 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#3159e7",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
