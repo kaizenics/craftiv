@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { coverLetters, users } from "@/db/schema";
+import type { Database } from "@/db";
 import {
   coverLetterTemplateIds,
   normalizeCoverLetterData,
@@ -40,7 +41,7 @@ const updateCoverLetterSchema = z.object({
   title: z.string().min(1).optional(),
 });
 
-async function assertCanCreateCoverLetter(db: any, userId: string) {
+async function assertCanCreateCoverLetter(db: Database, userId: string) {
   const user = await db.query.users.findFirst({
     columns: {
       id: true,
