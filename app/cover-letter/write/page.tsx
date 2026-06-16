@@ -29,6 +29,8 @@ import {
   getCoverLetterTemplate,
   normalizeCoverLetterTemplateId,
 } from "@/lib/cover-letter-templates";
+import { escapeHtml, toSafeFileName } from "@/lib/html-sanitize";
+import { plainToHtmlParagraphs } from "@/lib/cover-letter-content";
 import {
   CoverLetterData,
   createEmptyCoverLetterData,
@@ -53,7 +55,6 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
-import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
 
 type DialogView = "pick" | "upload";
@@ -118,6 +119,10 @@ function WriteCoverLetterPageContent() {
     },
   });
 
+  /* The effects below initialise editor state from the URL params and the fetched
+     cover letter; they intentionally setState on load. Restructuring these sync
+     effects would be behavior-risky for no real gain. */
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setWorkingCoverLetterId(coverLetterId);
   }, [coverLetterId]);
@@ -158,6 +163,7 @@ function WriteCoverLetterPageContent() {
           }
     );
   }, [selectedTemplateId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ── Upload helpers ──────────────────────────────────────────────────────
 
@@ -219,60 +225,6 @@ function WriteCoverLetterPageContent() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const escapeHtml = (text: string) =>
-    text
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-
-  const plainToHtmlParagraphs = (text: string) => {
-    const normalized = text.replaceAll("\r", "").trim();
-    if (!normalized) return "";
-
-    // 1) Respect explicit paragraph breaks first.
-    let paragraphs = normalized
-      .split(/\n{2,}/)
-      .map((segment) => segment.trim())
-      .filter(Boolean);
-
-    if (paragraphs.length <= 1) {
-      // 2) If AI returns single-line output, infer natural paragraph boundaries.
-      const compact = normalized
-        .replace(/\s+(Best regards,|Kind regards,|Regards,|Sincerely,)/gi, "\n\n$1")
-        .replace(/\s+(Thank you for your (time|consideration)\.)/gi, "\n\n$1");
-
-      paragraphs = compact
-        .split(/\n{2,}/)
-        .map((segment) => segment.trim())
-        .filter(Boolean);
-    }
-
-    if (paragraphs.length <= 1) {
-      // 3) Final fallback: split by sentences into 3-4 readable blocks.
-      const sentences = normalized
-        .split(/(?<=[.!?])\s+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      if (sentences.length >= 4) {
-        const chunkCount = Math.min(4, Math.max(3, Math.ceil(sentences.length / 2)));
-        const chunkSize = Math.ceil(sentences.length / chunkCount);
-        const chunks: string[] = [];
-        for (let i = 0; i < sentences.length; i += chunkSize) {
-          chunks.push(sentences.slice(i, i + chunkSize).join(" "));
-        }
-        paragraphs = chunks;
-      } else {
-        paragraphs = [normalized];
-      }
-    }
-
-    return paragraphs
-      .map((segment) => `<p>${escapeHtml(segment).replaceAll(/\n/g, "<br/>")}</p>`)
-      .join("");
-  };
 
   // ── Generate from resume ───────────────────────────────────────────────
 
@@ -530,11 +482,6 @@ function WriteCoverLetterPageContent() {
     return "cover-letter";
   };
 
-  const toSafeFileName = (value: string) =>
-    (value || "cover-letter")
-      .replace(/[\\/:*?"<>|]/g, "_")
-      .replace(/\s+/g, " ")
-      .trim();
 
   const toPdfContentHtml = (value: string) => {
     const trimmed = value?.trim() ?? "";
@@ -730,7 +677,7 @@ function WriteCoverLetterPageContent() {
 
     try {
       setIsDownloadingPdf(true);
-      const fileName = toSafeFileName(getCoverLetterTitle());
+      const fileName = toSafeFileName(getCoverLetterTitle(), "cover-letter");
       const html = buildCoverLetterPdfHtml();
       let effectiveCoverLetterId = activeCoverLetterId;
       if (!effectiveCoverLetterId) {
