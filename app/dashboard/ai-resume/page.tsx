@@ -29,11 +29,17 @@ import { trpc } from "@/trpc/client";
 import type { ResumeDataJSON } from "@/db/schema";
 import type { AtsImpact } from "@/lib/ats";
 import { readSharedJobTargetDraft, writeSharedJobTargetDraft } from "@/lib/job-target";
+import { EXP_SPLIT_TOKEN } from "@/lib/prompts";
+import {
+  formatResumeDataAsText,
+  getBulletLines,
+  parseContentBlocks,
+  type ImprovedResume,
+} from "@/lib/ai-resume-content";
 
 
 type Tool = "improver" | "keywords" | "achievements";
 type Goal = "summary" | "experience" | "full";
-const EXPERIENCE_SPLIT_TOKEN = "<<<EXP_SPLIT>>>";
 type FullImprovedBlock = {
   key: string;
   label: string;
@@ -62,44 +68,6 @@ function formatDate(date: Date | string): string {
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays} days ago`;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function parseContentBlocks(content: string, fallbackLabel: string): Array<{ label: string; value: string }> {
-  const normalized = content.replace(/\r\n/g, "\n").trim();
-  if (!normalized) return [];
-  const chunks = normalized
-    .split(/\n{2,}/)
-    .map((c) => c.trim())
-    .filter((c) => Boolean(c) && c !== "---" && c !== EXPERIENCE_SPLIT_TOKEN);
-  return chunks.map((chunk, i) => {
-    const labeled = chunk.match(/^([^:\n]{2,100}):\s*\n([\s\S]*)$/);
-    if (labeled) return { label: labeled[1].trim(), value: labeled[2].trim() };
-    return { label: chunks.length === 1 ? fallbackLabel : `${fallbackLabel} ${i + 1}`, value: chunk };
-  });
-}
-
-function getBulletLines(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^[-•*]\s*/, ""));
-}
-
-function formatResumeDataAsText(d: Record<string, any>): string {
-  const parts: string[] = [];
-  if (d.summary) parts.push(`Summary:\n${d.summary}`);
-  if (Array.isArray(d.experiences)) {
-    for (const exp of d.experiences) {
-      if (exp.description?.trim()) parts.push(`${exp.jobTitle || "Role"} at ${exp.employer || "Company"}:\n${exp.description}`);
-    }
-  }
-  if (Array.isArray(d.educations)) {
-    for (const edu of d.educations) {
-      if (edu.description?.trim()) parts.push(`${edu.degree || "Degree"} at ${edu.schoolName || "School"}:\n${edu.description}`);
-    }
-  }
-  return parts.join("\n\n");
 }
 
 function renderAtsImpactSummary(impact: AtsImpact | null) {
@@ -183,7 +151,7 @@ export default function AIAssistantPage() {
   const [improverResult, setImproverResult] = useState<string | null>(null);
   const [improvedExperienceParts, setImprovedExperienceParts] = useState<string[] | null>(null);
   const [selectedImproverExperienceBlocks, setSelectedImproverExperienceBlocks] = useState<number[]>([]);
-  const [fullResumeImproved, setFullResumeImproved] = useState<Record<string, any> | null>(null);
+  const [fullResumeImproved, setFullResumeImproved] = useState<ImprovedResume | null>(null);
   const [fullImprovedBlocks, setFullImprovedBlocks] = useState<FullImprovedBlock[]>([]);
   const [selectedFullImprovedKeys, setSelectedFullImprovedKeys] = useState<string[]>([]);
   const [improverOriginal, setImproverOriginal] = useState<string | null>(null);
@@ -284,7 +252,7 @@ export default function AIAssistantPage() {
       .map((exp, blockIndex) => ({ ...exp, blockIndex }));
   }, [data]);
 
-  function buildFullImprovedBlocks(improved: Record<string, any>): FullImprovedBlock[] {
+  function buildFullImprovedBlocks(improved: ImprovedResume): FullImprovedBlock[] {
     const blocks: FullImprovedBlock[] = [];
 
     if (typeof improved.summary === "string" && improved.summary.trim()) {
@@ -297,7 +265,7 @@ export default function AIAssistantPage() {
     }
 
     if (Array.isArray(improved.experiences)) {
-      improved.experiences.forEach((exp: any, index: number) => {
+      improved.experiences.forEach((exp, index) => {
         if (!exp?.description?.trim()) return;
         const title = exp.jobTitle || data?.experiences?.[index]?.jobTitle || `Experience ${index + 1}`;
         blocks.push({
@@ -310,7 +278,7 @@ export default function AIAssistantPage() {
     }
 
     if (Array.isArray(improved.educations)) {
-      improved.educations.forEach((edu: any, index: number) => {
+      improved.educations.forEach((edu, index) => {
         if (!edu?.description?.trim()) return;
         const title = edu.degree || data?.educations?.[index]?.degree || `Education ${index + 1}`;
         blocks.push({
@@ -376,7 +344,7 @@ export default function AIAssistantPage() {
         const all = (data.experiences ?? [])
           .filter((e) => e.description?.trim())
           .map((e) => e.description)
-          .join(`\n\n${EXPERIENCE_SPLIT_TOKEN}\n\n`);
+          .join(`\n\n${EXP_SPLIT_TOKEN}\n\n`);
         const res = await improveSection.mutateAsync({
           resumeId: activeResumeId,
           section: "experience",
@@ -386,7 +354,7 @@ export default function AIAssistantPage() {
         });
         setImproverImpact(res.atsImpact);
         const parts = res.improved
-          .split(EXPERIENCE_SPLIT_TOKEN)
+          .split(EXP_SPLIT_TOKEN)
           .map((p) => p.trim())
           .filter(Boolean);
         if (parts.length > 0) {
@@ -396,7 +364,7 @@ export default function AIAssistantPage() {
         } else {
           setImprovedExperienceParts(null);
           setSelectedImproverExperienceBlocks([]);
-          setImproverResult(res.improved.replaceAll(EXPERIENCE_SPLIT_TOKEN, "").trim());
+          setImproverResult(res.improved.replaceAll(EXP_SPLIT_TOKEN, "").trim());
         }
       } else {
         const res = await improveFullResume.mutateAsync({
@@ -404,14 +372,15 @@ export default function AIAssistantPage() {
           targetRole: targetRole || undefined,
           jobDescription: jobDescriptionImprover.trim() || undefined,
         });
-        setFullResumeImproved(res.improved);
+        const improved = res.improved as ImprovedResume;
+        setFullResumeImproved(improved);
         setImproverImpact(res.atsImpact);
-        const blocks = buildFullImprovedBlocks(res.improved);
+        const blocks = buildFullImprovedBlocks(improved);
         setFullImprovedBlocks(blocks);
         setSelectedFullImprovedKeys(blocks.map((block) => block.key));
-        setImproverResult(formatResumeDataAsText(res.improved));
+        setImproverResult(formatResumeDataAsText(improved));
       }
-    } catch (e: any) { setError(e.message || "Something went wrong. Please try again."); }
+    } catch (e) { setError((e instanceof Error ? e.message : "") || "Something went wrong. Please try again."); }
   }
 
   async function handleImproverApply() {
@@ -451,27 +420,29 @@ export default function AIAssistantPage() {
           return;
         }
         const selected = new Set(selectedFullImprovedKeys);
-        const improved = fullResumeImproved as any;
+        const improved = fullResumeImproved;
 
-        let nextData: any = { ...data };
+        const nextData: ResumeDataJSON = { ...data };
 
         if (selected.has("summary") && typeof improved.summary === "string") {
           nextData.summary = improved.summary;
         }
 
-        if (Array.isArray(improved.experiences) && Array.isArray(data.experiences)) {
-          nextData.experiences = data.experiences.map((exp: any, index: number) => {
+        const improvedExperiences = improved.experiences;
+        if (Array.isArray(improvedExperiences) && Array.isArray(data.experiences)) {
+          nextData.experiences = data.experiences.map((exp, index) => {
             if (!selected.has(`experience:${index}`)) return exp;
-            const improvedExp = improved.experiences[index];
+            const improvedExp = improvedExperiences[index];
             if (!improvedExp?.description) return exp;
             return { ...exp, description: improvedExp.description };
           });
         }
 
-        if (Array.isArray(improved.educations) && Array.isArray(data.educations)) {
-          nextData.educations = data.educations.map((edu: any, index: number) => {
+        const improvedEducations = improved.educations;
+        if (Array.isArray(improvedEducations) && Array.isArray(data.educations)) {
+          nextData.educations = data.educations.map((edu, index) => {
             if (!selected.has(`education:${index}`)) return edu;
-            const improvedEdu = improved.educations[index];
+            const improvedEdu = improvedEducations[index];
             if (!improvedEdu?.description) return edu;
             return { ...edu, description: improvedEdu.description };
           });
@@ -480,7 +451,7 @@ export default function AIAssistantPage() {
         await updateResume.mutateAsync({ id: activeResumeId, data: nextData });
       }
       setImproverApplied(true);
-    } catch (e: any) { setError(e.message || "Failed to apply changes."); }
+    } catch (e) { setError((e instanceof Error ? e.message : "") || "Failed to apply changes."); }
   }
 
   async function handleKeywordGenerate() {
@@ -488,7 +459,7 @@ export default function AIAssistantPage() {
     setError(null); setKeywordResults(null);
     try {      const res = await keywordBooster.mutateAsync({ resumeId: activeResumeId, jobDescription: jobDescriptionKw });
       setKeywordResults(res.keywords);
-    } catch (e: any) { setError(e.message || "Something went wrong."); }
+    } catch (e) { setError((e instanceof Error ? e.message : "") || "Something went wrong."); }
   }
 
   async function handleAchievementGenerate() {
@@ -497,7 +468,7 @@ export default function AIAssistantPage() {
     try {      const res = await achievementBuilder.mutateAsync({ resumeId: activeResumeId, experienceIndex: selectedExpIndex, targetRole: achievementTargetRole || undefined });
       setAchievementResult(res.bullets);
       setAchievementImpact(res.atsImpact);
-    } catch (e: any) { setError(e.message || "Something went wrong."); }
+    } catch (e) { setError((e instanceof Error ? e.message : "") || "Something went wrong."); }
   }
 
   async function handleAchievementApply() {
@@ -511,7 +482,7 @@ export default function AIAssistantPage() {
       updated[selectedExpIndex] = { ...updated[selectedExpIndex], description: achievementResult };
       await updateResume.mutateAsync({ id: activeResumeId, data: { ...data, experiences: updated } });
       setAchievementApplied(true);
-    } catch (e: any) { setError(e.message || "Failed to apply changes."); }
+    } catch (e) { setError((e instanceof Error ? e.message : "") || "Failed to apply changes."); }
   }
 
   async function handleCopy(text: string) {
