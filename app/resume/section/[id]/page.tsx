@@ -77,6 +77,8 @@ export default function ResumeSectionDynamicPage() {
 
     if (savedShowPhoto) {
       try {
+        // Intentional: initialise the photo toggle from the saved preference on load.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShowPhoto(JSON.parse(savedShowPhoto));
       } catch {
         setShowPhoto(false);
@@ -86,9 +88,9 @@ export default function ResumeSectionDynamicPage() {
     // Initialize resume data from database or create empty
     const data: ResumeData = {
       ...createEmptyResumeData(templateId),
-      ...(resume.data as any),
+      ...(resume.data as Partial<ResumeData>),
     };
-    data.sectionOrder = normalizeSectionOrder((resume.data as any)?.sectionOrder);
+    data.sectionOrder = normalizeSectionOrder((resume.data as Partial<ResumeData>)?.sectionOrder);
 
     setResumeData(data);
     localStorage.setItem("selectedTemplateId", templateId);
@@ -138,7 +140,13 @@ export default function ResumeSectionDynamicPage() {
       },
       onError: () => setSaveState("error"),
     });
-  }, [resumeId, updateResume, utils.resume.listSummary]);
+    // `updateResume.mutate` and `utils.resume.listSummary.invalidate` are stable
+    // references, and the resume data is read through refs above. Listing the
+    // unstable `updateResume`/`utils` objects here would make flushAutosave change
+    // identity every render, which re-subscribes (and re-flushes via cleanup) the
+    // listener effect below on every render — an infinite update loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId]);
 
   // Auto-save to database when resume data changes
   useEffect(() => {
@@ -166,7 +174,11 @@ export default function ResumeSectionDynamicPage() {
         debounceTimeoutRef.current = null;
       }
     };
-  }, [autoSaveDraftsEnabled, resumeData, currentStep, resumeId, isLoading, updateResume, utils.resume.listSummary]);
+    // Depend only on the actual save triggers. `updateResume`/`utils` change identity
+    // every render, which would re-run this effect (and re-schedule a save) on every
+    // render, causing the resume to re-save in a ~1s loop. mutate/invalidate are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSaveDraftsEnabled, resumeData, currentStep, resumeId, isLoading]);
 
   useEffect(() => {
     const handleVisibilityOrPageHide = () => flushAutosave();
