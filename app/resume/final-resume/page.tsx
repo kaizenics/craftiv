@@ -196,9 +196,11 @@ export default function FinalResumePage() {
       const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
       const hydratedFromDb: ResumeData = {
         ...createEmptyResumeData(dbTemplateId),
-        ...(savedResume.data as any),
+        ...(savedResume.data as Partial<ResumeData>),
       };
-      hydratedFromDb.sectionOrder = normalizeSectionOrder((savedResume.data as any)?.sectionOrder);
+      hydratedFromDb.sectionOrder = normalizeSectionOrder(
+        (savedResume.data as Partial<ResumeData>)?.sectionOrder,
+      );
       initialResumeData = hydratedFromDb;
     }
 
@@ -311,6 +313,9 @@ export default function FinalResumePage() {
 
     const requestId = latestSaveRequestRef.current + 1;
     latestSaveRequestRef.current = requestId;
+    // Intentional: show the "saving" indicator immediately on change; the debounced
+    // timeout below flips it back to "saved".
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("saving");
 
     const timeoutId = setTimeout(() => {
@@ -365,6 +370,9 @@ export default function FinalResumePage() {
 
     const requestId = latestSaveRequestRef.current + 1;
     latestSaveRequestRef.current = requestId;
+    // Intentional: show the "saving" indicator immediately on change; the debounced
+    // timeout below flips it back to "saved".
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("saving");
 
     const timeoutId = setTimeout(() => {
@@ -437,6 +445,8 @@ export default function FinalResumePage() {
 
   useEffect(() => {
     if (defaultSpellCheckEnabled) {
+      // Intentional: open the spell-check tab once the user's saved preference loads.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab((currentTab) => (currentTab === "templates" ? "spellcheck" : currentTab));
     }
   }, [defaultSpellCheckEnabled]);
@@ -451,83 +461,6 @@ export default function FinalResumePage() {
       </div>
     );
   }
-
-  // Get active sections based on filled data
-  const getActiveSections = () => {
-    const sections: { id: string; label: string; active: boolean }[] = [];
-
-    sections.push({
-      id: "contacts",
-      label: "Contacts",
-      active: !!(
-        resumeData.contact.firstName ||
-        resumeData.contact.lastName ||
-        resumeData.contact.email
-      ),
-    });
-
-    sections.push({
-      id: "experience",
-      label: "Experience",
-      active: resumeData.experiences.length > 0,
-    });
-
-    sections.push({
-      id: "education",
-      label: "Education",
-      active: resumeData.educations.length > 0,
-    });
-
-    sections.push({
-      id: "skills",
-      label: "Skills",
-      active: resumeData.skills.length > 0,
-    });
-
-    sections.push({
-      id: "summary",
-      label: "Summary",
-      active: !!resumeData.summary,
-    });
-
-    sections.push({
-      id: "languages",
-      label: "Languages",
-      active: resumeData.finalize.languages.length > 0,
-    });
-
-    sections.push({
-      id: "certifications",
-      label: "Certifications",
-      active: resumeData.finalize.certifications.length > 0,
-    });
-
-    sections.push({
-      id: "websites",
-      label: "Links",
-      active: resumeData.finalize.websites.length > 0,
-    });
-
-    sections.push({
-      id: "awards",
-      label: "Awards",
-      active: resumeData.finalize.awards.length > 0,
-    });
-
-    sections.push({
-      id: "references",
-      label: "References",
-      active: resumeData.finalize.references.length > 0,
-    });
-
-    sections.push({
-      id: "hobbies",
-      label: "Hobbies",
-      active: resumeData.finalize.hobbies.length > 0,
-    });
-
-    return sections.filter((s) => s.active);
-  };
 
   const getVisibleSectionOrder = (): ResumeSectionKey[] => {
     const visible = new Set<ResumeSectionKey>();
