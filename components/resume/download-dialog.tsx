@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -212,10 +211,7 @@ export function DownloadDialog({
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            Resume downloads uses 1 credit &middot;{' '}
-            <Link href="/pricing" className="text-foreground underline underline-offset-2">
-              Get more credits
-            </Link>
+            Unlimited resume downloads on every plan &mdash; no credits used.
           </p>
 
           <div className="flex gap-3 pt-2">

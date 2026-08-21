@@ -7,10 +7,11 @@ import { isUniqueConstraintError } from "@/lib/db-errors";
 
 export const CREDIT_UNITS_PER_CREDIT = 100;
 
+// Resume and cover-letter downloads are unlimited and free on every tier, so they
+// have no cost constant and no entry in SERVER_CREDIT_COSTS.
+
 export const COVER_LETTER_AI_SESSION_COST = 50;
-export const COVER_LETTER_DOWNLOAD_COST = 50;
 export const ATS_CHECK_COST = 100;
-export const RESUME_DOWNLOAD_COST = 100;
 export const AI_RESUME_IMPROVER_COST = 50;
 export const AI_KEYWORD_BOOSTER_COST = 25;
 export const AI_ACHIEVEMENT_BUILDER_COST = 25;
@@ -23,8 +24,6 @@ export const AI_COVER_LETTER_COST = 50;
 
 export const SERVER_CREDIT_COSTS = {
   ats_check: ATS_CHECK_COST,
-  resume_download: RESUME_DOWNLOAD_COST,
-  cover_letter_download: COVER_LETTER_DOWNLOAD_COST,
   cover_letter_ai_session: COVER_LETTER_AI_SESSION_COST,
   resume_parse: RESUME_PARSE_COST,
   resume_layout_chat: RESUME_LAYOUT_CHAT_COST,
