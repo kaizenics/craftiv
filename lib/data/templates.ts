@@ -239,7 +239,7 @@ export const templates: TemplateData[] = [
   {
     id: "zenith",
     name: "Zenith",
-    description: "Executive-focused layout with crisp metrics, clear sectioning, and ATS-friendly structure.",
+    description: "Executive single-column layout led by employer and tenure, with core competencies set for fast scanning.",
     thumbnail: "/templates/zenith.png",
     primaryColor: "#0f766e",
     category: ["all", "professional", "ats"],
@@ -248,7 +248,7 @@ export const templates: TemplateData[] = [
   {
     id: "pulse",
     name: "Pulse",
-    description: "High-energy but structured resume with prominent achievements and ATS-ready readability.",
+    description: "Modern two-column resume with a timeline of roles and a compact reference rail, ATS-ready throughout.",
     thumbnail: "/templates/pulse.png",
     primaryColor: "#ea580c",
     category: ["all", "modern", "professional", "ats"],
@@ -266,7 +266,7 @@ export const templates: TemplateData[] = [
   {
     id: "metro",
     name: "Metro",
-    description: "Clean lines and organized sections inspired by modern urban design.",
+    description: "Ledger layout where every role hangs off a date rail, so dates and employers line up down the page.",
     thumbnail: "/templates/metro.png",
     primaryColor: "#0d9488",
     category: ["all", "professional", "modern"],
