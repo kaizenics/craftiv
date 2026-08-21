@@ -129,10 +129,11 @@ export function SpellCheckPanel({
     try {
       const result = await spellCheck.mutateAsync({ resumeId });
       setIssues(result.issues);
+      // Only a completed scan counts as scanned — a failed one (out of credits,
+      // plan gate, network) must show the error, never the "no issues" result.
+      setHasScanned(true);
     } catch {
       setIssues([]);
-    } finally {
-      setHasScanned(true);
     }
   };
 
@@ -201,10 +202,6 @@ export function SpellCheckPanel({
   const visibleIssueIndexes = issues
     .map((_, index) => index)
     .filter((index) => !discardedIssues.has(index));
-  const isPremiumGateError =
-    spellCheck.error?.message?.includes("This feature is available on Plus and Pro plans.") ??
-    false;
-
   const unfixedCount = visibleIssueIndexes.filter(
     (index) => !appliedFixes.has(index),
   ).length;
@@ -252,7 +249,7 @@ export function SpellCheckPanel({
       )}
 
       {/* No issues */}
-      {hasScanned && visibleIssueIndexes.length === 0 && !isPremiumGateError && (
+      {hasScanned && visibleIssueIndexes.length === 0 && !spellCheck.error && (
         <div className="text-center py-6">
           <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-3" />
           <p className="font-medium text-green-700 dark:text-green-400">
