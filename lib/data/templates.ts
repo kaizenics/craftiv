@@ -8,6 +8,8 @@ export interface TemplateData {
   primaryColor: string;
   category: string[];
   layout: TemplateLayout;
+  /** Pinned to the front of the gallery and badged as the most-used template. */
+  featured?: boolean;
 }
 
 // Sample resume data for template previews
@@ -174,6 +176,16 @@ export const templateCategories = [
 // All resume templates
 export const templates: TemplateData[] = [
   {
+    id: "harvard",
+    name: "Harvard",
+    description: "The gold standard resume format used by Harvard Business School. Clean, professional, and universally accepted.",
+    thumbnail: "/templates/harvard.png",
+    primaryColor: "#1e1e1e",
+    category: ["all", "professional", "ats", "simple"],
+    layout: "harvard",
+    featured: true,
+  },
+  {
     id: "celestial",
     name: "Celestial",
     description: "Soft neutral tones with refined typography for a sophisticated and professional feel.",
@@ -334,14 +346,5 @@ export const templates: TemplateData[] = [
     primaryColor: "#6b7280",
     category: ["all", "professional", "ats"],
     layout: "classic",
-  },
-  {
-    id: "harvard",
-    name: "Harvard",
-    description: "The gold standard resume format used by Harvard Business School. Clean, professional, and universally accepted.",
-    thumbnail: "/templates/harvard.png",
-    primaryColor: "#1e1e1e",
-    category: ["all", "professional", "ats", "simple"],
-    layout: "harvard",
   },
 ];

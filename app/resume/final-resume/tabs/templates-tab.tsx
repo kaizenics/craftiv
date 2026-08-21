@@ -1,7 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { Check } from "@/components/ui/icons";
+import { Check, Star } from "@/components/ui/icons";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
@@ -102,6 +102,14 @@ export function TemplatesTab({
                 }
               />
             </div>
+            {template.featured && (
+              <div
+                className="absolute left-1 top-1 rounded-full border border-zinc-200 bg-white/95 p-1 shadow-sm"
+                title="Most used template"
+              >
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              </div>
+            )}
             {resumeData.templateId === template.id && (
               <div className="absolute top-1 right-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-full p-0.5">
                 <Check className="h-3 w-3" />

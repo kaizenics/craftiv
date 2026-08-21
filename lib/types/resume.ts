@@ -151,6 +151,7 @@ export interface ResumeTemplate {
   primaryColor: string;
   category: 'professional' | 'creative' | 'modern' | 'simple';
   layout: TemplateLayout;
+  featured?: boolean;
 }
 
 export type ResumeStep = 'contacts' | 'experience' | 'education' | 'skills' | 'summary' | 'finalize';

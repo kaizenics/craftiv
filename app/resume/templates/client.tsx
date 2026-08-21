@@ -47,6 +47,16 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
           />
         </div>
 
+        {/* Most-used badge */}
+        {template.featured && (
+          <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white/95 px-2.5 py-1 shadow-sm backdrop-blur-sm">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
+              Most used
+            </span>
+          </div>
+        )}
+
         {/* Hover Overlay with Use Template Button */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           <Button 
