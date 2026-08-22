@@ -135,7 +135,7 @@ export function PricingClient() {
       });
       window.location.assign(checkoutUrl);
     } catch (error) {
-      console.error("Failed to open Lemon Squeezy checkout:", error);
+      console.error("Failed to open Polar checkout:", error);
       alert("Unable to start checkout right now. Please try again.");
     } finally {
       setActiveCheckoutPlan(null);
@@ -313,7 +313,7 @@ export function PricingClient() {
             <div>
               <p className="font-semibold text-zinc-900">What payment provider do you use?</p>
               <p className="mt-1 text-zinc-600">
-                We use Lemon Squeezy for secure checkout and payment processing.
+                We use Polar for secure checkout and payment processing.
               </p>
             </div>
             <div>

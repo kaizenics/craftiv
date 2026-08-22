@@ -48,7 +48,7 @@
 
 ## 6) Purchase Contract
 
-- Lemon webhook success:
+- Polar webhook success (`order.paid`):
 - Validate transaction uniqueness (existing `processed_transactions`).
 - Map purchased pack -> credit amount (`active=+5`, `plus=+12`, `pro=+25`).
 - Add to `creditBalance`.

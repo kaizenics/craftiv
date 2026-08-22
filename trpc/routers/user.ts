@@ -14,10 +14,10 @@ import {
   coverLetters,
 } from "@/db/schema";
 import {
-  createLemonSqueezyCheckout,
+  createPolarCheckout,
   type CheckoutPlan,
-  validateLemonSqueezyConfig,
-} from "@/lib/lemon-squeezy";
+  validatePolarConfig,
+} from "@/lib/polar";
 import { fromCreditUnits } from "@/lib/credits";
 import {
   DEFAULT_USER_PREFERENCES,
@@ -158,12 +158,12 @@ export const userRouter = createTRPCRouter({
         "http://localhost:3000";
 
       const successUrl =
-        process.env.LEMON_SQUEEZY_SUCCESS_URL?.trim() ||
+        process.env.POLAR_SUCCESS_URL?.trim() ||
         `${origin.replace(/\/$/, "")}/dashboard/settings`;
 
       try {
-        validateLemonSqueezyConfig();
-        const checkoutUrl = await createLemonSqueezyCheckout({
+        validatePolarConfig();
+        const checkoutUrl = await createPolarCheckout({
           userId: ctx.user.id,
           userEmail: ctx.user.email,
           plan: input.plan as CheckoutPlan,
@@ -172,7 +172,7 @@ export const userRouter = createTRPCRouter({
 
         return { checkoutUrl };
       } catch (error) {
-        console.error("Failed to create Lemon Squeezy checkout:", error);
+        console.error("Failed to create Polar checkout:", error);
         const details =
           error instanceof Error
             ? error.message

@@ -50,19 +50,25 @@ npm run dev
 
 ### Environment Variables
 
-Set these variables for Lemon Squeezy checkout and webhook handling:
+Set these variables for Polar checkout and webhook handling:
 
-- `LEMON_SQUEEZY_API_KEY`
-- `LEMON_SQUEEZY_STORE_ID`
-- `LEMON_SQUEEZY_VARIANT_ID_ACTIVE`
-- `LEMON_SQUEEZY_VARIANT_ID_PLUS`
-- `LEMON_SQUEEZY_VARIANT_ID_PRO`
-- `LEMON_SQUEEZY_SUCCESS_URL` (optional, defaults to `/dashboard/settings`)
+- `POLAR_ACCESS_TOKEN` — organization access token (`polar_oat_…`)
+- `POLAR_SERVER` — `sandbox` or `production` (defaults to `sandbox`)
+- `POLAR_PRODUCT_ID_ACTIVE`
+- `POLAR_PRODUCT_ID_PLUS`
+- `POLAR_PRODUCT_ID_PRO`
+- `POLAR_WEBHOOK_SECRET` — shown once when you create the webhook endpoint
+- `POLAR_SUCCESS_URL` (optional, defaults to `/dashboard/settings`)
 - `NEXT_PUBLIC_APP_URL` (optional fallback for URL generation)
 
-Configure your Lemon Squeezy webhook callback URL to:
+Sandbox and production are separate Polar environments with their own tokens and
+product IDs, so every value above changes when you flip `POLAR_SERVER`.
 
-- `/api/payments/lemonsqueezy/webhook`
+Configure your Polar webhook endpoint to point at:
+
+- `/api/payments/polar/webhook`
+
+with format **Raw** and these events enabled: `order.paid`, `order.refunded`.
 
 ## 📝 Scripts
 
