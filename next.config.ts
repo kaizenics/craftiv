@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 
+const PLAYWRIGHT_CORE_FILES = [
+  "./node_modules/playwright-core/**/*",
+  "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/**/*",
+];
+
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image.
   output: "standalone",
@@ -53,6 +58,15 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  // Tracing copies playwright-core's JS but not the data files it reads at
+  // runtime (browsers.json), so the routes that launch Chromium ask for the
+  // package wholesale. The .pnpm path is the real directory — node_modules/
+  // playwright-core is only a symlink to it, which the glob will not walk.
+  outputFileTracingIncludes: {
+    "/api/resume/pdf": PLAYWRIGHT_CORE_FILES,
+    "/api/cover-letter/pdf": PLAYWRIGHT_CORE_FILES,
+    "/api/cover-letter/export": PLAYWRIGHT_CORE_FILES,
   },
 };
 
