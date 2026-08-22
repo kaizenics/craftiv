@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Upload,
@@ -30,6 +31,7 @@ export default function ResumeUploadPageClient() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [outOfCredits, setOutOfCredits] = useState(false);
 
   const validateFile = (file: File): string | null => {
     const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
@@ -99,6 +101,7 @@ export default function ResumeUploadPageClient() {
     }
 
     setUploadState("scanning");
+    setOutOfCredits(false);
 
     try {
       const formData = new FormData();
@@ -115,8 +118,20 @@ export default function ResumeUploadPageClient() {
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to parse resume");
+        const errorData = await response.json().catch(() => ({}));
+        // A credit failure answers with { code, message, ... } and no `error`,
+        // so reading only `error` used to bury the reason under a generic string.
+        if (errorData.code === "INSUFFICIENT_CREDITS") {
+          setUploadState("error");
+          setOutOfCredits(true);
+          setErrorMessage(
+            `Scanning a resume uses ${errorData.requiredCredits} credit${
+              errorData.requiredCredits === 1 ? "" : "s"
+            } and your balance is ${errorData.currentBalance}.`,
+          );
+          return;
+        }
+        throw new Error(errorData.message || errorData.error || "Failed to parse resume");
       }
 
       const { data } = await response.json();
@@ -344,7 +359,17 @@ export default function ResumeUploadPageClient() {
             className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3"
           >
             <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-            <p className="text-sm text-red-700">{errorMessage}</p>
+            <div className="text-sm text-red-700">
+              <p>{errorMessage}</p>
+              {outOfCredits && (
+                <Link
+                  href="/pricing"
+                  className="mt-1 inline-block font-medium underline underline-offset-2"
+                >
+                  Get more credits
+                </Link>
+              )}
+            </div>
           </motion.div>
         )}
 

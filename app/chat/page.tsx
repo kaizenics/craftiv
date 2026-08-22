@@ -415,7 +415,7 @@ export default function ChatPage() {
 
       const payload = (await response.json()) as ResumeParseResponse;
       if (!response.ok || !payload.data) {
-        throw new Error(payload.error || "Failed to parse file.");
+        throw new Error(payload.message || payload.error || "Failed to parse file.");
       }
 
       const context = buildResumeAttachmentContext(payload.data);

@@ -39,6 +39,8 @@ export interface ResumeParseResponse {
     }>;
   };
   error?: string;
+  /** Credit failures answer with `message` (and no `error`). */
+  message?: string;
 }
 
 export const LEGACY_CHAT_STORAGE_KEY = "crafty-chat-session-v1";
