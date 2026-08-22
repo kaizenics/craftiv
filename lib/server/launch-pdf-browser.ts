@@ -2,22 +2,15 @@ type LaunchResult = Awaited<
   ReturnType<(typeof import("playwright-core"))["chromium"]["launch"]>
 >;
 
-const SANDBOX_ARGS = ["--no-sandbox", "--disable-setuid-sandbox"] as const;
+// Containers give /dev/shm only 64MB by default, which is where Chromium
+// crashes rendering a full page; --disable-dev-shm-usage moves it to /tmp.
+const SANDBOX_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage",
+] as const;
 
 export async function launchPdfBrowser(): Promise<LaunchResult> {
-  if (process.env.VERCEL) {
-    const [{ chromium }, chromiumPack] = await Promise.all([
-      import("playwright-core"),
-      import("@sparticuz/chromium"),
-    ]);
-
-    return chromium.launch({
-      args: [...chromiumPack.default.args, ...SANDBOX_ARGS],
-      executablePath: await chromiumPack.default.executablePath(),
-      headless: true,
-    });
-  }
-
   const { chromium } = await import("playwright-core");
   const localExecutablePath =
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ??
@@ -30,8 +23,8 @@ export async function launchPdfBrowser(): Promise<LaunchResult> {
       ...(localExecutablePath ? { executablePath: localExecutablePath } : {}),
     });
   } catch {
-    // Keep local DX working when developers use `playwright` package,
-    // while avoiding static tracing of that package into Vercel functions.
+    // Fall back to the full `playwright` package and its downloaded browser,
+    // which is how a dev machine without a system Chromium resolves this.
     const playwrightPkg = ["play", "wright"].join("");
     const { chromium: localChromium } = (await import(playwrightPkg)) as typeof import("playwright");
 

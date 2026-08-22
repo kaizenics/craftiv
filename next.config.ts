@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker image.
+  output: "standalone",
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
@@ -51,14 +53,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-  },
-  outputFileTracingIncludes: {
-    "/api/resume/pdf": [
-      "./node_modules/@sparticuz/chromium/bin/**/*",
-    ],
-    "/api/cover-letter/pdf": [
-      "./node_modules/@sparticuz/chromium/bin/**/*",
-    ],
   },
 };
 
