@@ -3,7 +3,9 @@
 # Craftiv on Coolify.
 #
 # Next.js runs from its standalone output, and the PDF export drives a real
-# Chromium, so the runtime image installs one from Debian.
+# Chromium — Playwright's own build, installed during the build stage and
+# copied in. A distro Chromium will not do: Debian's dies on startup because
+# its crashpad handler rejects the flags Playwright passes.
 
 FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME="/pnpm" \
@@ -16,7 +18,8 @@ WORKDIR /app
 
 # ── Dependencies ────────────────────────────────────────────────────────────
 FROM base AS deps
-# The runtime image supplies Chromium, so skip Playwright's browser download.
+# The browser is installed explicitly in the builder stage, so skip the
+# download Playwright's own install script would do here.
 # HUSKY=0 stops the repo's `prepare` hook from failing the install: the build
 # context carries no .git (see .dockerignore), and husky exits non-zero without it.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
@@ -49,9 +52,17 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     TURSO_DATABASE_URL=$TURSO_DATABASE_URL \
     TURSO_AUTH_TOKEN=$TURSO_AUTH_TOKEN \
-    HUSKY=0
+    HUSKY=0 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY --from=deps /app/node_modules ./node_modules
+
+# Ahead of the source copy so the download is not repeated on every code change.
+# The version comes from the installed playwright package, which keeps the
+# browser matched to playwright-core without pinning a version here. Only the
+# headless shell is fetched — every launch in this app is headless.
+RUN pnpm exec playwright install --only-shell chromium
+
 COPY . .
 RUN pnpm build
 
@@ -59,17 +70,16 @@ RUN pnpm build
 # ── Runtime ─────────────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runner
 
-# PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is what lib/server/launch-pdf-browser.ts
-# passes to playwright-core.
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Chromium for the resume/cover-letter PDF routes, plus the fonts it falls back
-# to when a template's Google Font cannot be fetched. ca-certificates lets it
-# fetch them over HTTPS in the first place.
+# Chromium's shared libraries, plus the fonts it falls back to when a template's
+# Google Font cannot be fetched (ca-certificates lets it fetch them at all).
+# Debian's chromium package is installed for its dependency closure only — the
+# browser that actually runs is Playwright's, copied in below.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         chromium \
@@ -83,6 +93,8 @@ RUN apt-get update \
 WORKDIR /app
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /ms-playwright /ms-playwright
 
 # Standalone carries its own traced node_modules and server.js; static assets
 # and public/ are not part of it and have to come across separately.

@@ -13,36 +13,46 @@ const SANDBOX_ARGS = [
 ] as const;
 
 /**
- * Where a system Chromium tends to live, most specific first. The env vars come
- * from the deployment (the Docker image sets the first one); the rest are the
- * paths Debian, Alpine and Google's own package install to.
+ * Where a distro-packaged Chromium tends to live. These are a last resort: a
+ * distro build is not the one Playwright was tested against, and Debian's in
+ * particular dies on startup because its crashpad handler rejects the flags
+ * Playwright passes. Prefer the browser Playwright installed for itself.
  */
-function chromiumCandidates(): string[] {
-  const candidates = [
-    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-    process.env.CHROME_EXECUTABLE_PATH,
-    "/usr/bin/chromium",
-    "/usr/lib/chromium/chromium",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/google-chrome",
-  ];
-
-  return Array.from(
-    new Set(candidates.map((path) => path?.trim()).filter((path): path is string => !!path)),
-  );
-}
+const SYSTEM_CHROMIUM_PATHS = [
+  "/usr/bin/chromium",
+  "/usr/lib/chromium/chromium",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/google-chrome",
+];
 
 function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  // Playwright's launch errors carry a full browser log; the first lines say
+  // what actually went wrong and the rest is noise in an API response.
+  const message = error instanceof Error ? error.message : String(error);
+  return message.split("\n").slice(0, 4).join(" ").trim();
 }
 
 export async function launchPdfBrowser(): Promise<LaunchResult> {
   const { chromium } = await import("playwright-core");
   const failures: string[] = [];
 
-  for (const executablePath of chromiumCandidates()) {
-    if (!existsSync(executablePath)) {
-      failures.push(`${executablePath}: not present`);
+  const explicitPath = (
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? process.env.CHROME_EXECUTABLE_PATH
+  )?.trim();
+
+  const attempts: Array<{ label: string; executablePath?: string }> = [
+    // An operator naming a binary outranks everything else.
+    ...(explicitPath ? [{ label: explicitPath, executablePath: explicitPath }] : []),
+    // Playwright's own browser, version-matched to playwright-core. The Docker
+    // image installs it during the build; locally it comes from
+    // `playwright install`.
+    { label: "playwright browser registry" },
+    ...SYSTEM_CHROMIUM_PATHS.map((path) => ({ label: path, executablePath: path })),
+  ];
+
+  for (const attempt of attempts) {
+    if (attempt.executablePath && !existsSync(attempt.executablePath)) {
+      failures.push(`${attempt.label}: not present`);
       continue;
     }
 
@@ -50,19 +60,11 @@ export async function launchPdfBrowser(): Promise<LaunchResult> {
       return await chromium.launch({
         headless: true,
         args: [...SANDBOX_ARGS],
-        executablePath,
+        ...(attempt.executablePath ? { executablePath: attempt.executablePath } : {}),
       });
     } catch (error) {
-      failures.push(`${executablePath}: ${describe(error)}`);
+      failures.push(`${attempt.label}: ${describe(error)}`);
     }
-  }
-
-  // No system browser worked. Let playwright-core try its own registry, which is
-  // how a dev machine resolves this after `playwright install`.
-  try {
-    return await chromium.launch({ headless: true, args: [...SANDBOX_ARGS] });
-  } catch (error) {
-    failures.push(`playwright registry: ${describe(error)}`);
   }
 
   // Every path is reported, because a launch failure is otherwise invisible
