@@ -61,7 +61,10 @@ COPY --from=deps /app/node_modules ./node_modules
 # The version comes from the installed playwright package, which keeps the
 # browser matched to playwright-core without pinning a version here. Only the
 # headless shell is fetched — every launch in this app is headless.
-RUN pnpm exec playwright install --only-shell chromium
+#
+# Invoked directly rather than through `pnpm exec`, which insists on a
+# package.json in the working directory and there is none until `COPY . .`.
+RUN node node_modules/playwright/cli.js install --only-shell chromium
 
 COPY . .
 RUN pnpm build
