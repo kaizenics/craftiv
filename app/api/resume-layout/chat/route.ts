@@ -8,6 +8,7 @@ import {
   buildInsufficientCreditsPayload,
   consumeCredits,
   InsufficientCreditsError,
+  newChargeIdempotencyKey,
   RESUME_LAYOUT_CHAT_COST,
   refundCredits,
 } from "@/lib/credits";
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const requestId = crypto.randomUUID();
-    const chargeIdempotencyKey = `resume_layout_chat:${session.user.id}:${requestId}`;
+    const chargeIdempotencyKey = newChargeIdempotencyKey("resume_layout_chat", session.user.id);
     const chargeResult = await consumeCredits({
       userId: session.user.id,
       eventType: "resume_layout_chat",

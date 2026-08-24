@@ -38,6 +38,7 @@ import {
   CHATBOT_STREAM_COST,
   consumeCredits,
   InsufficientCreditsError,
+  newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
@@ -184,7 +185,7 @@ async function prechargeAiAction(params: {
   costUnits: number;
   metadata?: Record<string, unknown>;
 }) {
-  const idempotencyKey = `${params.eventType}:${params.userId}:${crypto.randomUUID()}`;
+  const idempotencyKey = newChargeIdempotencyKey(params.eventType, params.userId);
 
   try {
     const charge = await consumeCredits({

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -79,6 +79,11 @@ export const accounts = sqliteTable("accounts", {
   id: text("id").primaryKey(),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
+  // Required by Better Auth >= 1.6: the identity provider that issued this
+  // account. Sign-in matches on it, so it must be populated for every row —
+  // "https://accounts.google.com" for Google, "local:credential" for
+  // email/password. See migration 0010.
+  issuer: text("issuer").notNull(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -99,7 +104,9 @@ export const accounts = sqliteTable("accounts", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+}, (table) => [
+  uniqueIndex("accounts_issuer_account_id_idx").on(table.issuer, table.accountId),
+]);
 
 /**
  * Verifications Table

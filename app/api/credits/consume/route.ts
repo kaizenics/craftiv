@@ -5,6 +5,7 @@ import {
   buildInsufficientCreditsPayload,
   consumeCredits,
   InsufficientCreditsError,
+  newChargeIdempotencyKey,
   SERVER_CREDIT_COSTS,
   type ServerCreditEventType,
 } from "@/lib/credits";
@@ -12,11 +13,15 @@ import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { parseJsonWithLimit } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 
+/**
+ * `cost` and `requestId` are accepted but never authoritative: the cost comes
+ * from SERVER_CREDIT_COSTS and the idempotency key is minted server-side, so a
+ * caller cannot price its own request or opt out of being charged.
+ */
 type ConsumeCreditsBody = {
   eventType: ServerCreditEventType;
   cost?: number;
   requestId?: string;
-  idempotencyKey?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -46,16 +51,18 @@ export async function POST(request: NextRequest) {
     }
 
     const fixedCostUnits = SERVER_CREDIT_COSTS[body.eventType];
-    const requestId = body.requestId?.trim() || crypto.randomUUID();
-    const idempotencyKey =
-      body.idempotencyKey?.trim() ||
-      `${body.eventType}:${session.user.id}:${requestId}`;
+    // Server-owned. A client-supplied idempotency key is a client-supplied
+    // "don't charge me": replaying one key makes every later call free.
+    const idempotencyKey = newChargeIdempotencyKey(body.eventType, session.user.id);
     const result = await consumeCredits({
       userId: session.user.id,
       eventType: body.eventType,
       costUnits: fixedCostUnits,
       idempotencyKey,
-      metadata: body.metadata,
+      metadata: {
+        ...(body.metadata ?? {}),
+        clientRequestId: body.requestId?.trim() || null,
+      },
     });
 
     securityLog("credits_consumed", {

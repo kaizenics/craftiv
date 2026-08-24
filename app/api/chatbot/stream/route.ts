@@ -19,6 +19,7 @@ import {
   CHATBOT_STREAM_COST,
   consumeCredits,
   InsufficientCreditsError,
+  newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
@@ -187,7 +188,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const chargeIdempotencyKey = `chatbot_stream:${session.user.id}:${requestId}`;
+    // Server-owned, deliberately not `requestId`: that one echoes the caller's
+    // x-request-id header for log correlation, and keying the charge on it lets
+    // a client replay a single key forever and never be charged again.
+    const chargeIdempotencyKey = newChargeIdempotencyKey("chatbot_stream", session.user.id);
     const chargeResult = await consumeCredits({
       userId: session.user.id,
       eventType: "chatbot_stream",

@@ -38,6 +38,23 @@ export const SERVER_CREDIT_COSTS = {
 
 export type ServerCreditEventType = keyof typeof SERVER_CREDIT_COSTS;
 
+/**
+ * Mints the idempotency key for a fresh credit charge.
+ *
+ * Always call this rather than assembling a key from request input. consumeCredits
+ * treats a repeated key as an already-settled charge and skips the deduction, so a
+ * key the caller can choose is a caller-chosen "don't charge me" — replay one value
+ * and every subsequent call is free while the work still runs. Client-supplied
+ * request IDs are for log correlation and belong in metadata, not here.
+ *
+ * The one legitimate exception is a charge that is deliberately not per-request —
+ * the cover-letter day session, whose key is derived from server-owned values
+ * (an ownership-checked letter ID and a server clock bucket).
+ */
+export function newChargeIdempotencyKey(eventType: string, userId: string): string {
+  return `${eventType}:${userId}:${randomUUID()}`;
+}
+
 export class InsufficientCreditsError extends Error {
   code = "INSUFFICIENT_CREDITS" as const;
   requiredUnits: number;
