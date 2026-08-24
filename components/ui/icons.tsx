@@ -71,6 +71,8 @@ import {
   UserGroupIcon,
   ValidationIcon,
   ViewOffIcon,
+  ZoomInAreaIcon,
+  ZoomOutAreaIcon,
 } from "@hugeicons/core-free-icons";
 
 export type IconProps = Omit<
@@ -193,3 +195,5 @@ export const CircleHelp = createIcon(AlertCircleIcon);
 export const CircleX = createIcon(Cancel01Icon);
 export const CheckCheck = createIcon(Tick02Icon);
 export const ArrowUpDown = createIcon(SortByUp01Icon);
+export const ZoomIn = createIcon(ZoomInAreaIcon);
+export const ZoomOut = createIcon(ZoomOutAreaIcon);

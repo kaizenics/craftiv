@@ -3,13 +3,14 @@
 import { useState, Suspense } from "react";
 import { motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload, Check } from "@/components/ui/icons";
+import { Star, Laptop, FileText, Briefcase, Shield, LayoutGrid, Image, Upload, Check, ZoomIn } from "@/components/ui/icons";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { templates } from "@/lib/data/templates";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
+import { TemplatePreviewDialog } from "@/components/resume/template-preview-dialog";
 import { trpc } from "@/trpc/client";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const FIXED_COLOR_TEMPLATE_IDS = new Set(["orbit", "boardroom", "harvard"]);
 
 function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: typeof templates[0]; onUseTemplate: (templateId: string) => void; showPhoto: boolean }) {
   const isFixedColorTemplate = FIXED_COLOR_TEMPLATE_IDS.has(template.id);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <motion.div
@@ -70,19 +72,30 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
         </div>
 
         {/* Template name badge */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-zinc-100 bg-white/95 px-3 py-2 backdrop-blur-sm">
-          <span className="text-xs font-medium text-zinc-700">{template.name}</span>
-          <div 
-            className="h-4 w-4 rounded-full border border-zinc-200" 
-            style={
-              isFixedColorTemplate
-                ? { backgroundColor: template.primaryColor }
-                : {
-                    backgroundImage:
-                      "conic-gradient(from 90deg, #ef4444, #f59e0b, #84cc16, #06b6d4, #3b82f6, #d946ef, #ef4444)",
-                  }
-            }
-          />
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between gap-2 border-t border-zinc-100 bg-white/95 px-3 py-2 backdrop-blur-sm">
+          <span className="truncate text-xs font-medium text-zinc-700">{template.name}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              aria-label={`Preview the ${template.name} template full size`}
+              title="Preview full size"
+              className="flex size-6 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:border-zinc-900 hover:bg-zinc-900 hover:text-white"
+            >
+              <ZoomIn className="size-3.5" />
+            </button>
+            <div
+              className="h-4 w-4 rounded-full border border-zinc-200"
+              style={
+                isFixedColorTemplate
+                  ? { backgroundColor: template.primaryColor }
+                  : {
+                      backgroundImage:
+                        "conic-gradient(from 90deg, #ef4444, #f59e0b, #84cc16, #06b6d4, #3b82f6, #d946ef, #ef4444)",
+                    }
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -91,6 +104,18 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
         <h3 className="font-display text-lg font-semibold text-zinc-900">{template.name}</h3>
         <p className="mt-1 text-sm text-zinc-600 leading-relaxed">{template.description}</p>
       </div>
+
+      {/* Full-size preview */}
+      <TemplatePreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        templateId={template.id}
+        templateName={template.name}
+        templateDescription={template.description}
+        color={template.primaryColor}
+        showPhoto={showPhoto}
+        onUseTemplate={onUseTemplate}
+      />
     </motion.div>
   );
 }
