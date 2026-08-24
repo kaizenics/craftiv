@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the placeholder template, which documents required config such as
+# TRUSTED_PROXY_HOPS. It holds no secrets and .dockerignore already keeps it.
+!.env.example
 
 # vercel
 .vercel

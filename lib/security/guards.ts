@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { consumeRateLimitRule, type RateLimitDecision, type RateLimitRule } from "@/lib/security/rate-limit";
 import { buildRateLimitRules, type SecurityCategory } from "@/lib/security/rate-limit-rules";
-import { getClientIp, getClientIpFromHeaders } from "@/lib/security/request";
+import { getClientIp, getClientIpFromHeaders, getForwardedChainDepth, getTrustedProxyHops, UNKNOWN_CLIENT_IP } from "@/lib/security/request";
 import { hashForLogs, recordSecurityAlertCounter, securityLog, securityRequestId } from "@/lib/security/logging";
 
 export type { SecurityCategory };
@@ -67,6 +67,12 @@ export async function enforceRouteRateLimits(params: {
         ipHash,
         userHash,
         blockedRule: result.blockedRule,
+        // Diagnostics for TRUSTED_PROXY_HOPS. A site-wide burst of blocks where
+        // forwardedDepth never matches trustedProxyHops — or where the address
+        // is unresolvable — is a proxy misconfiguration, not a flood.
+        forwardedDepth: getForwardedChainDepth(params.requestHeaders),
+        trustedProxyHops: getTrustedProxyHops(),
+        clientIpResolved: ip !== UNKNOWN_CLIENT_IP,
       },
       "warn",
     );
