@@ -8,6 +8,7 @@ import {
   buildInsufficientCreditsPayload,
   consumeCredits,
   InsufficientCreditsError,
+  newChargeIdempotencyKey,
   RESUME_PARSE_COST,
   refundCredits,
 } from "@/lib/credits";
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
     const truncatedText = extractedText.slice(0, 8000);
     const prompt = buildResumeParsePrompt(truncatedText);
     const requestId = crypto.randomUUID();
-    const chargeIdempotencyKey = `resume_parse:${session.user.id}:${requestId}`;
+    const chargeIdempotencyKey = newChargeIdempotencyKey("resume_parse", session.user.id);
     const chargeResult = await consumeCredits({
       userId: session.user.id,
       eventType: "resume_parse",

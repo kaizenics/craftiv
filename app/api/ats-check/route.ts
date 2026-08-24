@@ -14,6 +14,7 @@ import {
   buildInsufficientCreditsPayload,
   consumeCredits,
   InsufficientCreditsError,
+  newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
 import { enforceApiRouteGuards } from "@/lib/security/guards";
@@ -165,7 +166,10 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File | null;
     const resumeId = (formData.get("resumeId") as string | null)?.trim() || "";
     const jobDescription = (formData.get("jobDescription") as string | null)?.trim() || "";
-    const requestId = (formData.get("requestId") as string | null)?.trim() || crypto.randomUUID();
+    const requestId = crypto.randomUUID();
+    // Recorded for support correlation only. It used to seed the charge key,
+    // which let a caller replay one value and never be charged again.
+    const clientRequestId = (formData.get("requestId") as string | null)?.trim() || null;
 
     if (!file && !resumeId) {
       return NextResponse.json({ error: "Provide a file or resumeId for ATS analysis." }, { status: 400 });
@@ -173,7 +177,7 @@ export async function POST(request: NextRequest) {
 
     let resumeText = "";
     let baseline: AtsReport;
-    const metadata: Record<string, unknown> = { requestId };
+    const metadata: Record<string, unknown> = { requestId, clientRequestId };
 
     if (resumeId) {
       const resume = await getOwnedResume(resumeId, session.user.id);
@@ -252,7 +256,7 @@ export async function POST(request: NextRequest) {
     }
 
     const prompt = buildAtsPrompt(resumeText, baseline, jobDescription);
-    const chargeIdempotencyKey = `ats_check:${session.user.id}:${requestId}`;
+    const chargeIdempotencyKey = newChargeIdempotencyKey("ats_check", session.user.id);
     const chargeResult = await consumeCredits({
       userId: session.user.id,
       eventType: "ats_check",
