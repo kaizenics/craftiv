@@ -21,6 +21,7 @@ import {
   createEmptyCoverLetterData,
   isCoverLetterTemplateId,
 } from "@/lib/types/cover-letter";
+import { PROMPT_INPUT_LIMITS } from "@/lib/constants/prompt-limits";
 import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { parseJsonWithLimit } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
@@ -97,27 +98,43 @@ export async function POST(request: NextRequest) {
 
     const mode = body.mode ?? "resume";
 
-    if (mode === "resume" && (!body.resumeText || body.resumeText.trim().length < 20)) {
+    /**
+     * The charge here is deliberately one per letter per day, so a caller can
+     * regenerate all day on a single 0.5-credit charge. That makes the size of
+     * each call the thing worth bounding: the body cap alone allowed ~120KB of
+     * context per request, which is a large model call for a fixed price.
+     * Truncating rather than rejecting keeps an over-long paste working.
+     */
+    const clamp = (value: string | undefined, max: number) => (value ?? "").trim().slice(0, max);
+
+    const resumeText = clamp(body.resumeText, PROMPT_INPUT_LIMITS.resumeText);
+    const targetJobTitle = clamp(body.targetJobTitle, PROMPT_INPUT_LIMITS.targetRole);
+    const companyName = clamp(body.companyName, PROMPT_INPUT_LIMITS.name);
+    const hiringManagerName = clamp(body.hiringManagerName, PROMPT_INPUT_LIMITS.name);
+    const candidateContext = clamp(body.candidateContext, PROMPT_INPUT_LIMITS.candidateContext);
+    const existingDraft = clamp(body.existingDraft, PROMPT_INPUT_LIMITS.existingDraft);
+
+    if (mode === "resume" && resumeText.length < 20) {
       return NextResponse.json(
         { error: "Resume text is too short to generate a cover letter." },
         { status: 400 },
       );
     }
 
-    if (mode === "editor" && !body.targetJobTitle?.trim()) {
+    if (mode === "editor" && !targetJobTitle) {
       return NextResponse.json({ error: "Target job title is required." }, { status: 400 });
     }
 
     const prompt =
       mode === "editor"
         ? buildCoverLetterFromEditorPrompt({
-            targetJobTitle: body.targetJobTitle!.trim(),
-            companyName: body.companyName,
-            hiringManagerName: body.hiringManagerName,
-            candidateContext: body.candidateContext || "",
-            existingDraft: body.existingDraft,
+            targetJobTitle,
+            companyName,
+            hiringManagerName,
+            candidateContext,
+            existingDraft,
           })
-        : buildCoverLetterFromResumePrompt(body.resumeText!.trim());
+        : buildCoverLetterFromResumePrompt(resumeText);
 
     console.log(`[CoverLetter Generate] Generating in ${mode} mode`);
 

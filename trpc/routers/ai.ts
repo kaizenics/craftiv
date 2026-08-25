@@ -41,6 +41,7 @@ import {
   newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
+import { PROMPT_INPUT_LIMITS } from "@/lib/constants/prompt-limits";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 import type { Database } from "@/db";
@@ -267,15 +268,15 @@ async function chargeAndRun<T>(
 const improveSectionInput = z.object({
   resumeId: z.string(),
   section: z.enum(["summary", "experience", "education"]),
-  content: z.string().min(1).max(3000),
-  targetRole: z.string().optional(),
-  jobDescription: z.string().max(5000).optional(),
+  content: z.string().min(1).max(PROMPT_INPUT_LIMITS.content),
+  targetRole: z.string().max(PROMPT_INPUT_LIMITS.targetRole).optional(),
+  jobDescription: z.string().max(PROMPT_INPUT_LIMITS.jobDescription).optional(),
 });
 
 const improveFullResumeInput = z.object({
   resumeId: z.string(),
-  targetRole: z.string().optional(),
-  jobDescription: z.string().max(5000).optional(),
+  targetRole: z.string().max(PROMPT_INPUT_LIMITS.targetRole).optional(),
+  jobDescription: z.string().max(PROMPT_INPUT_LIMITS.jobDescription).optional(),
 });
 
 const spellCheckInput = z.object({
@@ -284,26 +285,26 @@ const spellCheckInput = z.object({
 
 const generateSuggestionInput = z.object({
   resumeId: z.string(),
-  field: z.string(),
-  currentContent: z.string(),
-  issueType: z.string(),
+  field: z.string().max(PROMPT_INPUT_LIMITS.fieldLabel),
+  currentContent: z.string().max(PROMPT_INPUT_LIMITS.content),
+  issueType: z.string().max(PROMPT_INPUT_LIMITS.issueType),
 });
 
 const keywordBoosterInput = z.object({
   resumeId: z.string(),
-  jobDescription: z.string().min(1).max(5000),
+  jobDescription: z.string().min(1).max(PROMPT_INPUT_LIMITS.jobDescription),
 });
 
 const achievementBuilderInput = z.object({
   resumeId: z.string(),
   experienceIndex: z.number().int().min(0),
-  targetRole: z.string().optional(),
+  targetRole: z.string().max(PROMPT_INPUT_LIMITS.targetRole).optional(),
 });
 
 const coverLetterInput = z.object({
   resumeId: z.string(),
-  jobDescription: z.string().min(1).max(5000),
-  companyName: z.string().max(200).default(""),
+  jobDescription: z.string().min(1).max(PROMPT_INPUT_LIMITS.jobDescription),
+  companyName: z.string().max(PROMPT_INPUT_LIMITS.name).default(""),
   tone: z.enum(["professional", "confident", "enthusiastic"]).default("professional"),
 });
 
