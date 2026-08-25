@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+// pdf.js resolves its worker at runtime and the parsing routes reach it through
+// a dynamic import, so tracing cannot see the dependency. Both routes that read
+// an upload need the package present in the standalone output.
+const PDFJS_FILES = [
+  "./node_modules/pdfjs-dist/legacy/build/**/*",
+  "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/legacy/build/**/*",
+];
+
 const PLAYWRIGHT_CORE_FILES = [
   "./node_modules/playwright-core/**/*",
   "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/**/*",
@@ -8,6 +16,9 @@ const PLAYWRIGHT_CORE_FILES = [
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image.
   output: "standalone",
+  // Left to Node's own resolution rather than bundled: pdf.js loads its worker
+  // by path at runtime, which does not survive being packed into a chunk.
+  serverExternalPackages: ["pdfjs-dist"],
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
@@ -67,6 +78,8 @@ const nextConfig: NextConfig = {
     "/api/resume/pdf": PLAYWRIGHT_CORE_FILES,
     "/api/cover-letter/pdf": PLAYWRIGHT_CORE_FILES,
     "/api/cover-letter/export": PLAYWRIGHT_CORE_FILES,
+    "/api/resume/parse": PDFJS_FILES,
+    "/api/ats-check": PDFJS_FILES,
   },
 };
 

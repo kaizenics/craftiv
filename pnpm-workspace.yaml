@@ -3,3 +3,12 @@ allowBuilds:
   msw: true
   sharp: true
   unrs-resolver: true
+
+overrides:
+  # Primary sanitizer for HTML that reaches headless Chromium and the user's
+  # word processor; the versions below this carry known bypasses.
+  dompurify: '>=3.4.14'
+  # Reached through @libsql/client. 8.21.0 fixes memory-exhaustion DoS from
+  # tiny WebSocket fragments. API-compatible with the 8.20 it replaces.
+  ws: '>=8.21.0'
+
