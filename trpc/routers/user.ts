@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -13,6 +13,7 @@ import {
   resumes,
   coverLetters,
 } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import {
   createPolarCheckout,
   type CheckoutPlan,
@@ -208,24 +209,15 @@ export const userRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const fullName = `${input.firstName} ${input.lastName}`.trim();
+      const requestedEmail = input.email.trim().toLowerCase();
+      const currentEmail = ctx.user.email.trim().toLowerCase();
+      const emailChangeRequested = requestedEmail !== currentEmail;
 
-      const duplicateUser = await ctx.db.query.users.findFirst({
-        columns: { id: true },
-        where: and(eq(users.email, input.email), ne(users.id, ctx.user.id)),
-      });
-
-      if (duplicateUser) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "That email address is already in use.",
-        });
-      }
-
+      // Everything except the address is ours to write directly.
       await ctx.db
         .update(users)
         .set({
           name: fullName,
-          email: input.email,
           autoSaveDrafts: input.preferences.autoSaveDrafts,
           defaultSpellCheck: input.preferences.defaultSpellCheck,
           showResumeScore: input.preferences.showResumeScore,
@@ -234,9 +226,38 @@ export const userRouter = createTRPCRouter({
         })
         .where(eq(users.id, ctx.user.id));
 
+      /**
+       * The address is not. Writing `users.email` here used to move an account
+       * to any address the form supplied, with no proof the user held it and
+       * without clearing `emailVerified` — and the Polar webhook resolves an
+       * order to a user by billing email, so an unregistered address was worth
+       * claiming. Better Auth owns this transition: it emails the *current*
+       * address for confirmation and only then swaps it over.
+       */
+      if (emailChangeRequested) {
+        try {
+          await auth.api.changeEmail({
+            body: { newEmail: requestedEmail, callbackURL: "/dashboard/settings" },
+            headers: ctx.requestHeaders,
+          });
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error && error.message
+                ? `Could not start the email change. ${error.message}`
+                : "Could not start the email change. Please sign in again and retry.",
+            cause: error,
+          });
+        }
+      }
+
       return {
         name: fullName,
-        email: input.email,
+        // Unchanged until the confirmation link is followed, so the client is
+        // told the address on file rather than the one that was requested.
+        email: ctx.user.email,
+        emailChangePending: emailChangeRequested,
         preferences: input.preferences,
       };
     }),

@@ -36,6 +36,7 @@ import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Download, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
+import { DEFAULT_SHOW_PHOTO, readShowPhotoPreference } from "@/lib/user-preferences";
 import { AnimatePresence, motion } from "motion/react";
 
 export default function ResumeSectionPage() {
@@ -47,7 +48,7 @@ export default function ResumeSectionPage() {
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [showPhoto, setShowPhoto] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(DEFAULT_SHOW_PHOTO);
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const [transitionDirection, setTransitionDirection] = useState<1 | -1>(1);
@@ -70,15 +71,10 @@ export default function ResumeSectionPage() {
   useEffect(() => {
     // Get the selected template from localStorage
     const templateId = localStorage.getItem("selectedTemplateId");
-    const savedShowPhoto = localStorage.getItem("showPhoto");
     
-    if (savedShowPhoto) {
-      try {
-        setShowPhoto(JSON.parse(savedShowPhoto));
-      } catch {
-        setShowPhoto(false);
-      }
-    }
+    // Intentional: initialise the photo toggle from the saved preference on load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowPhoto(readShowPhotoPreference());
 
     if (!templateId) {
       // No template selected, redirect to templates page
