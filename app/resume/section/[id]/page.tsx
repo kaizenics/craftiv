@@ -35,6 +35,7 @@ import { resumeTemplates } from "@/lib/resume-templates";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Check, Loader2, AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
+import { DEFAULT_SHOW_PHOTO, readShowPhotoPreference } from "@/lib/user-preferences";
 import { AnimatePresence, motion } from "motion/react";
 
 export default function ResumeSectionDynamicPage() {
@@ -49,7 +50,7 @@ export default function ResumeSectionDynamicPage() {
   const [showPreview, setShowPreview] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [showPhoto, setShowPhoto] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(DEFAULT_SHOW_PHOTO);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const [transitionDirection, setTransitionDirection] = useState<1 | -1>(1);
 
@@ -73,17 +74,10 @@ export default function ResumeSectionDynamicPage() {
 
     // Load resume data from database
     const templateId = resume.templateId || localStorage.getItem("selectedTemplateId") || "celestial";
-    const savedShowPhoto = localStorage.getItem("showPhoto");
 
-    if (savedShowPhoto) {
-      try {
-        // Intentional: initialise the photo toggle from the saved preference on load.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setShowPhoto(JSON.parse(savedShowPhoto));
-      } catch {
-        setShowPhoto(false);
-      }
-    }
+    // Intentional: initialise the photo toggle from the saved preference on load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowPhoto(readShowPhotoPreference());
 
     // Initialize resume data from database or create empty
     const data: ResumeData = {

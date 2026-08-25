@@ -45,6 +45,7 @@ import { JobTargetTab } from "./tabs/job-target-tab";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/user-preferences";
 import { ResumeSectionKey } from "@/lib/types/resume";
 import { writeSharedJobTargetDraft } from "@/lib/job-target";
+import { readShowPhotoPreference } from "@/lib/user-preferences";
 import {
   LayoutTemplate,
   Layers,
@@ -110,14 +111,7 @@ export default function FinalResumePage() {
     return localStorage.getItem("currentResumeId");
   });
   const [showPhoto] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const savedShowPhoto = localStorage.getItem("showPhoto");
-    if (!savedShowPhoto) return false;
-    try {
-      return JSON.parse(savedShowPhoto) as boolean;
-    } catch {
-      return false;
-    }
+    return readShowPhotoPreference();
   });
   const [jobTargetRole, setJobTargetRole] = useState("");
   const [jobTargetDescription, setJobTargetDescription] = useState("");

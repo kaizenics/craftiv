@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { templates } from "@/lib/data/templates";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { TemplatePreviewDialog } from "@/components/resume/template-preview-dialog";
+import { DEFAULT_SHOW_PHOTO } from "@/lib/user-preferences";
 import { trpc } from "@/trpc/client";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -122,7 +123,7 @@ function ResumeTemplateCard({ template, onUseTemplate, showPhoto }: { template: 
 
 function ResumeTemplatesPageContent() {
   const [activeCategory, setActiveCategory] = useState("all");
-  const [showPhoto, setShowPhoto] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(DEFAULT_SHOW_PHOTO);
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();

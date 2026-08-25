@@ -24,3 +24,24 @@ export function getUserPreferencesFromRecord(record: Partial<UserPreferences> | 
     compactEditor: record?.compactEditor ?? DEFAULT_USER_PREFERENCES.compactEditor,
   };
 }
+
+/**
+ * Resumes include a photo unless the user turns it off. The choice is persisted
+ * under localStorage "showPhoto"; absent or unparseable means untouched, which
+ * is the default rather than "off".
+ */
+export const DEFAULT_SHOW_PHOTO = true;
+
+export function readShowPhotoPreference(): boolean {
+  if (typeof window === "undefined") return DEFAULT_SHOW_PHOTO;
+
+  const saved = window.localStorage.getItem("showPhoto");
+  if (!saved) return DEFAULT_SHOW_PHOTO;
+
+  try {
+    const parsed = JSON.parse(saved);
+    return typeof parsed === "boolean" ? parsed : DEFAULT_SHOW_PHOTO;
+  } catch {
+    return DEFAULT_SHOW_PHOTO;
+  }
+}
