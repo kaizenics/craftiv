@@ -144,7 +144,7 @@ export default function Settings() {
     const fullName = `${trimmedFirstName} ${trimmedLastName}`.trim();
 
     try {
-      await updateSettingsMutation.mutateAsync({
+      const result = await updateSettingsMutation.mutateAsync({
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
         email: trimmedEmail,
@@ -160,7 +160,18 @@ export default function Settings() {
         utils.user.preferences.invalidate(),
       ]);
       router.refresh();
-      openNotice("Settings Saved", `Name: ${fullName}\nEmail: ${trimmedEmail}`);
+      // An email change is not applied until the confirmation link is followed,
+      // so the account still carries the old address here. Reporting the
+      // requested one as saved would be a lie the user goes on to act on.
+      if (result.emailChangePending) {
+        setEmail(result.email);
+        openNotice(
+          "Confirm your new email",
+          `Name: ${fullName}\n\nWe sent a confirmation link to ${result.email}. Your address stays ${result.email} until you open it.`,
+        );
+      } else {
+        openNotice("Settings Saved", `Name: ${fullName}\nEmail: ${result.email}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save settings.";
       openNotice("Save Failed", message);

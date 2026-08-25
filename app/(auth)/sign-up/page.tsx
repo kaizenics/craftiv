@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_MESSAGE } from "@/lib/constants/auth";
 
 const signUpSchema = z
   .object({
@@ -31,7 +32,7 @@ const signUpSchema = z
     email: z.string().email("Please enter a valid email address"),
     password: z
       .string()
-      .min(6, "Password must be at least 6 characters")
+      .min(MIN_PASSWORD_LENGTH, MIN_PASSWORD_MESSAGE)
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
         "Password must contain at least one uppercase letter, one lowercase letter, and one number",
@@ -95,7 +96,10 @@ export default function SignUpPage() {
   const sendOtp = async (email: string) => {
     const { error: sendOtpError } = await authClient.emailOtp.sendVerificationOtp({
       email,
-      type: "sign-in",
+      // "email-verification" rather than "sign-in": this is the code that marks
+      // the new account verified below, and verifyEmail only accepts an OTP
+      // issued under that type.
+      type: "email-verification",
     });
 
     if (sendOtpError) {
@@ -165,10 +169,12 @@ export default function SignUpPage() {
     setIsOtpSigningIn(true);
 
     try {
+      // Checked before the account is created so a wrong code does not leave a
+      // half-finished user behind. This read does not consume the code.
       const { error: verifyOtpError } = await authClient.emailOtp.checkVerificationOtp({
         email: pendingSignUp.email,
         otp: parsed.data.otp,
-        type: "sign-in",
+        type: "email-verification",
       });
 
       if (verifyOtpError) {
@@ -189,9 +195,6 @@ export default function SignUpPage() {
         {
           onSuccess: () => {
             didSucceed = true;
-            toast.success("Account created successfully.");
-            router.push(redirectTo);
-            router.refresh();
           },
           onError: (ctx) => {
             const authError =
@@ -201,6 +204,33 @@ export default function SignUpPage() {
           },
         },
       );
+
+      /**
+       * Sign-in requires a verified address, and signUp always creates the user
+       * unverified — so without this the account exists but cannot be used, and
+       * signUp skips its auto sign-in for the same reason. Spending the code
+       * here marks the account verified and, via autoSignInAfterVerification,
+       * establishes the session signUp declined to create.
+       */
+      if (didSucceed) {
+        const { error: markVerifiedError } = await authClient.emailOtp.verifyEmail({
+          email: pendingSignUp.email,
+          otp: parsed.data.otp,
+        });
+
+        if (markVerifiedError) {
+          const authError =
+            markVerifiedError.message ||
+            "Your account was created but we could not verify your email. Please sign in to receive a new link.";
+          setError(authError);
+          toast.error(authError);
+          return;
+        }
+
+        toast.success("Account created successfully.");
+        router.push(redirectTo);
+        router.refresh();
+      }
 
       if (signUpError && !didSucceed) {
         const authError = signUpError.message || "Failed to create account. Please try again.";

@@ -4,8 +4,13 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins";
 
 import { db } from "@/db";
+import { MIN_PASSWORD_LENGTH } from "@/lib/constants/auth";
 import * as schema from "@/db/schema";
-import { sendAuthOtpEmail } from "@/lib/email";
+import {
+  sendAuthOtpEmail,
+  sendChangeEmailVerificationEmail,
+  sendVerificationLinkEmail,
+} from "@/lib/email";
 
 const toOrigin = (value?: string) => {
   if (!value) return null;
@@ -67,6 +72,56 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
+    /**
+     * Every account starts with a credit balance, so an unverified signup is a
+     * free grant to anyone who can type an address. Sign-in is gated on the
+     * address actually belonging to the person using it.
+     *
+     * Existing accounts created before this was on will be asked to verify at
+     * their next sign-in; Better Auth sends them the email at that moment.
+     * Length is enforced on signup, reset and change only — never on sign-in —
+     * so accounts with shorter existing passwords are not locked out.
+     */
+    requireEmailVerification: true,
+    minPasswordLength: MIN_PASSWORD_LENGTH,
+  },
+
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerificationLinkEmail({ email: user.email, url });
+    },
+    /**
+     * Signing up already proves the address by one-time code, so the link email
+     * would be a second, redundant round trip — the OTP marks the account
+     * verified instead.
+     */
+    sendOnSignUp: false,
+    /**
+     * Accounts created before verification was required have emailVerified
+     * false, and sign-in now refuses them. This is what gives them a way back
+     * in: without it Better Auth rejects the sign-in and sends nothing, which
+     * is an permanent lockout, not a prompt.
+     */
+    sendOnSignIn: true,
+    // Verifying is the last step of signing up; making it also sign the user in
+    // avoids bouncing them to a login form they just came from.
+    autoSignInAfterVerification: true,
+  },
+
+  user: {
+    changeEmail: {
+      enabled: true,
+      /**
+       * Confirmation goes to the address already on the account, so moving an
+       * account to a new address requires control of the old one. Without this
+       * the settings form could rewrite `users.email` to any unregistered
+       * address — which the Polar webhook then trusts when it resolves an order
+       * by billing email.
+       */
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        await sendChangeEmailVerificationEmail({ email: user.email, newEmail, url });
+      },
+    },
   },
   socialProviders: {
     google: {
