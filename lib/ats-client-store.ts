@@ -78,36 +78,56 @@ export function saveAtsReport(value: PersistedAtsReport) {
   emit();
 }
 
-let cachedDraftRaw: string | null = null;
-let cachedDraft = "";
+export type JobTargetDraft = {
+  role: string;
+  jobDescription: string;
+};
 
-function getJobDescriptionSnapshot(): string {
+const EMPTY_DRAFT: JobTargetDraft = { role: "", jobDescription: "" };
+
+let cachedDraftRaw: string | null = null;
+let cachedDraft: JobTargetDraft = EMPTY_DRAFT;
+
+function getJobTargetSnapshot(): JobTargetDraft {
   // Cheap identity guard: the draft helper reads several legacy keys, so key the
   // cache on the canonical one and re-read only when it changes.
   const raw = localStorage.getItem("craftiv:shared-job-target");
   if (raw === cachedDraftRaw) return cachedDraft;
+
   cachedDraftRaw = raw;
-  cachedDraft = readSharedJobTargetDraft(localStorage).jobDescription;
+  const draft = readSharedJobTargetDraft(localStorage);
+  cachedDraft = { role: draft.role, jobDescription: draft.jobDescription };
   return cachedDraft;
 }
 
-function getJobDescriptionServerSnapshot(): string {
-  return "";
+function getJobTargetServerSnapshot(): JobTargetDraft {
+  return EMPTY_DRAFT;
 }
 
-/** The shared job-target draft, also used by the AI Resume assistant. */
-export function useJobDescriptionDraft(): string {
+/**
+ * The shared job target (role + description), used by both the ATS Checker and
+ * the AI Assistant so a description pasted in one is present in the other.
+ */
+export function useJobTargetDraft(): JobTargetDraft {
   return useSyncExternalStore(
     subscribe,
-    getJobDescriptionSnapshot,
-    getJobDescriptionServerSnapshot
+    getJobTargetSnapshot,
+    getJobTargetServerSnapshot
   );
 }
 
-export function saveJobDescriptionDraft(jobDescription: string) {
+export function useJobDescriptionDraft(): string {
+  return useJobTargetDraft().jobDescription;
+}
+
+export function saveJobTargetDraft(draft: Partial<JobTargetDraft>) {
   const current = readSharedJobTargetDraft(localStorage);
   writeSharedJobTargetDraft(localStorage, {
-    role: current.role,
-    jobDescription,
+    role: draft.role ?? current.role,
+    jobDescription: draft.jobDescription ?? current.jobDescription,
   });
+}
+
+export function saveJobDescriptionDraft(jobDescription: string) {
+  saveJobTargetDraft({ jobDescription });
 }
