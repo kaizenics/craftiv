@@ -1,154 +1,144 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  AlertCircle,
-  Check,
-  FileText,
-  Loader2,
-  Search,
-  ShieldCheck,
-  Upload,
-} from "@/components/ui/icons";
 
+import { AtsReportPanel } from "@/components/dashboard/ats-report-panel";
+import { AtsResumePicker } from "@/components/dashboard/ats-resume-picker";
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  AlertCircle,
+  FileText,
+  Loader2,
+  ScanSearch,
+  Sparkles,
+  Upload,
+  X,
+} from "@/components/ui/icons";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/trpc/client";
-import { readSharedJobTargetDraft, writeSharedJobTargetDraft } from "@/lib/job-target";
-
-type Atsi = {
-  section: string;
-  score: number;
-  notes: string;
-};
-
-type Improvement = {
-  title: string;
-  why: string;
-  example: string;
-};
-
-type AtsReport = {
-  overallScore: number;
-  atsCompatibility: "Low" | "Medium" | "High" | string;
-  summary: string;
-  strengths: string[];
-  matchedKeywords: string[];
-  missingKeywords: string[];
-  topActions: string[];
-  rewrittenSummary: string;
-  sectionScores: Atsi[];
-  improvements: Improvement[];
-  placeholderWarnings: string[];
-  parseWarnings: string[];
-  scoringVersion: string;
-};
+import {
+  saveAtsReport,
+  saveJobDescriptionDraft,
+  useJobDescriptionDraft,
+  useLastAtsReport,
+} from "@/lib/ats-client-store";
+import { bandStyle } from "@/lib/ats-display";
+import type { AtsCheckReport, PersistedAtsReport } from "@/lib/types/ats-report";
+import { cn } from "@/lib/utils";
 
 const MAX_SIZE_MB = 10;
-const ATS_REPORT_STORAGE_KEY = "craftiv:ats-checker:last-report";
+const ACCEPTED_EXTENSIONS = [".pdf", ".docx"];
 
-type PersistedAtsReport = {
-  report: AtsReport;
-  sourceLabel: string;
-  savedAt: string;
-};
+type InputMode = "saved" | "upload";
 
-function readPersistedAtsReport(): PersistedAtsReport | null {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(ATS_REPORT_STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<PersistedAtsReport>;
-    if (!parsed.report) return null;
-    return {
-      report: parsed.report,
-      sourceLabel: parsed.sourceLabel || "Saved ATS analysis",
-      savedAt: parsed.savedAt || "",
-    };
-  } catch {
-    return null;
+function fileRejectionReason(file: File | null): string | null {
+  if (!file) return null;
+  const name = file.name.toLowerCase();
+  if (!ACCEPTED_EXTENSIONS.some((extension) => name.endsWith(extension))) {
+    return "Only PDF and DOCX files are supported.";
   }
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+    return `File size must be under ${MAX_SIZE_MB}MB.`;
+  }
+  return null;
 }
 
-function readInitialJobDescription() {
-  if (typeof window === "undefined") return "";
-  return readSharedJobTargetDraft(localStorage).jobDescription;
+function ReportSkeleton() {
+  return (
+    <div className="space-y-5" aria-hidden="true">
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+          <div className="h-36 w-36 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="w-full space-y-3">
+            <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+            <div className="h-7 w-32 animate-pulse rounded-4xl bg-muted" />
+            <div className="h-16 w-full animate-pulse rounded-lg bg-muted" />
+          </div>
+        </div>
+      </div>
+      <div className="h-9 w-full animate-pulse rounded-4xl bg-muted" />
+      <div className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+        {[0, 1, 2].map((key) => (
+          <div key={key} className="h-16 w-full animate-pulse rounded-lg bg-muted" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyReportState() {
+  return (
+    <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-4xl bg-primary/10">
+        <ScanSearch className="h-6 w-6 text-primary" aria-hidden="true" />
+      </span>
+      <h2 className="mt-4 text-base font-semibold text-foreground">
+        Your report will appear here
+      </h2>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        Pick a resume on the left and run the check. You will get an overall score, a
+        section-by-section breakdown, matched and missing keywords, and specific rewrites.
+      </p>
+    </div>
+  );
 }
 
 export default function AtsCheckerPage() {
-  const persistedState = readPersistedAtsReport();
+  const [mode, setMode] = useState<InputMode>("saved");
   const [file, setFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState(readInitialJobDescription);
+  const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<AtsReport | null>(persistedState?.report ?? null);
-  const [sourceLabel, setSourceLabel] = useState<string>(persistedState?.sourceLabel ?? "");
-  const [isReportDrawerOpen, setIsReportDrawerOpen] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
-  const [resumeQuery, setResumeQuery] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // The last report lives in localStorage and is read through an external store,
+  // so a finished run and a page reload both render from the same source.
+  const lastReport = useLastAtsReport();
+
+  const persistedJobDescription = useJobDescriptionDraft();
+  const [jobDescriptionDraft, setJobDescriptionDraft] = useState<string | null>(null);
+  const jobDescription = jobDescriptionDraft ?? persistedJobDescription;
 
   const { data: resumes = [], isLoading: resumesLoading } = trpc.resume.listSummary.useQuery();
   const activeResumeId = selectedResumeId ?? resumes[0]?.id ?? null;
 
-  const filteredResumes = useMemo(() => {
-    if (!resumeQuery.trim()) return resumes;
-    const query = resumeQuery.toLowerCase();
-    return resumes.filter((resume) => resume.title.toLowerCase().includes(query));
-  }, [resumeQuery, resumes]);
-
-  const isInvalidType = useMemo(() => {
-    if (!file) return false;
-    const name = file.name.toLowerCase();
-    return !name.endsWith(".pdf") && !name.endsWith(".docx");
-  }, [file]);
-
-  const isInvalidSize = useMemo(() => {
-    if (!file) return false;
-    return file.size > MAX_SIZE_MB * 1024 * 1024;
-  }, [file]);
-
-  const canAnalyzeUpload = !!file && !isInvalidType && !isInvalidSize && !isAnalyzing;
-  const canAnalyzeCurrent = !!activeResumeId && !isAnalyzing;
-
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const current = readSharedJobTargetDraft(localStorage);
-    writeSharedJobTargetDraft(localStorage, {
-      role: current.role,
-      jobDescription,
-    });
-  }, [jobDescription]);
+    if (jobDescriptionDraft === null) return;
+    saveJobDescriptionDraft(jobDescriptionDraft);
+  }, [jobDescriptionDraft]);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !report) return;
-    const payload: PersistedAtsReport = {
-      report,
-      sourceLabel,
-      savedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(ATS_REPORT_STORAGE_KEY, JSON.stringify(payload));
-  }, [report, sourceLabel]);
+  const rejectionReason = fileRejectionReason(file);
+  const canAnalyze = isAnalyzing
+    ? false
+    : mode === "saved"
+      ? !!activeResumeId
+      : !!file && !rejectionReason;
 
-  async function runAnalysis(mode: "upload" | "current") {
-    if (mode === "upload" && !file) return;
-    if (mode === "current" && !activeResumeId) return;
+  const acceptFile = useCallback((nextFile: File | null) => {
+    setFile(nextFile);
+    setError(null);
+  }, []);
+
+  function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    const dropped = event.dataTransfer.files?.[0] ?? null;
+    if (dropped) acceptFile(dropped);
+  }
+
+  async function runAnalysis() {
+    if (!canAnalyze) return;
 
     setError(null);
-    setReport(null);
+    setIsAnalyzing(true);
+    setStatusMessage("Analyzing your resume. This usually takes a few seconds.");
 
     try {
-      setIsAnalyzing(true);
-
       const formData = new FormData();
       formData.append("requestId", crypto.randomUUID());
       if (jobDescription.trim()) {
@@ -157,7 +147,7 @@ export default function AtsCheckerPage() {
       if (mode === "upload" && file) {
         formData.append("file", file);
       }
-      if (mode === "current" && activeResumeId) {
+      if (mode === "saved" && activeResumeId) {
         formData.append("resumeId", activeResumeId);
       }
 
@@ -166,357 +156,289 @@ export default function AtsCheckerPage() {
         body: formData,
       });
 
+      const body = await response.json();
+
       if (!response.ok) {
-        const body = await response.json();
         throw new Error(body.message || body.error || "Failed to analyze resume");
       }
 
-      const body = await response.json();
-      setReport(body.report as AtsReport);
-      setSourceLabel(mode === "current" ? "Saved resume analysis" : `Uploaded file analysis: ${file?.name || ""}`);
-      setIsReportDrawerOpen(true);
+      const report = body.report as AtsCheckReport;
+      const activeTitle =
+        resumes.find((resume) => resume.id === activeResumeId)?.title ?? "Untitled";
+      const persisted: PersistedAtsReport = {
+        report,
+        sourceLabel:
+          mode === "saved"
+            ? `Saved resume: ${activeTitle}`
+            : `Uploaded file: ${file?.name ?? ""}`,
+        savedAt: new Date().toISOString(),
+      };
+
+      saveAtsReport(persisted);
+
+      const band = bandStyle(report.overallScore);
+      setStatusMessage(
+        `Analysis complete. Score ${report.overallScore} out of 100. ${band.label}.`
+      );
+
+      // On stacked layouts the report renders below the fold, so bring it into
+      // view instead of leaving the user staring at an unchanged form.
+      if (window.matchMedia("(max-width: 1023px)").matches) {
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        resultsRef.current?.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      }
     } catch (analysisError: unknown) {
-      setError(analysisError instanceof Error ? analysisError.message : "Something went wrong while analyzing your resume.");
+      const message =
+        analysisError instanceof Error
+          ? analysisError.message
+          : "Something went wrong while analyzing your resume.";
+      setError(message);
+      setStatusMessage(`Analysis failed. ${message}`);
     } finally {
       setIsAnalyzing(false);
     }
   }
 
-  const reportContent = report ? (
-    <div className="space-y-6 pb-2">
-      <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">Source:</span> {sourceLabel}
-        <span className="mx-2">&middot;</span>
-        <span className="font-medium text-foreground">Scoring version:</span> {report.scoringVersion}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Overall ATS Score</p>
-          <p className="mt-1 text-3xl font-bold text-foreground">{report.overallScore}/100</p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Compatibility</p>
-          <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
-            <ShieldCheck className="h-4 w-4" />
-            {report.atsCompatibility}
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">
+            ATS Checker
+          </h1>
+          <p className="mt-1 max-w-2xl text-muted-foreground">
+            See how a tracking system reads your resume, and what to change before you apply.
           </p>
         </div>
+        <span className="inline-flex items-center gap-1.5 rounded-4xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+          1 credit per check
+        </span>
+      </header>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Top Priority</p>
-          <p className="mt-1 text-sm text-foreground">{report.topActions?.[0] || "Improve work impact bullets"}</p>
-        </div>
+      {/* Screen readers get the outcome announced; sighted users get the gauge. */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {statusMessage}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Score is computed using the same deterministic ATS analyzer that powers AI Resume Assistant impact previews.
-      </p>
+      <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
+        <section
+          aria-labelledby="ats-setup-heading"
+          className="space-y-5 rounded-xl border border-border bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
+        >
+          <h2 id="ats-setup-heading" className="sr-only">
+            Set up your ATS check
+          </h2>
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-semibold text-foreground">Recruiter Summary</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{report.summary}</p>
-      </div>
-
-      {(report.placeholderWarnings.length > 0 || report.parseWarnings.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {report.placeholderWarnings.length > 0 && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-5">
-              <h3 className="text-base font-semibold text-foreground">Blocking Placeholders</h3>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-red-700">
-                {report.placeholderWarnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {report.parseWarnings.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-              <h3 className="text-base font-semibold text-foreground">Parse Notes</h3>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-amber-700">
-                {report.parseWarnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-base font-semibold text-foreground">Strengths</h3>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            {(report.strengths || []).map((item, idx) => (
-              <li key={`${item}-${idx}`} className="flex gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-base font-semibold text-foreground">Matched Keywords</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(report.matchedKeywords || []).map((keyword, idx) => (
+          <div className="space-y-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <span
-                key={`${keyword}-${idx}`}
-                className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs text-green-700"
+                className="flex h-5 w-5 items-center justify-center rounded-4xl bg-primary/10 text-[0.6875rem] font-bold text-primary"
+                aria-hidden="true"
               >
-                {keyword}
+                1
               </span>
-            ))}
-          </div>
-        </div>
-      </div>
+              What should we check?
+            </p>
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-base font-semibold text-foreground">Missing Keywords</h3>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(report.missingKeywords || []).map((keyword, idx) => (
-            <span
-              key={`${keyword}-${idx}`}
-              className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-700"
+            <Tabs
+              value={mode}
+              onValueChange={(value) => {
+                setMode(value as InputMode);
+                setError(null);
+              }}
             >
-              {keyword}
-            </span>
-          ))}
-        </div>
-      </div>
+              <TabsList className="w-full">
+                <TabsTrigger value="saved">
+                  <FileText aria-hidden="true" />
+                  Saved resume
+                </TabsTrigger>
+                <TabsTrigger value="upload">
+                  <Upload aria-hidden="true" />
+                  Upload a file
+                </TabsTrigger>
+              </TabsList>
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-base font-semibold text-foreground">Section Scores</h3>
-        <div className="mt-3 space-y-3">
-          {(report.sectionScores || []).map((s, idx) => (
-            <div key={`${s.section}-${idx}`} className="rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-foreground">{s.section}</p>
-                <p className="text-sm font-semibold text-foreground">{s.score}/100</p>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{s.notes}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+              <TabsContent value="saved" className="mt-1">
+                <AtsResumePicker
+                  resumes={resumes}
+                  isLoading={resumesLoading}
+                  selectedId={activeResumeId}
+                  onSelect={(id) => {
+                    setSelectedResumeId(id);
+                    setError(null);
+                  }}
+                />
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  Most accurate option: it reads your structured resume data directly, with
+                  no export or parsing step in between.
+                </p>
+              </TabsContent>
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-base font-semibold text-foreground">How To Improve</h3>
-        <div className="mt-3 space-y-3">
-          {(report.improvements || []).map((item, idx) => (
-            <div key={`${item.title}-${idx}`} className="rounded-lg border border-border p-3">
-              <p className="font-medium text-foreground">{item.title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{item.why}</p>
-              <p className="mt-2 rounded-md bg-muted/40 px-2 py-2 text-sm text-foreground">
-                Example: {item.example}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+              <TabsContent value="upload" className="mt-1 space-y-3">
+                {/* sr-only (not `hidden`) keeps the input in the tab order, so the
+                    file picker stays reachable by keyboard. `hidden` removed it entirely. */}
+                <input
+                  id="ats-upload"
+                  type="file"
+                  accept=".pdf,.docx"
+                  className="peer sr-only"
+                  onChange={(event) => acceptFile(event.target.files?.[0] ?? null)}
+                />
+                <label
+                  htmlFor="ats-upload"
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors",
+                    "peer-focus-visible:border-ring peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50",
+                    isDragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/40"
+                  )}
+                >
+                  <Upload className="h-7 w-7 text-primary" aria-hidden="true" />
+                  <span className="text-sm font-medium text-foreground">
+                    Drop a file here, or browse
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    PDF or DOCX &middot; up to {MAX_SIZE_MB}MB
+                  </span>
+                </label>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-        <h3 className="text-base font-semibold text-foreground">Improved Summary Suggestion</h3>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{report.rewrittenSummary}</p>
-      </div>
-    </div>
-  ) : null;
+                {file && (
+                  <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                    <FileText
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                      {file.name}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => acceptFile(null)}
+                      aria-label={`Remove ${file.name}`}
+                    >
+                      <X aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">ATS Checker</h1>
-        <p className="mt-1 text-muted-foreground">
-          Analyze your saved resume or upload an exported file to compare ATS match and recruiter impact.
-        </p>
-      </div>
+                {rejectionReason && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {rejectionReason}
+                  </p>
+                )}
 
-      <div className="space-y-6 rounded-xl bg-card">
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Current Resume</label>
-            {resumesLoading ? (
-              <div className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-                Loading resumes...
-              </div>
-            ) : resumes.length === 0 ? (
-              <div className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-                No resumes found yet.
-              </div>
-            ) : (
-              <>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={resumeQuery}
-                    onChange={(e) => setResumeQuery(e.target.value)}
-                    placeholder="Search your resumes..."
-                    className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-                  />
-                </div>
-                <div className="max-h-56 space-y-2 overflow-y-auto">
-                  {filteredResumes.map((resume) => {
-                    const isActive = resume.id === activeResumeId;
-                    return (
-                      <button
-                        key={resume.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedResumeId(resume.id);
-                          setReport(null);
-                          setError(null);
-                        }}
-                        className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                          isActive ? "border-foreground bg-foreground/5" : "border-border hover:bg-muted/10"
-                        }`}
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/20">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{resume.title}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{resume.status}</p>
-                        </div>
-                        {isActive ? <Check className="h-4 w-4 shrink-0 text-foreground" /> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Use PDF when re-checking a Craftiv export. Word export is still delivered
+                  as DOC, so file parity is most reliable with PDF right now.
+                </p>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="job-description" className="text-sm font-medium text-foreground">
-              Target Job Description (optional, improves keyword accuracy)
+            <label
+              htmlFor="job-description"
+              className="flex items-center gap-2 text-sm font-semibold text-foreground"
+            >
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-4xl bg-primary/10 text-[0.6875rem] font-bold text-primary"
+                aria-hidden="true"
+              >
+                2
+              </span>
+              Target job description
+              <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <textarea
               id="job-description"
               value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the job description here for more accurate ATS matching..."
+              onChange={(event) => setJobDescriptionDraft(event.target.value)}
+              placeholder="Paste the job description for sharper keyword matching..."
               rows={5}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none ring-0 placeholder:text-muted-foreground focus:border-amber-400"
+              aria-describedby="job-description-hint"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             />
+            <p id="job-description-hint" className="text-xs text-muted-foreground">
+              Applies to both saved resumes and uploaded files.
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => runAnalysis("current")} disabled={!canAnalyzeCurrent} className="w-full sm:w-auto">
+          <div className="space-y-2 border-t border-border pt-4">
+            <Button
+              onClick={runAnalysis}
+              disabled={!canAnalyze}
+              size="lg"
+              className="w-full"
+            >
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" aria-hidden="true" />
                   Analyzing...
                 </>
               ) : (
-                "Analyze Current Resume"
-              )}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            This is the canonical in-app ATS analysis because it reads your saved resume data directly.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-          <label
-            htmlFor="ats-upload"
-            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center hover:bg-muted/5"
-          >
-            <Upload className="h-8 w-8 text-primary" />
-            <div>
-              <p className="font-medium text-foreground">Upload exported resume (PDF or DOCX)</p>
-              <p className="text-sm text-muted-foreground">Max file size {MAX_SIZE_MB}MB</p>
-            </div>
-          </label>
-
-          <input
-            id="ats-upload"
-            type="file"
-            accept=".pdf,.docx"
-            className="hidden"
-            onChange={(e) => {
-              const nextFile = e.target.files?.[0] ?? null;
-              setFile(nextFile);
-              setReport(null);
-              setError(null);
-            }}
-          />
-
-          {file && (
-            <div className="rounded-lg border border-border px-3 py-2 text-sm">
-              <span className="font-medium text-foreground">Selected:</span> {file.name}
-            </div>
-          )}
-
-          {isInvalidType && (
-            <p className="text-sm text-red-600">Only PDF and DOCX files are supported.</p>
-          )}
-
-          {isInvalidSize && (
-            <p className="text-sm text-red-600">File size must be under {MAX_SIZE_MB}MB.</p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => runAnalysis("upload")} disabled={!canAnalyzeUpload} className="w-full sm:w-auto">
-              {isAnalyzing ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing...
+                  <ScanSearch aria-hidden="true" />
+                  Run ATS check &middot; 1 credit
                 </>
-              ) : (
-                "Analyze Uploaded File"
               )}
             </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Use PDF when re-checking a Craftiv export. Word export is still delivered as `DOC`, so file parity is most reliable with PDF right now.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            ATS Checker uses 1 credit &middot;{" "}
-            <Link href="/pricing" className="text-foreground underline underline-offset-2">
-              Get more credits
-            </Link>
-          </p>
 
-          {error && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
+            {!canAnalyze && !isAnalyzing && (
+              <p className="text-center text-xs text-muted-foreground">
+                {mode === "saved"
+                  ? "Select a saved resume to continue."
+                  : "Add a PDF or DOCX file to continue."}
+              </p>
+            )}
+
+            <p className="text-center text-xs text-muted-foreground">
+              <Link
+                href="/pricing"
+                className="rounded-sm underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                Get more credits
+              </Link>
+            </p>
+
+            {error && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-lg border border-destructive-border bg-destructive-surface p-3 text-sm text-destructive-surface-foreground"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div ref={resultsRef} className="scroll-mt-6 lg:col-span-3">
+          {isAnalyzing ? (
+            <ReportSkeleton />
+          ) : lastReport ? (
+            <AtsReportPanel
+              report={lastReport.report}
+              sourceLabel={lastReport.sourceLabel}
+              savedAt={lastReport.savedAt}
+            />
+          ) : (
+            <EmptyReportState />
           )}
         </div>
       </div>
-
-      {report && (
-        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-          Latest ATS result is ready.
-          <Button
-            variant="link"
-            className="h-auto px-1 text-foreground"
-            onClick={() => setIsReportDrawerOpen(true)}
-          >
-            Open result drawer
-          </Button>
-        </div>
-      )}
-
-      <Drawer open={isReportDrawerOpen} onOpenChange={setIsReportDrawerOpen}>
-        <DrawerContent className="max-h-[88vh]">
-          <DrawerHeader>
-            <DrawerTitle>ATS Checker Result</DrawerTitle>
-            <DrawerDescription>
-              Review the latest ATS analysis report and recommendations.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="overflow-y-auto px-4 pb-2">{reportContent}</div>
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline">Close</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
     </div>
   );
 }
