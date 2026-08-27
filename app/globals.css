@@ -24,6 +24,17 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-surface-foreground: var(--success-surface-foreground);
+  --color-success-surface: var(--success-surface);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-surface-foreground: var(--warning-surface-foreground);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-border: var(--warning-border);
+  --color-destructive-surface: var(--destructive-surface);
+  --color-destructive-surface-foreground: var(--destructive-surface-foreground);
+  --color-destructive-border: var(--destructive-border);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -82,6 +93,19 @@
   --sidebar-ring: oklch(0.723 0.014 214.4);
   --background: oklch(1 0 0);
   --foreground: oklch(0.148 0.004 228.8);
+  /* Status scale: used by ATS score bands, keyword pills, and warning panels.
+     Every value has a .dark counterpart so status surfaces survive theme switch. */
+  --success: oklch(0.58 0.132 156.3);
+  --success-surface-foreground: oklch(0.41 0.098 156.3);
+  --success-surface: oklch(0.968 0.028 156.3);
+  --success-border: oklch(0.888 0.062 156.3);
+  --warning: oklch(0.705 0.152 71.5);
+  --warning-surface-foreground: oklch(0.48 0.115 66.2);
+  --warning-surface: oklch(0.973 0.036 85.1);
+  --warning-border: oklch(0.898 0.076 79.4);
+  --destructive-surface: oklch(0.971 0.021 17.4);
+  --destructive-surface-foreground: oklch(0.52 0.208 25.5);
+  --destructive-border: oklch(0.892 0.056 20.1);
 }
 
 .dark {
@@ -116,6 +140,17 @@
   --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
+  --success: oklch(0.723 0.145 157.1);
+  --success-surface-foreground: oklch(0.861 0.108 157.1);
+  --success-surface: oklch(0.298 0.052 157.1);
+  --success-border: oklch(0.392 0.072 157.1);
+  --warning: oklch(0.812 0.142 82.6);
+  --warning-surface-foreground: oklch(0.898 0.104 86.3);
+  --warning-surface: oklch(0.318 0.049 74.8);
+  --warning-border: oklch(0.412 0.068 76.5);
+  --destructive-surface: oklch(0.305 0.058 22.4);
+  --destructive-surface-foreground: oklch(0.858 0.106 22.5);
+  --destructive-border: oklch(0.408 0.084 23.1);
 }
 
 @layer base {
