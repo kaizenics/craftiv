@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2 } from "@/components/ui/icons";
+import { CreditsOverview } from "@/components/dashboard/credits-overview";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,11 +58,6 @@ function getPlanBenefits(plan: SubscriptionPlan): string[] {
     "Advanced AI optimization support",
     "No subscription, credits never expire",
   ];
-}
-
-function isAIBenefit(benefit: string): boolean {
-  const normalized = benefit.toLowerCase();
-  return normalized.includes("ai-");
 }
 
 export default function Settings() {
@@ -244,7 +239,6 @@ export default function Settings() {
   const availableCredits = subscription?.creditBalance ?? 0;
   const resumesCreated = subscription?.resumeCreatedCount ?? 0;
   const coverLettersCreated = subscription?.coverLetterCreatedCount ?? 0;
-  const approxAiSessionsLeft = Math.floor(availableCredits * 2);
   const currentPlanBenefits = getPlanBenefits(subscriptionPlan);
 
   return (
@@ -257,62 +251,15 @@ export default function Settings() {
         <section>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Account</h2>
 
-          <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Credits overview</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Billing model: one-time credit packs, no recurring subscription.
-                </p>
-                <div className="mt-4">
-                  <p className="text-4xl font-bold leading-none text-foreground">
-                    {availableCredits}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Available credits
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Approx. {approxAiSessionsLeft} AI sessions left (0.5 credit each).
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Documents created: {resumesCreated} resumes, {coverLettersCreated} cover letters.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/pricing"
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                >
-                  Buy credits
-                </Link>
-              </div>
-            </div>
-            <div className="mt-4 border-t border-border/60 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Credit pack benefits
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Your current perks and feature access under the credit system.
-              </p>
-              <div className="mt-3 space-y-2">
-                {currentPlanBenefits.map((benefit) => (
-                  <div
-                    key={benefit}
-                    className={`flex items-center gap-2.5 px-1 py-1.5 text-xs ${
-                      isAIBenefit(benefit)
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span className="font-medium">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="mb-6">
+            <CreditsOverview
+              availableCredits={availableCredits}
+              resumesCreated={resumesCreated}
+              coverLettersCreated={coverLettersCreated}
+              benefits={currentPlanBenefits}
+            />
           </div>
-          
+
           <div className="space-y-3">
             {!isOAuthUser && (
               <Link href="/dashboard/change-password" className="block text-sm text-foreground hover:text-muted-foreground transition-colors">

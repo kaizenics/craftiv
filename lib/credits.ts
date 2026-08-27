@@ -4,23 +4,40 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { creditEvents, users } from "@/db/schema";
 import { isUniqueConstraintError } from "@/lib/db-errors";
+import {
+  AI_ACHIEVEMENT_BUILDER_COST,
+  AI_COVER_LETTER_COST,
+  AI_KEYWORD_BOOSTER_COST,
+  AI_RESUME_IMPROVER_COST,
+  AI_SPELL_CHECK_COST,
+  AI_SUGGESTION_COST,
+  ATS_CHECK_COST,
+  CHATBOT_STREAM_COST,
+  COVER_LETTER_AI_SESSION_COST,
+  RESUME_LAYOUT_CHAT_COST,
+  RESUME_PARSE_COST,
+  fromCreditUnits,
+} from "@/lib/credit-costs";
 
-export const CREDIT_UNITS_PER_CREDIT = 100;
-
-// Resume and cover-letter downloads are unlimited and free on every tier, so they
-// have no cost constant and no entry in SERVER_CREDIT_COSTS.
-
-export const COVER_LETTER_AI_SESSION_COST = 50;
-export const ATS_CHECK_COST = 100;
-export const AI_RESUME_IMPROVER_COST = 50;
-export const AI_KEYWORD_BOOSTER_COST = 25;
-export const AI_ACHIEVEMENT_BUILDER_COST = 25;
-export const RESUME_PARSE_COST = 50;
-export const RESUME_LAYOUT_CHAT_COST = 25;
-export const CHATBOT_STREAM_COST = 10;
-export const AI_SPELL_CHECK_COST = 25;
-export const AI_SUGGESTION_COST = 25;
-export const AI_COVER_LETTER_COST = 50;
+// Costs and conversions live in a module free of server-only imports, so the
+// settings UI can price actions from the same numbers the API charges with.
+export {
+  AI_ACHIEVEMENT_BUILDER_COST,
+  AI_COVER_LETTER_COST,
+  AI_KEYWORD_BOOSTER_COST,
+  AI_RESUME_IMPROVER_COST,
+  AI_SPELL_CHECK_COST,
+  AI_SUGGESTION_COST,
+  ATS_CHECK_COST,
+  CHATBOT_STREAM_COST,
+  COVER_LETTER_AI_SESSION_COST,
+  CREDIT_UNITS_PER_CREDIT,
+  RESUME_LAYOUT_CHAT_COST,
+  RESUME_PARSE_COST,
+  formatCreditValue,
+  fromCreditUnits,
+  toCreditUnits,
+} from "@/lib/credit-costs";
 
 export const SERVER_CREDIT_COSTS = {
   ats_check: ATS_CHECK_COST,
@@ -119,19 +136,6 @@ async function getReplayByIdempotencyKey(idempotencyKey: string): Promise<Credit
     balanceUnits: existing.balanceAfterUnits,
     deltaUnits: existing.deltaUnits,
   };
-}
-
-export function toCreditUnits(credits: number): number {
-  return Math.round(credits * CREDIT_UNITS_PER_CREDIT);
-}
-
-export function fromCreditUnits(units: number): number {
-  return units / CREDIT_UNITS_PER_CREDIT;
-}
-
-export function formatCreditValue(units: number): string {
-  const credits = fromCreditUnits(units);
-  return Number.isInteger(credits) ? String(credits) : credits.toFixed(2).replace(/\.?0+$/, "");
 }
 
 export function buildInsufficientCreditsPayload(error: InsufficientCreditsError) {
