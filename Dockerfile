@@ -24,7 +24,11 @@ FROM base AS deps
 # context carries no .git (see .dockerignore), and husky exits non-zero without it.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     HUSKY=0
-COPY package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml carries the `overrides` block, and the lockfile records
+# the same overrides. Copying only the first two files leaves pnpm with no
+# overrides config while the lockfile declares two, and a frozen install
+# refuses to proceed with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # --ignore-scripts because nothing here needs a compile step — sharp and friends
 # ship prebuilt platform binaries as optional dependencies. Without it pnpm fails
 # the whole install over the build scripts it declines to run unattended.
