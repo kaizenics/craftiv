@@ -22,6 +22,19 @@ export const AI_SPELL_CHECK_COST = 25;
 export const AI_SUGGESTION_COST = 25;
 export const AI_COVER_LETTER_COST = 50;
 
+/**
+ * Tailoring one job in the Job Hunter: a resume rewrite plus a matching cover
+ * letter, from a single model call.
+ *
+ * Priced below the 50 + 50 the two standalone tools would cost, because it is
+ * one call rather than two and because a user who tailors a resume for a job
+ * always wants the letter with it -- charging the sum would tax the intended
+ * flow. Discovery, scoring and re-scoring stay free: they are deterministic,
+ * which is what lets a user score two hundred jobs and pay only for the few
+ * they act on.
+ */
+export const JOB_TAILOR_COST = 75;
+
 export function toCreditUnits(credits: number): number {
   return Math.round(credits * CREDIT_UNITS_PER_CREDIT);
 }
@@ -53,6 +66,12 @@ export const CREDIT_ACTIONS: {
     label: "ATS check",
     detail: "Full report with section scores",
     costUnits: ATS_CHECK_COST,
+  },
+  {
+    id: "job_tailor",
+    label: "Tailor for a job",
+    detail: "Resume rewrite plus a matching cover letter",
+    costUnits: JOB_TAILOR_COST,
   },
   {
     id: "ai_resume_improver",
