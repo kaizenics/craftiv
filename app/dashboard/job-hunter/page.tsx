@@ -11,6 +11,7 @@ import {
   type TailorOutcome,
   type TailorTone,
 } from "@/components/dashboard/job-tailor-dialog";
+import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,8 @@ export default function JobHunterPage() {
   const [tailorOutcome, setTailorOutcome] = useState<TailorOutcome | null>(null);
   const [savingKind, setSavingKind] = useState<"resume" | "cover_letter" | null>(null);
   const [savedKinds, setSavedKinds] = useState<("resume" | "cover_letter")[]>([]);
+  const [runningHuntId, setRunningHuntId] = useState<string | null>(null);
+  const [view, setView] = useState<"matches" | "hunts">("matches");
 
   const resumes: ComboboxResume[] = useMemo(
     () =>
@@ -147,6 +150,45 @@ export default function JobHunterPage() {
     onSettled: () => setSavingKind(null),
   });
 
+  const huntsQuery = trpc.jobHunter.listHunts.useQuery();
+
+  const upsertHunt = trpc.jobHunter.upsertHunt.useMutation({
+    onSuccess: async () => {
+      await utils.jobHunter.listHunts.invalidate();
+      toast.success("Hunt saved.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteHunt = trpc.jobHunter.deleteHunt.useMutation({
+    onSuccess: async () => {
+      await utils.jobHunter.listHunts.invalidate();
+      toast.success("Hunt deleted.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const runHuntNow = trpc.jobHunter.runHuntNow.useMutation({
+    onSuccess: async (result) => {
+      await Promise.all([refresh(), utils.jobHunter.listHunts.invalidate()]);
+
+      if (!result.claimed) {
+        // The unique run key did its job: another tick already holds this slot.
+        toast.info("That hunt is already running.");
+        return;
+      }
+      if (result.status === "failed") {
+        toast.error("The hunt failed. Check the run history.");
+        return;
+      }
+      toast.success(
+        `${result.jobsNew} new job${result.jobsNew === 1 ? "" : "s"}, ${result.matchesRescored} re-scored.`,
+      );
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => setRunningHuntId(null),
+  });
+
   const deleteMatch = trpc.jobHunter.deleteMatch.useMutation({
     onSuccess: refresh,
     onError: (error) => toast.error(error.message),
@@ -212,6 +254,15 @@ export default function JobHunterPage() {
   // panel stays hidden and paste/URL import is the whole surface.
   const onlineJobsPollable = Boolean(
     (sourcesQuery.data ?? []).find((source) => source.id === "onlinejobs_ph")?.pollable,
+  );
+
+  // Only sources the scheduler is allowed to poll can back a scheduled hunt.
+  const pollableSources = useMemo(
+    () =>
+      (sourcesQuery.data ?? [])
+        .filter((source) => source.pollable)
+        .map((source) => ({ id: source.id, label: source.label })),
+    [sourcesQuery.data],
   );
 
   return (
@@ -305,7 +356,59 @@ export default function JobHunterPage() {
             />
           </aside>
 
-          <section className="lg:col-span-3">
+          <section className="lg:col-span-3 space-y-4">
+            <Tabs value={view} onValueChange={(value) => setView(value as "matches" | "hunts")}>
+              <TabsList>
+                <TabsTrigger value="matches">Jobs</TabsTrigger>
+                <TabsTrigger value="hunts">
+                  Scheduled hunts ({huntsQuery.data?.length ?? 0})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {view === "hunts" ? (
+              <HuntManager
+                hunts={(huntsQuery.data ?? []) as HuntSummary[]}
+                loading={huntsQuery.isLoading}
+                pollableSources={pollableSources}
+                savingHunt={upsertHunt.isPending}
+                runningHuntId={runningHuntId}
+                canCreate={Boolean(activeResumeId)}
+                onCreate={(draft: HuntDraft) => {
+                  if (!activeResumeId) return;
+                  upsertHunt.mutate({
+                    ...draft,
+                    resumeId: activeResumeId,
+                    // Only pollable sources are offered, so a hunt can never be
+                    // configured to search something its terms forbid.
+                    sources: pollableSources.map((source) => source.id) as never,
+                    location: "",
+                    minScore: 0,
+                    isActive: true,
+                  });
+                }}
+                onToggleActive={(hunt, isActive) =>
+                  upsertHunt.mutate({
+                    id: hunt.id,
+                    name: hunt.name,
+                    query: hunt.query,
+                    location: "",
+                    sources: pollableSources.map((source) => source.id) as never,
+                    resumeId: activeResumeId ?? "",
+                    frequency: hunt.frequency,
+                    runAtMinuteUtc: hunt.runAtMinuteUtc,
+                    minScore: 0,
+                    emailDigest: hunt.emailDigest,
+                    isActive,
+                  })
+                }
+                onRunNow={(huntId) => {
+                  setRunningHuntId(huntId);
+                  runHuntNow.mutate({ id: huntId });
+                }}
+                onDelete={(huntId) => deleteHunt.mutate({ id: huntId })}
+              />
+            ) : (
             <Tabs
               value={statusFilter}
               onValueChange={(value) => setStatusFilter(value as ApplicationStatus | "all")}
@@ -377,6 +480,7 @@ export default function JobHunterPage() {
                 )}
               </TabsContent>
             </Tabs>
+            )}
           </section>
         </div>
       )}

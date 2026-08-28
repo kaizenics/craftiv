@@ -62,6 +62,7 @@ import {
   SparklesIcon,
   StarIcon,
   Target01Icon,
+  PlayIcon,
   TextBoldIcon,
   TextItalicIcon,
   TextUnderlineIcon,
@@ -173,6 +174,7 @@ export const Sparkles = createIcon(SparklesIcon);
 export const SpellCheck = createIcon(ValidationIcon);
 export const Star = createIcon(StarIcon);
 export const Target = createIcon(Target01Icon);
+export const Play = createIcon(PlayIcon);
 export const Trash2 = createIcon(Delete02Icon);
 export const Trophy = createIcon(Medal01Icon);
 export const Underline = createIcon(TextUnderlineIcon);
