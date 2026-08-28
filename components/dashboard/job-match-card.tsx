@@ -1,5 +1,7 @@
 "use client";
 
+import { useId, useState } from "react";
+
 import {
   Select,
   SelectContent,
@@ -34,6 +36,10 @@ export type JobMatchCardData = {
     url: string;
     applyUrl: string;
     salaryText: string;
+    employmentType: string;
+    hoursPerWeek: string;
+    description: string;
+    descriptionTruncated: boolean;
   };
 };
 
@@ -59,8 +65,22 @@ export function JobMatchCard({
   onTailor,
   onDelete,
 }: JobMatchCardProps) {
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const overviewId = useId();
+
   const band = bandStyle(match.score);
   const { posting } = match;
+
+  const meta = [
+    { label: "Type of work", value: posting.employmentType },
+    { label: "Wage / salary", value: posting.salaryText },
+    { label: "Hours per week", value: posting.hoursPerWeek },
+  ].filter((item) => item.value?.trim());
+
+  const overview = posting.description?.trim() ?? "";
+  // Long enough to be worth collapsing; below this the toggle is just noise.
+  const COLLAPSE_AT = 320;
+  const needsToggle = overview.length > COLLAPSE_AT;
 
   return (
     <article className="rounded-xl border border-border bg-card p-4">
@@ -70,8 +90,19 @@ export function JobMatchCard({
           <p className="mt-0.5 truncate text-sm text-muted-foreground">
             {[posting.company, posting.location].filter(Boolean).join(" · ") || "No company listed"}
           </p>
-          {posting.salaryText ? (
-            <p className="mt-0.5 text-sm text-muted-foreground">{posting.salaryText}</p>
+
+          {/* The labelled panel from the posting. Each is rendered only when
+              the source actually stated it, so an empty value never shows as a
+              blank chip pretending to be information. */}
+          {meta.length > 0 ? (
+            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {meta.map((item) => (
+                <div key={item.label} className="flex items-baseline gap-1.5">
+                  <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                  <dd className="text-sm font-medium">{item.value}</dd>
+                </div>
+              ))}
+            </dl>
           ) : null}
         </div>
 
@@ -95,6 +126,40 @@ export function JobMatchCard({
         <p className="mt-3 rounded-lg border border-warning-border bg-warning-surface px-3 py-2 text-xs text-warning-surface-foreground">
           Your resume changed since this was scored. Re-score for an up-to-date match.
         </p>
+      ) : null}
+
+      {overview ? (
+        <section className="mt-3">
+          <h4 className="text-xs font-medium text-muted-foreground">Job overview</h4>
+          <p
+            id={overviewId}
+            className={cn(
+              "mt-1 whitespace-pre-line text-sm text-foreground/90",
+              !overviewOpen && needsToggle && "line-clamp-4",
+            )}
+          >
+            {overview}
+          </p>
+
+          {needsToggle ? (
+            <button
+              type="button"
+              onClick={() => setOverviewOpen((open) => !open)}
+              aria-expanded={overviewOpen}
+              aria-controls={overviewId}
+              className="mt-1 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              {overviewOpen ? "Show less" : "Show full overview"}
+            </button>
+          ) : null}
+
+          {overviewOpen && posting.descriptionTruncated ? (
+            // Saying so is better than letting someone assume they read it all.
+            <p className="mt-1 text-xs text-muted-foreground">
+              This advert was longer than Craftiv stores. Open the posting for the rest.
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
       {match.missingKeywords.length > 0 ? (

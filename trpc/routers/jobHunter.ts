@@ -353,6 +353,11 @@ export const jobHunterRouter = createTRPCRouter({
               salaryText: true,
               hoursPerWeek: true,
               employmentType: true,
+              // The advert body, so a card can show the overview without a
+              // second request. Already capped at 5000 chars on write, and the
+              // list is bounded, so the payload stays reasonable.
+              description: true,
+              descriptionTruncated: true,
               postedAt: true,
               archivedAt: true,
             },
