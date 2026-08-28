@@ -198,7 +198,7 @@ export const resumeRouter = createTRPCRouter({
    */
   list: protectedProcedure.query(async ({ ctx }) => {
     const userResumes = await ctx.db.query.resumes.findMany({
-      where: eq(resumes.userId, ctx.user.id),
+      where: and(eq(resumes.userId, ctx.user.id), eq(resumes.origin, "user")),
       orderBy: [desc(resumes.updatedAt)],
     });
 
@@ -221,7 +221,10 @@ export const resumeRouter = createTRPCRouter({
         createdAt: true,
         updatedAt: true,
       },
-      where: eq(resumes.userId, ctx.user.id),
+      // Job Hunter output is excluded until the user saves it to their
+      // documents. ResumeCombobox is fed by this query and so inherits the
+      // filter, which is correct: you tailor *from* a real resume.
+      where: and(eq(resumes.userId, ctx.user.id), eq(resumes.origin, "user")),
       orderBy: [desc(resumes.updatedAt)],
     });
   }),
