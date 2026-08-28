@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, RefreshCw, Trash2 } from "@/components/ui/icons";
+import { ArrowUpRight, RefreshCw, Sparkles, Trash2 } from "@/components/ui/icons";
 import { bandStyle } from "@/lib/ats-display";
 import {
   APPLICATION_STATUSES,
@@ -25,6 +25,7 @@ export type JobMatchCardData = {
   missingKeywords: string[];
   scoredAt: Date | string;
   resumeVersionAt: Date | string;
+  pipelineStatus: string;
   posting: {
     title: string;
     company: string;
@@ -44,6 +45,7 @@ type JobMatchCardProps = {
   busy: boolean;
   onStatusChange: (status: ApplicationStatus) => void;
   onRescore: () => void;
+  onTailor: () => void;
   onDelete: () => void;
 };
 
@@ -54,6 +56,7 @@ export function JobMatchCard({
   busy,
   onStatusChange,
   onRescore,
+  onTailor,
   onDelete,
 }: JobMatchCardProps) {
   const band = bandStyle(match.score);
@@ -127,6 +130,11 @@ export function JobMatchCard({
             ))}
           </SelectContent>
         </Select>
+
+        <Button size="sm" onClick={onTailor} disabled={busy} className="h-9">
+          <Sparkles className="size-4" aria-hidden="true" />
+          {match.pipelineStatus === "tailored" ? "View tailored" : "Tailor"}
+        </Button>
 
         <Button
           variant="outline"

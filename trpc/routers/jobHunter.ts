@@ -5,7 +5,16 @@ import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { jobMatches, jobPostings, resumes } from "@/db/schema";
+import { coverLetters, jobMatches, jobPostings, resumes } from "@/db/schema";
+import {
+  consumeCredits,
+  InsufficientCreditsError,
+  JOB_TAILOR_COST,
+  newChargeIdempotencyKey,
+  refundCredits,
+} from "@/lib/credits";
+import { normalizeCoverLetterData } from "@/lib/types/cover-letter";
+import { TailorError, tailorResumeForJob } from "@/lib/job-hunter/tailor";
 import type { Database } from "@/db";
 import { isUniqueConstraintError } from "@/lib/db-errors";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
@@ -506,6 +515,224 @@ export const jobHunterRouter = createTRPCRouter({
       bestScore: rows.reduce((best, row) => Math.max(best, row.score), 0),
     };
   }),
+
+  /**
+   * Tailor a resume and cover letter for one job. The only paid action here.
+   *
+   * Charged through the precharge-and-refund-on-throw pattern, so a model
+   * failure never leaves the user charged. A rewrite that does not raise the
+   * ATS score is refunded too: the user asked for an improvement and did not
+   * get one.
+   */
+  tailor: protectedProcedure
+    .input(
+      z.object({
+        matchId: z.string().min(1),
+        tone: z.enum(["professional", "confident", "enthusiastic"]).default("professional"),
+        includeCoverLetter: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await enforceJobFetchRateLimit(ctx, "tailor");
+
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+      const resume = await getOwnedResume(ctx.db, match.resumeId, ctx.user.id);
+
+      if (!resume.data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+      }
+
+      const posting = await ctx.db.query.jobPostings.findFirst({
+        where: and(eq(jobPostings.id, match.jobPostingId), eq(jobPostings.userId, ctx.user.id)),
+      });
+
+      if (!posting) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job posting not found" });
+      }
+
+      if (!posting.description.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This job has no description saved, so there is nothing to tailor against.",
+        });
+      }
+
+      const idempotencyKey = newChargeIdempotencyKey("job_tailor", ctx.user.id);
+
+      try {
+        await consumeCredits({
+          userId: ctx.user.id,
+          eventType: "job_tailor",
+          costUnits: JOB_TAILOR_COST,
+          idempotencyKey,
+          metadata: { matchId: match.id, jobPostingId: posting.id },
+        });
+      } catch (error) {
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You do not have enough credits for this action.",
+          });
+        }
+        throw error;
+      }
+
+      await ctx.db
+        .update(jobMatches)
+        .set({ pipelineStatus: "tailoring", updatedAt: new Date() })
+        .where(eq(jobMatches.id, match.id));
+
+      const refund = async (reason: string) => {
+        await refundCredits({
+          userId: ctx.user.id,
+          eventType: "job_tailor_refund",
+          refundUnits: JOB_TAILOR_COST,
+          idempotencyKey: `refund:${idempotencyKey}`,
+          metadata: { reason, matchId: match.id },
+        });
+        await ctx.db
+          .update(jobMatches)
+          .set({ pipelineStatus: "scored", updatedAt: new Date() })
+          .where(eq(jobMatches.id, match.id));
+      };
+
+      let result: Awaited<ReturnType<typeof tailorResumeForJob>>;
+      try {
+        result = await tailorResumeForJob({
+          resumeData: resume.data,
+          jobTitle: posting.title,
+          companyName: posting.company,
+          jobDescription: posting.description,
+          tone: input.tone,
+        });
+      } catch (error) {
+        await refund("ai_failure");
+        throw error instanceof TailorError
+          ? new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message })
+          : error;
+      }
+
+      // The deterministic scorer decides. A rewrite that does not improve is
+      // not worth the user's credits, so it is refunded and nothing is written.
+      if (!result.accepted) {
+        await refund("no_improvement");
+        return {
+          accepted: false as const,
+          impact: result.impact,
+          message:
+            "The rewrite did not improve your match score, so nothing was saved and your credits were returned.",
+        };
+      }
+
+      const now = new Date();
+      const label = [posting.title, posting.company].filter(Boolean).join(" — ") || "job";
+
+      // Real rows in the existing tables, so tailored output inherits the
+      // editor, templates and PDF/DOCX export. `origin` keeps them out of the
+      // documents library until the user saves them.
+      const tailoredResumeId = randomUUID();
+      await ctx.db.insert(resumes).values({
+        id: tailoredResumeId,
+        userId: ctx.user.id,
+        title: `${resume.title} — ${label}`.slice(0, 200),
+        templateId: resume.templateId,
+        data: result.resumeData,
+        status: resume.status,
+        origin: "job_hunter",
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      let tailoredCoverLetterId: string | null = null;
+      if (input.includeCoverLetter && result.coverLetter) {
+        tailoredCoverLetterId = randomUUID();
+        await ctx.db.insert(coverLetters).values({
+          id: tailoredCoverLetterId,
+          userId: ctx.user.id,
+          title: `Cover letter — ${label}`.slice(0, 200),
+          data: normalizeCoverLetterData({
+            contact: {
+              firstName: result.resumeData.contact.firstName,
+              lastName: result.resumeData.contact.lastName,
+              email: result.resumeData.contact.email,
+              phone: result.resumeData.contact.phone,
+              address: "",
+              city: "",
+            },
+            employer: {
+              hiringManagerName: "",
+              companyName: posting.company,
+              companyAddress: "",
+              jobTitle: posting.title,
+            },
+            content: result.coverLetter,
+          }),
+          origin: "job_hunter",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await ctx.db
+        .update(jobMatches)
+        .set({
+          pipelineStatus: "tailored",
+          tailoredResumeId,
+          tailoredCoverLetterId,
+          tailoredAt: now,
+          tailorImpact: result.impact,
+          updatedAt: now,
+        })
+        .where(eq(jobMatches.id, match.id));
+
+      return {
+        accepted: true as const,
+        impact: result.impact,
+        changes: result.changes,
+        summaryOfChanges: result.summaryOfChanges,
+        tailoredResumeId,
+        tailoredCoverLetterId,
+      };
+    }),
+
+  /**
+   * Promote a tailored document into the user's library.
+   *
+   * Flipping `origin` is the moment generated output becomes theirs. Without
+   * this the column is a one-way trapdoor and tailored documents stay invisible.
+   */
+  saveToDocuments: protectedProcedure
+    .input(z.object({ matchId: z.string().min(1), kind: z.enum(["resume", "cover_letter"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+
+      if (input.kind === "resume") {
+        if (!match.tailoredResumeId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "No tailored resume for this job." });
+        }
+        await ctx.db
+          .update(resumes)
+          .set({ origin: "user", updatedAt: new Date() })
+          .where(
+            and(eq(resumes.id, match.tailoredResumeId), eq(resumes.userId, ctx.user.id)),
+          );
+        return { ok: true, id: match.tailoredResumeId };
+      }
+
+      if (!match.tailoredCoverLetterId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No tailored cover letter for this job." });
+      }
+      await ctx.db
+        .update(coverLetters)
+        .set({ origin: "user", updatedAt: new Date() })
+        .where(
+          and(
+            eq(coverLetters.id, match.tailoredCoverLetterId),
+            eq(coverLetters.userId, ctx.user.id),
+          ),
+        );
+      return { ok: true, id: match.tailoredCoverLetterId };
+    }),
 
   /**
    * Fetch one public OnlineJobs.ph page the user pasted, then score it.

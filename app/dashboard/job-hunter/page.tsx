@@ -6,6 +6,11 @@ import { toast } from "sonner";
 
 import { JobImportPanel, type JobImportValues } from "@/components/dashboard/job-import-panel";
 import { JobMatchCard } from "@/components/dashboard/job-match-card";
+import {
+  JobTailorDialog,
+  type TailorOutcome,
+  type TailorTone,
+} from "@/components/dashboard/job-tailor-dialog";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +44,11 @@ export default function JobHunterPage() {
   const [restrictionNote, setRestrictionNote] = useState<string | null>(null);
   const [busyMatchId, setBusyMatchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [tailorMatchId, setTailorMatchId] = useState<string | null>(null);
+  const [tailorTone, setTailorTone] = useState<TailorTone>("professional");
+  const [tailorOutcome, setTailorOutcome] = useState<TailorOutcome | null>(null);
+  const [savingKind, setSavingKind] = useState<"resume" | "cover_letter" | null>(null);
+  const [savedKinds, setSavedKinds] = useState<("resume" | "cover_letter")[]>([]);
 
   const resumes: ComboboxResume[] = useMemo(
     () =>
@@ -112,6 +122,31 @@ export default function JobHunterPage() {
     onError: (error) => toast.error(error.message),
   });
 
+  const tailor = trpc.jobHunter.tailor.useMutation({
+    onSuccess: async (result) => {
+      setTailorOutcome(result as TailorOutcome);
+      await refresh();
+      // A refunded, rejected rewrite is not an error -- the guarantee worked --
+      // so it is reported as information rather than a failure toast.
+      if (!result.accepted) toast.info("Credits returned — the rewrite did not improve the score.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const saveToDocuments = trpc.jobHunter.saveToDocuments.useMutation({
+    onSuccess: async (_result, variables) => {
+      setSavedKinds((current) => [...current, variables.kind]);
+      await Promise.all([
+        utils.resume.listSummary.invalidate(),
+        utils.resume.list.invalidate(),
+        utils.coverLetter.listSummary.invalidate(),
+      ]);
+      toast.success("Saved to your documents.");
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => setSavingKind(null),
+  });
+
   const deleteMatch = trpc.jobHunter.deleteMatch.useMutation({
     onSuccess: refresh,
     onError: (error) => toast.error(error.message),
@@ -164,6 +199,12 @@ export default function JobHunterPage() {
     }
     return map;
   }, [matches]);
+
+  const tailorJobLabel = useMemo(() => {
+    const match = matches.find((item) => item.id === tailorMatchId);
+    if (!match) return "this job";
+    return [match.posting.title, match.posting.company].filter(Boolean).join(" at ") || "this job";
+  }, [matches, tailorMatchId]);
 
   const hasNoResumes = resumesQuery.isSuccess && resumes.length === 0;
 
@@ -320,6 +361,13 @@ export default function JobHunterPage() {
                           resumeId: activeResumeId ?? undefined,
                         });
                       }}
+                      onTailor={() => {
+                        // Fresh dialog state per job, so a previous result is
+                        // never shown against a different posting.
+                        setTailorOutcome(null);
+                        setSavedKinds([]);
+                        setTailorMatchId(match.id);
+                      }}
                       onDelete={() => {
                         setBusyMatchId(match.id);
                         deleteMatch.mutate({ matchId: match.id });
@@ -332,6 +380,30 @@ export default function JobHunterPage() {
           </section>
         </div>
       )}
+
+      <JobTailorDialog
+        open={tailorMatchId !== null}
+        onOpenChange={(open) => {
+          if (!open) setTailorMatchId(null);
+        }}
+        jobLabel={tailorJobLabel}
+        tone={tailorTone}
+        onToneChange={setTailorTone}
+        pending={tailor.isPending}
+        outcome={tailorOutcome}
+        savingKind={savingKind}
+        savedKinds={savedKinds}
+        onRun={() => {
+          if (!tailorMatchId) return;
+          setTailorOutcome(null);
+          tailor.mutate({ matchId: tailorMatchId, tone: tailorTone });
+        }}
+        onSave={(kind) => {
+          if (!tailorMatchId) return;
+          setSavingKind(kind);
+          saveToDocuments.mutate({ matchId: tailorMatchId, kind });
+        }}
+      />
     </div>
   );
 }
