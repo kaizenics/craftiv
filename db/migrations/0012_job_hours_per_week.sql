@@ -1,0 +1,11 @@
+-- OnlineJobs.ph shows HOURS PER WEEK as its own labelled field, alongside TYPE
+-- OF WORK and WAGE / SALARY. It does not fit employment_type ("Full Time") or
+-- salary_text, and squeezing it into either would make both harder to read
+-- back, so it gets a column.
+--
+-- Free text rather than an integer: sources state this as "40", "20-30",
+-- "flexible", or not at all, and a NOT NULL integer would force a lie.
+--
+-- SQLite accepts a NOT NULL column added to a populated table when it has a
+-- non-null default, so this is an ADD COLUMN and not a table rebuild.
+ALTER TABLE `job_postings` ADD COLUMN `hours_per_week` text DEFAULT '' NOT NULL;

@@ -14,6 +14,8 @@ export type NormalizedJob = {
   location: string;
   employmentType: string;
   salaryText: string;
+  /** Free text, e.g. "40" or "20-30". Sources state this inconsistently. */
+  hoursPerWeek: string;
   url: string;
   applyUrl: string;
   /** Plain text, already sanitized and capped. */

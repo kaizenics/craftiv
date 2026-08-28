@@ -85,6 +85,101 @@ export function parseSearchResults(html: string, baseUrl = "https://www.onlinejo
   return [...seen.values()];
 }
 
+/**
+ * The labelled fields an OnlineJobs.ph posting shows above the advert body:
+ * TYPE OF WORK, WAGE / SALARY, HOURS PER WEEK, DATE UPDATED, JOB OVERVIEW.
+ *
+ * Extracted by their visible label text rather than by any container class.
+ * The labels are what the page promises a reader, so they are far more stable
+ * than markup -- a restyle changes classes constantly and label wording almost
+ * never. It also means one function handles both the flat text of a fallback
+ * parse and a fully marked-up page, because htmlToPlainText puts each label and
+ * its value on their own lines either way.
+ */
+const OJ_LABELS = [
+  "TYPE OF WORK",
+  "WAGE / SALARY",
+  "HOURS PER WEEK",
+  "DATE UPDATED",
+  "JOB OVERVIEW",
+  // Not read, but needed as terminators so a value never runs into the next
+  // section.
+  "SKILL REQUIREMENTS",
+  "ID PROOF INDEX",
+  "JOB ID",
+  "SHARE THIS JOB",
+  "APPLY FOR THIS JOB",
+] as const;
+
+/** Uppercases, collapses whitespace and drops a trailing colon or slash spacing. */
+function normalizeLabel(line: string): string {
+  return line
+    .toUpperCase()
+    .replace(/\s*\/\s*/g, " / ")
+    .replace(/\s+/g, " ")
+    .replace(/[:：]\s*$/, "")
+    .trim();
+}
+
+export type OnlineJobsFields = Partial<Record<(typeof OJ_LABELS)[number], string>>;
+
+export function extractLabelledFields(text: string): OnlineJobsFields {
+  const labels = new Set<string>(OJ_LABELS);
+  const fields: OnlineJobsFields = {};
+
+  let current: (typeof OJ_LABELS)[number] | null = null;
+  let buffer: string[] = [];
+
+  const flush = () => {
+    if (current && buffer.length > 0) {
+      // First value wins: a label repeated lower down the page (in a footer or
+      // a "similar jobs" block) must not overwrite the real one.
+      if (!fields[current]) fields[current] = buffer.join("\n").trim();
+    }
+    buffer = [];
+  };
+
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (!line) {
+      // Blank lines are structure inside a body, so keep them there.
+      if (current === "JOB OVERVIEW" && buffer.length > 0) buffer.push("");
+      continue;
+    }
+
+    const normalized = normalizeLabel(line);
+    if (labels.has(normalized)) {
+      flush();
+      current = normalized as (typeof OJ_LABELS)[number];
+      continue;
+    }
+
+    // Some layouts put the value on the same line as the label, separated by a
+    // colon, dash or just a space.
+    const inline = OJ_LABELS.find(
+      (label) => normalized.startsWith(label) && /^[\s:：|-]/.test(normalized.slice(label.length)),
+    );
+    if (inline) {
+      flush();
+      current = inline;
+      // Slice the raw line, not the normalised one, so the value keeps its
+      // original casing -- "Part Time", not "PART TIME".
+      buffer.push(line.slice(inline.length).replace(/^[\s:：|-]+/, ""));
+      continue;
+    }
+
+    if (current) buffer.push(line);
+  }
+
+  flush();
+  return fields;
+}
+
+/** Collapses a multi-line value, e.g. "PHP 60,000 - 90,000" + "Per Month". */
+function singleLine(value: string | undefined): string {
+  return (value ?? "").replace(/\s*\n\s*/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
 type JsonLdJobPosting = {
   title?: string;
   description?: string;
@@ -220,6 +315,7 @@ export type ParsedJobDetail = {
   location: string;
   employmentType: string;
   salaryText: string;
+  hoursPerWeek: string;
   description: string;
   descriptionTruncated: boolean;
   postedAt: Date | null;
@@ -227,40 +323,67 @@ export type ParsedJobDetail = {
   structured: boolean;
 };
 
+/** "Aug 28, 2026" and similar, as shown under DATE UPDATED. */
+function parseLabelDate(value: string | undefined): Date | null {
+  if (!value?.trim()) return null;
+  const parsed = new Date(value.trim());
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function parseJobDetail(html: string): ParsedJobDetail {
+  // Read the labelled panel first. It is the page's own summary of the job, so
+  // where it and JSON-LD disagree the visible label is what the user saw.
+  const fields = extractLabelledFields(htmlToPlainText(html));
+
+  const labelledOverview = fields["JOB OVERVIEW"]?.trim() ?? "";
+  const employmentType = singleLine(fields["TYPE OF WORK"]);
+  const salaryText = singleLine(fields["WAGE / SALARY"]);
+  const hoursPerWeek = singleLine(fields["HOURS PER WEEK"]);
+  const labelledDate = parseLabelDate(fields["DATE UPDATED"]);
+
   const posting = extractJsonLdJobPosting(html);
 
   if (posting) {
-    const { description, descriptionTruncated } = capDescription(
-      htmlToPlainText(posting.description ?? ""),
-    );
+    const jsonLdDescription = htmlToPlainText(posting.description ?? "");
+    // Prefer whichever body is fuller: JSON-LD is sometimes a truncated teaser
+    // while the visible JOB OVERVIEW carries the whole advert.
+    const body =
+      labelledOverview.length > jsonLdDescription.length ? labelledOverview : jsonLdDescription;
+
+    const { description, descriptionTruncated } = capDescription(body);
     const posted = posting.datePosted ? new Date(posting.datePosted) : null;
 
     return {
       title: firstString(posting.title) || extractHeading(html),
       company: organizationName(posting.hiringOrganization),
       location: locationName(posting.jobLocation),
-      employmentType: firstString(posting.employmentType),
-      salaryText: "",
+      employmentType: employmentType || firstString(posting.employmentType),
+      salaryText,
+      hoursPerWeek,
       description,
       descriptionTruncated,
-      postedAt: posted && !Number.isNaN(posted.getTime()) ? posted : null,
+      postedAt: (posted && !Number.isNaN(posted.getTime()) ? posted : null) ?? labelledDate,
       structured: true,
     };
   }
 
-  const { description, descriptionTruncated } = capDescription(extractLikelyDescription(html));
+  const { description, descriptionTruncated } = capDescription(
+    labelledOverview || extractLikelyDescription(html),
+  );
 
   return {
     title: extractHeading(html),
     company: "",
     location: "",
-    employmentType: "",
-    salaryText: "",
+    employmentType,
+    salaryText,
+    hoursPerWeek,
     description,
     descriptionTruncated,
-    postedAt: null,
-    structured: false,
+    postedAt: labelledDate,
+    // The labelled panel is structured data even without JSON-LD, so a page
+    // that yields it is not really the blind heuristic path.
+    structured: Boolean(labelledOverview),
   };
 }
 

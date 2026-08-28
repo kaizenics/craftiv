@@ -147,6 +147,7 @@ async function upsertPosting(
       location: job.location,
       employmentType: job.employmentType,
       salaryText: job.salaryText,
+      hoursPerWeek: job.hoursPerWeek,
       url: job.url,
       applyUrl: job.applyUrl,
       description: job.description,

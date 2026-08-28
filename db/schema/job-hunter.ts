@@ -97,6 +97,8 @@ export const jobPostings = sqliteTable(
     location: text("location").notNull().default(""),
     employmentType: text("employment_type").notNull().default(""),
     salaryText: text("salary_text").notNull().default(""),
+    // Free text: sources state this as "40", "20-30" or not at all.
+    hoursPerWeek: text("hours_per_week").notNull().default(""),
     url: text("url").notNull().default(""),
     applyUrl: text("apply_url").notNull().default(""),
 

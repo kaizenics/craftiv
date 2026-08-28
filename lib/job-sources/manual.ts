@@ -53,6 +53,7 @@ export const manualAdapter: JobSourceAdapter = {
       location: input.location?.trim() || "",
       employmentType: "",
       salaryText: "",
+      hoursPerWeek: "",
       url: input.url ?? "",
       applyUrl: input.url ?? "",
       description,
