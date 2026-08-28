@@ -20,6 +20,7 @@ import {
   ScrollText,
   Mail,
   ArrowUpRight,
+  Target,
 } from "@/components/ui/icons";
 import { Coins } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -48,6 +49,11 @@ const sidebarItems: SidebarItem[] = [
       { name: "Resumes", href: "/dashboard/documents/resume", icon: ScrollText },
       { name: "Cover Letters", href: "/dashboard/documents/cover-letters", icon: Mail },
     ],
+  },
+  {
+    name: "Job Hunter",
+    href: "/dashboard/job-hunter",
+    icon: Target,
   },
   {
     name: "ATS Checker",
