@@ -1,0 +1,636 @@
+import { randomUUID } from "node:crypto";
+
+import { z } from "zod";
+import { and, desc, eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+
+import { createTRPCRouter, protectedProcedure } from "../init";
+import { jobMatches, jobPostings, resumes } from "@/db/schema";
+import type { Database } from "@/db";
+import { isUniqueConstraintError } from "@/lib/db-errors";
+import { enforceRouteRateLimits } from "@/lib/security/guards";
+import { PROMPT_INPUT_LIMITS } from "@/lib/constants/prompt-limits";
+import { scoreResumeAgainstJob } from "@/lib/job-hunter/scoring";
+import {
+  hashJobContent,
+  resolveAdapterForUrl,
+  safeParseUrl,
+  type NormalizedJob,
+} from "@/lib/job-sources";
+import { fetchOnlineJobsPosting, onlineJobsPhAdapter } from "@/lib/job-sources/onlinejobs-ph";
+import { JobSourceError } from "@/lib/job-sources/types";
+import {
+  APPLICATION_STATUSES,
+  type ApplicationStatus,
+  type JobProvenance,
+} from "@/lib/types/job-hunter";
+import type { ResumeDataJSON } from "@/db/schema/resumes";
+
+/**
+ * Job Hunter.
+ *
+ * Phase 1 is deliberately free: importing a job is deterministic parsing and
+ * scoring is the deterministic engine in lib/ats.ts, so nothing here makes a
+ * model call or charges credits. Tailoring, which does both, lands in phase 2.
+ */
+
+/** Mirrors getOwnedResume in trpc/routers/resume.ts. */
+async function getOwnedResume(db: Database, resumeId: string, userId: string) {
+  const resume = await db.query.resumes.findFirst({
+    where: and(eq(resumes.id, resumeId), eq(resumes.userId, userId)),
+  });
+
+  if (!resume) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found" });
+  }
+
+  return resume;
+}
+
+async function getOwnedMatch(db: Database, matchId: string, userId: string) {
+  const match = await db.query.jobMatches.findFirst({
+    where: and(eq(jobMatches.id, matchId), eq(jobMatches.userId, userId)),
+  });
+
+  if (!match) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+  }
+
+  return match;
+}
+
+/**
+ * Inserts a posting, or returns the existing row when this user already has it.
+ *
+ * Turso has no SELECT ... FOR UPDATE, so the unique index on
+ * (user_id, source_key) is the lock: insert, and treat a unique violation as
+ * "already have it". The same idiom consumeCredits uses for idempotencyKey, and
+ * it avoids a read-then-write race without a transaction.
+ */
+async function upsertPosting(
+  db: Database,
+  userId: string,
+  job: NormalizedJob,
+): Promise<{ id: string; deduped: boolean }> {
+  const now = new Date();
+  const id = randomUUID();
+
+  try {
+    await db.insert(jobPostings).values({
+      id,
+      userId,
+      source: job.source,
+      externalId: job.externalId,
+      sourceKey: job.sourceKey,
+      contentHash: hashJobContent({
+        title: job.title,
+        company: job.company,
+        description: job.description,
+      }),
+      provenance: job.provenance,
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      employmentType: job.employmentType,
+      salaryText: job.salaryText,
+      url: job.url,
+      applyUrl: job.applyUrl,
+      description: job.description,
+      descriptionTruncated: job.descriptionTruncated,
+      postedAt: job.postedAt,
+      raw: job.raw,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { id, deduped: false };
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) throw error;
+
+    const existing = await db.query.jobPostings.findFirst({
+      where: and(eq(jobPostings.userId, userId), eq(jobPostings.sourceKey, job.sourceKey)),
+      columns: { id: true },
+    });
+
+    if (!existing) throw error;
+    return { id: existing.id, deduped: true };
+  }
+}
+
+/**
+ * Scores a posting against a resume and writes the match.
+ *
+ * Free and deterministic. The unique index on (job_posting_id, resume_id) means
+ * re-scoring updates in place rather than accumulating rows, and it deliberately
+ * leaves `applicationStatus` alone -- that column is user-owned, and a re-score
+ * must never move a job the user marked "interviewing" back to "new".
+ */
+async function scoreAndUpsertMatch(
+  db: Database,
+  params: {
+    userId: string;
+    postingId: string;
+    resumeId: string;
+    resumeData: ResumeDataJSON;
+    resumeUpdatedAt: Date;
+    jobDescription: string;
+  },
+) {
+  const scored = scoreResumeAgainstJob(params.resumeData, params.jobDescription);
+  const now = new Date();
+
+  const existing = await db.query.jobMatches.findFirst({
+    where: and(
+      eq(jobMatches.jobPostingId, params.postingId),
+      eq(jobMatches.resumeId, params.resumeId),
+    ),
+    columns: { id: true },
+  });
+
+  if (existing) {
+    await db
+      .update(jobMatches)
+      .set({
+        score: scored.score,
+        scoringVersion: scored.scoringVersion,
+        report: scored.report,
+        scoredAt: now,
+        resumeVersionAt: params.resumeUpdatedAt,
+        pipelineStatus: "scored",
+        updatedAt: now,
+      })
+      .where(eq(jobMatches.id, existing.id));
+
+    return existing.id;
+  }
+
+  const id = randomUUID();
+  await db.insert(jobMatches).values({
+    id,
+    userId: params.userId,
+    jobPostingId: params.postingId,
+    resumeId: params.resumeId,
+    score: scored.score,
+    scoringVersion: scored.scoringVersion,
+    report: scored.report,
+    scoredAt: now,
+    resumeVersionAt: params.resumeUpdatedAt,
+    pipelineStatus: "scored",
+    applicationStatus: "new",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return id;
+}
+
+/**
+ * Outbound scraping is heavier and more conspicuous than an ordinary mutation,
+ * so it borrows the ai_heavy budget rather than the global one.
+ */
+async function enforceJobFetchRateLimit(
+  ctx: { requestHeaders: { get(name: string): string | null }; user: { id: string } },
+  mutation: string,
+) {
+  const result = await enforceRouteRateLimits({
+    category: "ai_heavy",
+    route: `/api/trpc/jobHunter.${mutation}`,
+    requestHeaders: ctx.requestHeaders,
+    userId: ctx.user.id,
+  });
+
+  if (!result.allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Rate limit exceeded. Retry after ${result.retryAfterSeconds} second(s).`,
+    });
+  }
+}
+
+/** Maps a source error onto a tRPC code without leaking internals. */
+function toTrpcError(error: unknown): TRPCError {
+  if (error instanceof JobSourceError) {
+    if (error.code === "RATE_LIMITED" || error.code === "AUTH") {
+      // The source told us to stop. Surface that plainly rather than retrying.
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "OnlineJobs.ph refused the request. Paste the job description instead, or try later.",
+      });
+    }
+    return new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not read that job." });
+}
+
+const importJobInput = z
+  .object({
+    resumeId: z.string().min(1),
+    url: z.string().max(2048).optional(),
+    description: z.string().max(PROMPT_INPUT_LIMITS.jobDescription).optional(),
+    // Supplying these skips any need for a model call, which is what keeps the
+    // import free.
+    title: z.string().max(PROMPT_INPUT_LIMITS.targetRole).optional(),
+    company: z.string().max(PROMPT_INPUT_LIMITS.name).optional(),
+    location: z.string().max(PROMPT_INPUT_LIMITS.name).optional(),
+  })
+  .refine((value) => Boolean(value.url?.trim() || value.description?.trim()), {
+    message: "Paste the job description or a job URL.",
+    path: ["description"],
+  });
+
+export const jobHunterRouter = createTRPCRouter({
+  /**
+   * Import a job the user supplied and score it. No model call, no credits.
+   */
+  importJob: protectedProcedure.input(importJobInput).mutation(async ({ ctx, input }) => {
+    const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+
+    if (!resume.data) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "That resume is empty. Add some content before scoring jobs against it.",
+      });
+    }
+
+    const trimmedUrl = input.url?.trim() || undefined;
+    if (trimmedUrl && !safeParseUrl(trimmedUrl)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "That job URL is not valid." });
+    }
+
+    // Resolution is by host, so a job pasted as an OnlineJobs.ph URL dedupes
+    // against the same job clipped from the page later.
+    const adapter = resolveAdapterForUrl(trimmedUrl);
+    if (!adapter.fromUserInput) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "That source cannot be imported." });
+    }
+
+    const provenance: JobProvenance =
+      trimmedUrl && !input.description?.trim() ? "url_import" : "paste";
+
+    const job = adapter.fromUserInput(
+      {
+        url: trimmedUrl,
+        description: input.description,
+        title: input.title,
+        company: input.company,
+        location: input.location,
+      },
+      provenance,
+    );
+
+    if (!job.description.trim() && !trimmedUrl) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Paste the job description so it can be scored.",
+      });
+    }
+
+    const posting = await upsertPosting(ctx.db, ctx.user.id, job);
+
+    const matchId = await scoreAndUpsertMatch(ctx.db, {
+      userId: ctx.user.id,
+      postingId: posting.id,
+      resumeId: resume.id,
+      resumeData: resume.data,
+      resumeUpdatedAt: resume.updatedAt,
+      jobDescription: job.description,
+    });
+
+    return {
+      matchId,
+      deduped: posting.deduped,
+      source: job.source,
+      attribution: adapter.capabilities.attribution,
+    };
+  }),
+
+  listMatches: protectedProcedure
+    .input(
+      z
+        .object({
+          applicationStatus: z.enum(APPLICATION_STATUSES).optional(),
+          minScore: z.number().int().min(0).max(100).optional(),
+          limit: z.number().int().min(1).max(100).default(50),
+        })
+        .default({ limit: 50 }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db.query.jobMatches.findMany({
+        where: input.applicationStatus
+          ? and(
+              eq(jobMatches.userId, ctx.user.id),
+              eq(jobMatches.applicationStatus, input.applicationStatus),
+            )
+          : eq(jobMatches.userId, ctx.user.id),
+        orderBy: [desc(jobMatches.score), desc(jobMatches.createdAt)],
+        limit: input.limit,
+        with: {
+          posting: {
+            columns: {
+              id: true,
+              title: true,
+              company: true,
+              location: true,
+              source: true,
+              url: true,
+              applyUrl: true,
+              salaryText: true,
+              postedAt: true,
+              archivedAt: true,
+            },
+          },
+        },
+      });
+
+      const filtered =
+        typeof input.minScore === "number"
+          ? rows.filter((row) => row.score >= input.minScore!)
+          : rows;
+
+      return filtered.map((row) => ({
+        id: row.id,
+        score: row.score,
+        pipelineStatus: row.pipelineStatus,
+        applicationStatus: row.applicationStatus,
+        matchedKeywords: row.report.matchedKeywords.slice(0, 8),
+        missingKeywords: row.report.missingKeywords.slice(0, 8),
+        resumeId: row.resumeId,
+        // Lets the UI label a score computed against an older resume rather
+        // than silently presenting it as current.
+        scoredAt: row.scoredAt,
+        resumeVersionAt: row.resumeVersionAt,
+        notes: row.notes,
+        appliedAt: row.appliedAt,
+        createdAt: row.createdAt,
+        posting: row.posting,
+      }));
+    }),
+
+  getMatch: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await getOwnedMatch(ctx.db, input.id, ctx.user.id);
+
+      const row = await ctx.db.query.jobMatches.findFirst({
+        where: and(eq(jobMatches.id, input.id), eq(jobMatches.userId, ctx.user.id)),
+        with: { posting: true },
+      });
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      }
+
+      return row;
+    }),
+
+  /** Re-score against the current resume. Free -- no model call. */
+  rescore: protectedProcedure
+    .input(z.object({ matchId: z.string().min(1), resumeId: z.string().min(1).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+      const resume = await getOwnedResume(ctx.db, input.resumeId ?? match.resumeId, ctx.user.id);
+
+      if (!resume.data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+      }
+
+      const posting = await ctx.db.query.jobPostings.findFirst({
+        where: and(
+          eq(jobPostings.id, match.jobPostingId),
+          eq(jobPostings.userId, ctx.user.id),
+        ),
+        columns: { description: true },
+      });
+
+      if (!posting) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job posting not found" });
+      }
+
+      const matchId = await scoreAndUpsertMatch(ctx.db, {
+        userId: ctx.user.id,
+        postingId: match.jobPostingId,
+        resumeId: resume.id,
+        resumeData: resume.data,
+        resumeUpdatedAt: resume.updatedAt,
+        jobDescription: posting.description,
+      });
+
+      const updated = await ctx.db.query.jobMatches.findFirst({
+        where: eq(jobMatches.id, matchId),
+        columns: { id: true, score: true, scoredAt: true },
+      });
+
+      return { matchId, score: updated?.score ?? 0, previousScore: match.score };
+    }),
+
+  /** User-owned status. Never written by a background run. */
+  updateMatch: protectedProcedure
+    .input(
+      z.object({
+        matchId: z.string().min(1),
+        applicationStatus: z.enum(APPLICATION_STATUSES).optional(),
+        notes: z.string().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+
+      const now = new Date();
+      const status = input.applicationStatus;
+
+      await ctx.db
+        .update(jobMatches)
+        .set({
+          ...(status ? { applicationStatus: status, statusUpdatedAt: now } : {}),
+          // Stamped once, when the user first says they applied, so the
+          // follow-up nudge in a later phase has a date to count from.
+          ...(status === "applied" ? { appliedAt: now } : {}),
+          ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          updatedAt: now,
+        })
+        .where(and(eq(jobMatches.id, input.matchId), eq(jobMatches.userId, ctx.user.id)));
+
+      return { ok: true };
+    }),
+
+  deleteMatch: protectedProcedure
+    .input(z.object({ matchId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+
+      await ctx.db
+        .delete(jobMatches)
+        .where(and(eq(jobMatches.id, match.id), eq(jobMatches.userId, ctx.user.id)));
+
+      // The posting exists only to back its matches, so drop it once the last
+      // one goes. Scoped to this user, since postings are user-scoped.
+      const remaining = await ctx.db.query.jobMatches.findFirst({
+        where: eq(jobMatches.jobPostingId, match.jobPostingId),
+        columns: { id: true },
+      });
+
+      if (!remaining) {
+        await ctx.db
+          .delete(jobPostings)
+          .where(
+            and(
+              eq(jobPostings.id, match.jobPostingId),
+              eq(jobPostings.userId, ctx.user.id),
+            ),
+          );
+      }
+
+      return { ok: true };
+    }),
+
+  /** Counts per pipeline column, for the dashboard strip. */
+  stats: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db.query.jobMatches.findMany({
+      where: eq(jobMatches.userId, ctx.user.id),
+      columns: { applicationStatus: true, score: true },
+    });
+
+    const byStatus = Object.fromEntries(
+      APPLICATION_STATUSES.map((status) => [status, 0]),
+    ) as Record<ApplicationStatus, number>;
+
+    for (const row of rows) {
+      byStatus[row.applicationStatus] += 1;
+    }
+
+    return {
+      total: rows.length,
+      byStatus,
+      bestScore: rows.reduce((best, row) => Math.max(best, row.score), 0),
+    };
+  }),
+
+  /**
+   * Fetch one public OnlineJobs.ph page the user pasted, then score it.
+   *
+   * Disabled unless ONLINEJOBS_SCRAPE_ENABLED is set -- see the terms note in
+   * lib/job-sources/onlinejobs-ph.ts. Free: the fetch and parse are
+   * deterministic and no model is involved.
+   */
+  fetchFromUrl: protectedProcedure
+    .input(z.object({ resumeId: z.string().min(1), url: z.string().min(1).max(2048) }))
+    .mutation(async ({ ctx, input }) => {
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      if (!resume.data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+      }
+
+      await enforceJobFetchRateLimit(ctx, "fetchFromUrl");
+
+      let job: NormalizedJob;
+      try {
+        job = await fetchOnlineJobsPosting(input.url);
+      } catch (error) {
+        throw toTrpcError(error);
+      }
+
+      if (!job.description.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Could not read a description from that page. Paste the text instead.",
+        });
+      }
+
+      const posting = await upsertPosting(ctx.db, ctx.user.id, job);
+      const matchId = await scoreAndUpsertMatch(ctx.db, {
+        userId: ctx.user.id,
+        postingId: posting.id,
+        resumeId: resume.id,
+        resumeData: resume.data,
+        resumeUpdatedAt: resume.updatedAt,
+        jobDescription: job.description,
+      });
+
+      return { matchId, deduped: posting.deduped, title: job.title };
+    }),
+
+  /**
+   * Search OnlineJobs.ph and score every result against the chosen resume.
+   *
+   * Disabled unless ONLINEJOBS_SCRAPE_ENABLED is set. Bounded per call by the
+   * adapter, and rate limited here so it cannot be driven in a loop.
+   */
+  searchSource: protectedProcedure
+    .input(
+      z.object({
+        resumeId: z.string().min(1),
+        query: z.string().min(2).max(PROMPT_INPUT_LIMITS.targetRole),
+        limit: z.number().int().min(1).max(10).default(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!onlineJobsPhAdapter.capabilities.pollable || !onlineJobsPhAdapter.search) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            onlineJobsPhAdapter.capabilities.restrictionNote ??
+            "Searching this source is not enabled.",
+        });
+      }
+
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      if (!resume.data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+      }
+
+      await enforceJobFetchRateLimit(ctx, "searchSource");
+
+      const controller = new AbortController();
+      let jobs: NormalizedJob[];
+      try {
+        jobs = await onlineJobsPhAdapter.search(
+          { query: input.query, location: "", limit: input.limit },
+          controller.signal,
+        );
+      } catch (error) {
+        throw toTrpcError(error);
+      }
+
+      let imported = 0;
+      let deduped = 0;
+
+      for (const job of jobs) {
+        if (!job.description.trim()) continue;
+
+        const posting = await upsertPosting(ctx.db, ctx.user.id, job);
+        if (posting.deduped) deduped += 1;
+        else imported += 1;
+
+        await scoreAndUpsertMatch(ctx.db, {
+          userId: ctx.user.id,
+          postingId: posting.id,
+          resumeId: resume.id,
+          resumeData: resume.data,
+          resumeUpdatedAt: resume.updatedAt,
+          jobDescription: job.description,
+        });
+      }
+
+      return { found: jobs.length, imported, deduped };
+    }),
+
+  /**
+   * Which sources exist and what each is allowed to do.
+   *
+   * The UI renders `restrictionNote` so a user understands why OnlineJobs.ph
+   * cannot be searched for them, rather than assuming the feature is broken.
+   */
+  listSources: protectedProcedure.query(async () => {
+    const { listAdapters } = await import("@/lib/job-sources");
+
+    return listAdapters().map((adapter) => ({
+      id: adapter.id,
+      label: adapter.label,
+      pollable: adapter.capabilities.pollable,
+      attribution: adapter.capabilities.attribution,
+      restrictionNote: adapter.capabilities.restrictionNote,
+    }));
+  }),
+});
