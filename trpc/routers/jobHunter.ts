@@ -791,6 +791,127 @@ export const jobHunterRouter = createTRPCRouter({
     }),
 
   /**
+   * Re-fetch saved OnlineJobs.ph postings and re-parse them in place.
+   *
+   * Rows scraped by an older parser keep whatever it managed to read -- a
+   * partial advert, no salary, no hours -- and there is no way to recover that
+   * from the database alone. Rather than make people delete and re-add every
+   * job whenever parsing improves, this refreshes them and re-scores the
+   * matches, keeping their statuses, notes and tailored documents.
+   *
+   * Free: fetching and parsing are deterministic and scoring makes no model
+   * call.
+   */
+  refreshPostings: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(25).default(25) }).default({ limit: 25 }))
+    .mutation(async ({ ctx, input }) => {
+      if (!onlineJobsPhAdapter.capabilities.fetchableOnDemand) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            onlineJobsPhAdapter.capabilities.restrictionNote ??
+            "Refreshing job details is not enabled.",
+        });
+      }
+
+      await enforceJobFetchRateLimit(ctx, "refreshPostings");
+
+      const postings = await ctx.db.query.jobPostings.findMany({
+        where: and(
+          eq(jobPostings.userId, ctx.user.id),
+          eq(jobPostings.source, "onlinejobs_ph"),
+        ),
+        orderBy: [desc(jobPostings.createdAt)],
+        limit: input.limit,
+      });
+
+      let refreshed = 0;
+      let rescored = 0;
+      let failed = 0;
+
+      for (const posting of postings) {
+        if (!posting.url) continue;
+
+        let job: NormalizedJob;
+        try {
+          job = await fetchOnlineJobsPosting(posting.url);
+        } catch (error) {
+          // One unreadable posting must not lose the rest of the batch. A stop
+          // signal from the source does end it, though.
+          if (
+            error instanceof JobSourceError &&
+            (error.code === "AUTH" || error.code === "RATE_LIMITED")
+          ) {
+            throw toTrpcError(error);
+          }
+          failed += 1;
+          continue;
+        }
+
+        if (!job.description.trim()) {
+          failed += 1;
+          continue;
+        }
+
+        const now = new Date();
+        await ctx.db
+          .update(jobPostings)
+          .set({
+            title: job.title || posting.title,
+            company: job.company || posting.company,
+            location: job.location || posting.location,
+            employmentType: job.employmentType,
+            salaryText: job.salaryText,
+            hoursPerWeek: job.hoursPerWeek,
+            description: job.description,
+            descriptionTruncated: job.descriptionTruncated,
+            postedAt: job.postedAt ?? posting.postedAt,
+            contentHash: hashJobContent({
+              title: job.title,
+              company: job.company,
+              description: job.description,
+            }),
+            updatedAt: now,
+          })
+          .where(
+            and(eq(jobPostings.id, posting.id), eq(jobPostings.userId, ctx.user.id)),
+          );
+
+        refreshed += 1;
+
+        // A fuller advert means different keywords, so every score computed
+        // against the old text is now wrong. Re-score rather than leave a
+        // stale number on screen.
+        const matches = await ctx.db.query.jobMatches.findMany({
+          where: and(
+            eq(jobMatches.jobPostingId, posting.id),
+            eq(jobMatches.userId, ctx.user.id),
+          ),
+          columns: { id: true, resumeId: true },
+        });
+
+        for (const match of matches) {
+          const resume = await ctx.db.query.resumes.findFirst({
+            where: and(eq(resumes.id, match.resumeId), eq(resumes.userId, ctx.user.id)),
+          });
+          if (!resume?.data) continue;
+
+          await scoreAndUpsertMatch(ctx.db, {
+            userId: ctx.user.id,
+            postingId: posting.id,
+            resumeId: resume.id,
+            resumeData: resume.data,
+            resumeUpdatedAt: resume.updatedAt,
+            jobDescription: job.description,
+          });
+          rescored += 1;
+        }
+      }
+
+      return { considered: postings.length, refreshed, rescored, failed };
+    }),
+
+  /**
    * Search OnlineJobs.ph and score every result against the chosen resume.
    *
    * Disabled unless ONLINEJOBS_SCRAPE_ENABLED is set. Bounded per call by the
