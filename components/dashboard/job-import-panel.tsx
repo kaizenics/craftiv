@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ type JobImportPanelProps = {
   error: string | null;
   /** Shown when the pasted URL belongs to a source that cannot be searched. */
   restrictionNote: string | null;
+  /** A job handed over by the clipper, to prefill the form. */
+  prefill?: JobImportValues | null;
   onDetectUrl: (url: string) => void;
   onSubmit: (values: JobImportValues) => void;
 };
@@ -34,16 +36,29 @@ export function JobImportPanel({
   pending,
   error,
   restrictionNote,
+  prefill,
   onDetectUrl,
   onSubmit,
 }: JobImportPanelProps) {
+  // A clipped job is present on first render, so it seeds the fields directly.
+  // The user still reviews and submits: arriving with a clip never imports it.
   const [mode, setMode] = useState<"paste" | "url">("paste");
-  const [url, setUrl] = useState("");
-  const [description, setDescription] = useState("");
-  const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("");
+  const [url, setUrl] = useState(prefill?.url ?? "");
+  const [description, setDescription] = useState(prefill?.description ?? "");
+  const [title, setTitle] = useState(prefill?.title ?? "");
+  const [company, setCompany] = useState(prefill?.company ?? "");
 
   const remaining = PROMPT_INPUT_LIMITS.jobDescription - description.length;
+
+  // Telling the parent about the clipped URL is a call outward, not local
+  // state, so it belongs in an effect. It surfaces the source's restriction
+  // note when the clip came from somewhere Craftiv may not search.
+  useEffect(() => {
+    if (prefill?.url) onDetectUrl(prefill.url);
+    // onDetectUrl is redefined each render by the page; depending on it would
+    // re-fire this on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   const canSubmit = useMemo(() => {
     if (disabled || pending) return false;

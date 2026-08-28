@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ import {
   type TailorTone,
 } from "@/components/dashboard/job-tailor-dialog";
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
+import { JobClipperPanel } from "@/components/dashboard/job-clipper-panel";
+import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +54,28 @@ export default function JobHunterPage() {
   const [savedKinds, setSavedKinds] = useState<("resume" | "cover_letter")[]>([]);
   const [runningHuntId, setRunningHuntId] = useState<string | null>(null);
   const [view, setView] = useState<"matches" | "hunts">("matches");
+  /**
+   * A clipped job arrives in the URL fragment, which never reaches the server.
+   *
+   * It only prefills the import form -- the user still presses the button --
+   * so following a link someone sent can never write to their pipeline.
+   *
+   * Read in a lazy initialiser rather than an effect: the fragment is already
+   * there on first render, and this avoids a setState-driven second pass. It
+   * does not affect rendered markup, so server and client still agree.
+   */
+  const [incomingClip] = useState<ClippedJob | null>(() =>
+    typeof window === "undefined" ? null : readClipFromHash(window.location.hash),
+  );
+
+  // Clearing the address bar is a side effect on an external system, so it
+  // belongs here. Stops a reload resurrecting the clip and keeps the job text
+  // out of the URL.
+  useEffect(() => {
+    if (incomingClip && window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [incomingClip]);
 
   const resumes: ComboboxResume[] = useMemo(
     () =>
@@ -248,6 +272,12 @@ export default function JobHunterPage() {
     return [match.posting.title, match.posting.company].filter(Boolean).join(" at ") || "this job";
   }, [matches, tailorMatchId]);
 
+  // NEXT_PUBLIC_APP_URL is inlined at build time; the origin is the right
+  // fallback in dev, where the bookmarklet should point at localhost.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "https://craftiv.app");
+
   const hasNoResumes = resumesQuery.isSuccess && resumes.length === 0;
 
   // Only true when the operator has opted into scraping. Otherwise the search
@@ -351,9 +381,12 @@ export default function JobHunterPage() {
               pending={importJob.isPending}
               error={importError}
               restrictionNote={restrictionNote}
+              prefill={incomingClip}
               onDetectUrl={handleDetectUrl}
               onSubmit={handleImport}
             />
+
+            <JobClipperPanel appUrl={appUrl} />
           </aside>
 
           <section className="lg:col-span-3 space-y-4">
