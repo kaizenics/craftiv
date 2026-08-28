@@ -40,6 +40,9 @@ test("server credit costs keep their current unit values", () => {
       ai_spell_check: 25,
       ai_suggestion: 25,
       ai_cover_letter: 50,
+      // Job Hunter tailoring: one call producing a resume rewrite and its
+      // cover letter, priced below the 50 + 50 the standalone tools would cost.
+      job_tailor: 75,
     },
   );
 });

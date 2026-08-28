@@ -130,3 +130,28 @@ export async function sendChangeEmailVerificationEmail(input: {
     text: `Confirm changing your Craftiv email to ${input.newEmail}: ${input.url}`,
   });
 }
+
+/**
+ * The Job Hunter digest.
+ *
+ * Lives here so it can reuse the private `deliver`, and so all outbound mail
+ * stays in one module. Unlike the OTP mail this is recurring, non-transactional
+ * mail on the same sending domain as password resets -- so it is only ever sent
+ * when there is something to say (buildJobDigestEmail returns null otherwise),
+ * and it carries an explicit note about how to turn it off. Complaints here
+ * would degrade delivery of the mail people cannot afford to miss.
+ */
+export async function sendJobDigestEmail(input: {
+  email: string;
+  subject: string;
+  html: string;
+  text: string;
+}) {
+  await deliver({
+    to: input.email,
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
+    label: "job digest",
+  });
+}

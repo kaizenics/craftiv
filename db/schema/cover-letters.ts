@@ -13,6 +13,16 @@ export const coverLetters = sqliteTable("cover_letters", {
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   data: text("data", { mode: "json" }).$type<CoverLetterData>().notNull(),
+  /**
+   * Who created this letter. Job Hunter writes real `cover_letters` rows so
+   * tailored output inherits the editor, preview and PDF export unchanged --
+   * but those rows must not clutter the documents library, so every list query
+   * filters on `origin = "user"`. A "Save to my documents" action flips it,
+   * which is the moment the user opts a generated letter into their library.
+   */
+  origin: text("origin", { enum: ["user", "job_hunter"] })
+    .notNull()
+    .default("user"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

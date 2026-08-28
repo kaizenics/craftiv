@@ -9,3 +9,4 @@ export * from "./cover-letters";
 export * from "./processed-transactions";
 export * from "./credit-events";
 export * from "./rate-limits";
+export * from "./job-hunter";

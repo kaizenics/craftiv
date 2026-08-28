@@ -14,6 +14,7 @@ import {
   ATS_CHECK_COST,
   CHATBOT_STREAM_COST,
   COVER_LETTER_AI_SESSION_COST,
+  JOB_TAILOR_COST,
   RESUME_LAYOUT_CHAT_COST,
   RESUME_PARSE_COST,
   fromCreditUnits,
@@ -32,6 +33,7 @@ export {
   CHATBOT_STREAM_COST,
   COVER_LETTER_AI_SESSION_COST,
   CREDIT_UNITS_PER_CREDIT,
+  JOB_TAILOR_COST,
   RESUME_LAYOUT_CHAT_COST,
   RESUME_PARSE_COST,
   formatCreditValue,
@@ -51,6 +53,7 @@ export const SERVER_CREDIT_COSTS = {
   ai_spell_check: AI_SPELL_CHECK_COST,
   ai_suggestion: AI_SUGGESTION_COST,
   ai_cover_letter: AI_COVER_LETTER_COST,
+  job_tailor: JOB_TAILOR_COST,
 } as const;
 
 export type ServerCreditEventType = keyof typeof SERVER_CREDIT_COSTS;

@@ -63,7 +63,7 @@ async function assertCanCreateCoverLetter(db: Database, userId: string) {
 export const coverLetterRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db.query.coverLetters.findMany({
-      where: eq(coverLetters.userId, ctx.user.id),
+      where: and(eq(coverLetters.userId, ctx.user.id), eq(coverLetters.origin, "user")),
       orderBy: [desc(coverLetters.updatedAt)],
     });
 
@@ -82,7 +82,8 @@ export const coverLetterRouter = createTRPCRouter({
         updatedAt: true,
         data: true,
       },
-      where: eq(coverLetters.userId, ctx.user.id),
+      // Job Hunter output stays out of the library until the user saves it.
+      where: and(eq(coverLetters.userId, ctx.user.id), eq(coverLetters.origin, "user")),
       orderBy: [desc(coverLetters.updatedAt)],
     });
 
