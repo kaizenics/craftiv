@@ -5,7 +5,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { coverLetters, jobMatches, jobPostings, resumes } from "@/db/schema";
+import { coverLetters, huntRuns, jobHunts, jobMatches, jobPostings, resumes } from "@/db/schema";
+import { isPollableSource } from "@/lib/job-sources";
+import { computeNextRunAt } from "@/lib/job-hunter/schedule";
+import { runHunt } from "@/lib/job-hunter/runner";
+import { JOB_SOURCE_IDS } from "@/lib/types/job-hunter";
 import {
   consumeCredits,
   InsufficientCreditsError,
@@ -841,6 +845,143 @@ export const jobHunterRouter = createTRPCRouter({
       }
 
       return { found: jobs.length, imported, deduped };
+    }),
+
+  listHunts: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db.query.jobHunts.findMany({
+      where: eq(jobHunts.userId, ctx.user.id),
+      orderBy: [desc(jobHunts.updatedAt)],
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      query: row.query,
+      location: row.location,
+      sources: row.sources,
+      resumeId: row.resumeId,
+      isActive: row.isActive,
+      frequency: row.frequency,
+      runAtMinuteUtc: row.runAtMinuteUtc,
+      emailDigest: row.emailDigest,
+      lastRunAt: row.lastRunAt,
+      nextRunAt: row.nextRunAt,
+      minScore: row.filters?.minScore ?? 0,
+    }));
+  }),
+
+  upsertHunt: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1).optional(),
+        name: z.string().trim().min(1).max(80),
+        query: z.string().max(200).default(""),
+        location: z.string().max(200).default(""),
+        sources: z.array(z.enum(JOB_SOURCE_IDS)).max(4).default([]),
+        resumeId: z.string().min(1),
+        frequency: z.enum(["daily", "weekly", "manual"]).default("daily"),
+        runAtMinuteUtc: z.number().int().min(0).max(1439).default(360),
+        minScore: z.number().int().min(0).max(100).default(0),
+        emailDigest: z.boolean().default(true),
+        isActive: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+
+      // A source the terms forbid polling must not be schedulable, whatever the
+      // client sends. isPollableSource is the single enforcement point.
+      const rejected = input.sources.filter((source) => !isPollableSource(source));
+      if (rejected.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `These sources cannot be searched automatically: ${rejected.join(", ")}.`,
+        });
+      }
+
+      const now = new Date();
+      const nextRunAt = computeNextRunAt({
+        frequency: input.frequency,
+        runAtMinuteUtc: input.runAtMinuteUtc,
+        from: now,
+      });
+
+      const values = {
+        userId: ctx.user.id,
+        name: input.name,
+        query: input.query,
+        location: input.location,
+        sources: input.sources,
+        filters: { minScore: input.minScore, keywords: [] },
+        resumeId: input.resumeId,
+        isActive: input.isActive,
+        frequency: input.frequency,
+        runAtMinuteUtc: input.runAtMinuteUtc,
+        emailDigest: input.emailDigest,
+        nextRunAt,
+        updatedAt: now,
+      };
+
+      if (input.id) {
+        const existing = await ctx.db.query.jobHunts.findFirst({
+          where: and(eq(jobHunts.id, input.id), eq(jobHunts.userId, ctx.user.id)),
+          columns: { id: true },
+        });
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Hunt not found" });
+
+        await ctx.db.update(jobHunts).set(values).where(eq(jobHunts.id, input.id));
+        return { id: input.id };
+      }
+
+      const id = randomUUID();
+      await ctx.db.insert(jobHunts).values({ ...values, id, createdAt: now });
+      return { id };
+    }),
+
+  deleteHunt: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(jobHunts)
+        .where(and(eq(jobHunts.id, input.id), eq(jobHunts.userId, ctx.user.id)));
+      return { ok: true };
+    }),
+
+  /**
+   * Run a hunt now.
+   *
+   * Uses the same runner the scheduler does, with a manual run key so it can
+   * never collide with a scheduled slot. One executor, one code path -- running
+   * interactive work through a second implementation is how the two drift.
+   */
+  runHuntNow: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceJobFetchRateLimit(ctx, "runHuntNow");
+
+      const hunt = await ctx.db.query.jobHunts.findFirst({
+        where: and(eq(jobHunts.id, input.id), eq(jobHunts.userId, ctx.user.id)),
+      });
+      if (!hunt) throw new TRPCError({ code: "NOT_FOUND", message: "Hunt not found" });
+
+      const result = await runHunt({ db: ctx.db, hunt, trigger: "manual" });
+      return result;
+    }),
+
+  listRuns: protectedProcedure
+    .input(z.object({ huntId: z.string().min(1), limit: z.number().int().min(1).max(20).default(10) }))
+    .query(async ({ ctx, input }) => {
+      const hunt = await ctx.db.query.jobHunts.findFirst({
+        where: and(eq(jobHunts.id, input.huntId), eq(jobHunts.userId, ctx.user.id)),
+        columns: { id: true },
+      });
+      if (!hunt) throw new TRPCError({ code: "NOT_FOUND", message: "Hunt not found" });
+
+      return ctx.db.query.huntRuns.findMany({
+        where: eq(huntRuns.huntId, input.huntId),
+        orderBy: [desc(huntRuns.startedAt)],
+        limit: input.limit,
+      });
     }),
 
   /**
