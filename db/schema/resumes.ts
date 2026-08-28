@@ -18,10 +18,25 @@ export const resumes = sqliteTable("resumes", {
   data: text("data", { mode: "json" }).$type<ResumeDataJSON>(),
   
   // Metadata
-  status: text("status", { 
-    enum: ["draft", "completed"] 
+  status: text("status", {
+    enum: ["draft", "completed"]
   }).notNull().default("draft"),
   lastEditedSection: text("last_edited_section"),
+
+  /**
+   * Who created this resume. Job Hunter writes real `resumes` rows so tailored
+   * output inherits the section editor, templates and PDF/DOCX export
+   * unchanged -- but those rows must not clutter the documents library, so
+   * every list query filters on `origin = "user"`. A "Save to my documents"
+   * action flips it, which is the moment the user opts a generated resume in.
+   *
+   * ResumeCombobox is fed by resume.listSummary and so inherits the filter for
+   * free, which is correct: you tailor *from* a real resume, never from a
+   * previously generated one.
+   */
+  origin: text("origin", { enum: ["user", "job_hunter"] })
+    .notNull()
+    .default("user"),
   
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
