@@ -6,8 +6,32 @@
  * detection is used everywhere (credits, rate limiting, ...).
  */
 
+/**
+ * Flattens an error and everything it wraps into one searchable string.
+ *
+ * Drizzle raises its own error for a failed statement and puts the driver's
+ * error in `cause`, so the top-level message reads "Failed query: insert into
+ * ..." and contains none of the words below. Matching on `message` alone
+ * therefore missed every constraint violation raised through Drizzle -- which
+ * silently broke insert-to-dedupe and insert-to-claim, the idiom this codebase
+ * uses in place of the row locks Turso does not have.
+ */
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const parts: string[] = [];
+  let current: unknown = error;
+
+  // Bounded, because an error chain can in principle be circular.
+  for (let depth = 0; current && depth < 5; depth += 1) {
+    if (current instanceof Error) {
+      parts.push(current.message);
+      current = current.cause;
+      continue;
+    }
+    parts.push(String(current));
+    break;
+  }
+
+  return parts.join(" | ");
 }
 
 /** True when the error is a unique-constraint violation (idempotency-key races). */
