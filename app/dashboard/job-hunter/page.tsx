@@ -14,11 +14,12 @@ import {
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
 import { JobClipperPanel } from "@/components/dashboard/job-clipper-panel";
 import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
+import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, Target } from "@/components/ui/icons";
+import { Loader2, RefreshCw, Search, Target } from "@/components/ui/icons";
 import { trpc } from "@/trpc/client";
 import { saveJobTargetDraft } from "@/lib/ats-client-store";
 import {
@@ -213,6 +214,19 @@ export default function JobHunterPage() {
     onSettled: () => setRunningHuntId(null),
   });
 
+  const refreshPostings = trpc.jobHunter.refreshPostings.useMutation({
+    onSuccess: async (result) => {
+      await refresh();
+      toast.success(
+        result.refreshed === 0
+          ? "Nothing needed refreshing."
+          : `Refreshed ${result.refreshed} job${result.refreshed === 1 ? "" : "s"}, re-scored ${result.rescored}.` +
+              (result.failed > 0 ? ` ${result.failed} could not be read.` : ""),
+      );
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const deleteMatch = trpc.jobHunter.deleteMatch.useMutation({
     onSuccess: refresh,
     onError: (error) => toast.error(error.message),
@@ -390,14 +404,34 @@ export default function JobHunterPage() {
           </aside>
 
           <section className="lg:col-span-3 space-y-4">
-            <Tabs value={view} onValueChange={(value) => setView(value as "matches" | "hunts")}>
-              <TabsList>
-                <TabsTrigger value="matches">Jobs</TabsTrigger>
-                <TabsTrigger value="hunts">
-                  Scheduled hunts ({huntsQuery.data?.length ?? 0})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Tabs value={view} onValueChange={(value) => setView(value as "matches" | "hunts")}>
+                <TabsList>
+                  <TabsTrigger value="matches">Jobs</TabsTrigger>
+                  <TabsTrigger value="hunts">
+                    Scheduled hunts ({huntsQuery.data?.length ?? 0})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Rows saved by an older parser keep whatever it read. This
+                  re-fetches them in place rather than making anyone delete and
+                  re-add every job. */}
+              {onlineJobsPollable && view === "matches" && matches.length > 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshPostings.mutate({ limit: 25 })}
+                  disabled={refreshPostings.isPending}
+                >
+                  <RefreshCw
+                    className={cn("size-4", refreshPostings.isPending && "animate-spin")}
+                    aria-hidden="true"
+                  />
+                  {refreshPostings.isPending ? "Refreshing…" : "Refresh job details"}
+                </Button>
+              ) : null}
+            </div>
 
             {view === "hunts" ? (
               <HuntManager
