@@ -42,8 +42,10 @@ import {
   Link02Icon,
   Loading03Icon,
   Mail01Icon,
+  MaximizeScreenIcon,
   Medal01Icon,
   Menu01Icon,
+  MinimizeScreenIcon,
   MoreVerticalIcon,
   PaintBrush01Icon,
   PencilIcon,
@@ -154,7 +156,9 @@ export const List = createIcon(LeftToRightListBulletIcon);
 export const ListOrdered = createIcon(LeftToRightListNumberIcon);
 export const Loader2 = createIcon(Loading03Icon);
 export const Mail = createIcon(Mail01Icon);
+export const Maximize = createIcon(MaximizeScreenIcon);
 export const Menu = createIcon(Menu01Icon);
+export const Minimize = createIcon(MinimizeScreenIcon);
 export const MoreVertical = createIcon(MoreVerticalIcon);
 export const Paintbrush = createIcon(PaintBrush01Icon);
 export const Pencil = createIcon(PencilIcon);

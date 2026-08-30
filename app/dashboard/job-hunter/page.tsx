@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { JobImportPanel, type JobImportValues } from "@/components/dashboard/job-import-panel";
 import { JobMatchCard } from "@/components/dashboard/job-match-card";
+import { JobPipelineBoard } from "@/components/dashboard/job-pipeline-board";
 import {
   JobTailorDialog,
   type TailorOutcome,
@@ -18,7 +19,18 @@ import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resu
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, RefreshCw, Search, Target } from "@/components/ui/icons";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Grid,
+  List,
+  Loader2,
+  Maximize,
+  Minimize,
+  RefreshCw,
+  Search,
+  Target,
+} from "@/components/ui/icons";
 import { trpc } from "@/trpc/client";
 import { saveJobTargetDraft } from "@/lib/ats-client-store";
 import {
@@ -35,6 +47,7 @@ import {
  * -- the part that costs credits -- lands in the next phase.
  */
 export default function JobHunterPage() {
+  const JOBS_PER_PAGE = 6;
   const utils = trpc.useUtils();
 
   const resumesQuery = trpc.resume.listSummary.useQuery();
@@ -54,6 +67,10 @@ export default function JobHunterPage() {
   const [savedKinds, setSavedKinds] = useState<("resume" | "cover_letter")[]>([]);
   const [runningHuntId, setRunningHuntId] = useState<string | null>(null);
   const [view, setView] = useState<"matches" | "hunts">("matches");
+  const [matchesLayout, setMatchesLayout] = useState<"list" | "board">("list");
+  const [jobsPage, setJobsPage] = useState(1);
+  const [boardFullscreen, setBoardFullscreen] = useState(false);
+  const [boardFullscreenActive, setBoardFullscreenActive] = useState(false);
   /**
    * A clipped job arrives in the URL fragment, which never reaches the server.
    *
@@ -76,6 +93,36 @@ export default function JobHunterPage() {
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [incomingClip]);
+
+  useEffect(() => {
+    if (!boardFullscreen) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      setBoardFullscreenActive(true);
+    });
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeBoardFullscreen();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [boardFullscreen]);
+
+  function openBoardFullscreen() {
+    setBoardFullscreenActive(false);
+    setBoardFullscreen(true);
+  }
+
+  function closeBoardFullscreen() {
+    setBoardFullscreenActive(false);
+    window.setTimeout(() => setBoardFullscreen(false), 200);
+  }
 
   const resumes: ComboboxResume[] = useMemo(
     () =>
@@ -270,6 +317,13 @@ export default function JobHunterPage() {
     statusFilter === "all"
       ? matches
       : matches.filter((match) => match.applicationStatus === statusFilter);
+  const matchesForCurrentView = matchesLayout === "board" ? matches : visibleMatches;
+  const totalJobPages = Math.max(1, Math.ceil(matchesForCurrentView.length / JOBS_PER_PAGE));
+  const currentJobsPage = Math.min(jobsPage, totalJobPages);
+  const paginatedMatches = matchesForCurrentView.slice(
+    (currentJobsPage - 1) * JOBS_PER_PAGE,
+    currentJobsPage * JOBS_PER_PAGE,
+  );
 
   const counts = useMemo(() => {
     const map = new Map<ApplicationStatus, number>();
@@ -467,9 +521,118 @@ export default function JobHunterPage() {
                 onDelete={(huntId) => deleteHunt.mutate({ id: huntId })}
               />
             ) : (
+            <div
+              className={cn(
+                "space-y-4",
+                boardFullscreen &&
+                  "fixed inset-0 z-50 flex flex-col overflow-hidden bg-background p-4 transition-[opacity,transform] duration-200 ease-out sm:p-6",
+                boardFullscreen &&
+                  (boardFullscreenActive ? "scale-100 opacity-100" : "scale-[0.985] opacity-0"),
+              )}
+            >
+              {boardFullscreen ? (
+                <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+                  <div>
+                    <h2 className="font-heading text-lg font-semibold">Application pipeline</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Drag jobs between stages to keep your search organized.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={closeBoardFullscreen}
+                  >
+                    <Minimize className="size-4" aria-hidden="true" />
+                    Exit full screen
+                  </Button>
+                </div>
+              ) : null}
+
+              <div
+                className={cn(
+                  "flex items-center justify-between gap-3",
+                  boardFullscreen && "hidden",
+                )}
+              >
+                <p className="text-sm text-muted-foreground">
+                  {matches.length} {matches.length === 1 ? "job" : "jobs"} in your pipeline
+                </p>
+                <div className="flex rounded-lg border border-border bg-muted/30 p-0.5" aria-label="Pipeline layout">
+                  <Button
+                    type="button"
+                    variant={matchesLayout === "list" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      setMatchesLayout("list");
+                      setJobsPage(1);
+                      setBoardFullscreen(false);
+                    }}
+                    aria-pressed={matchesLayout === "list"}
+                  >
+                    <List className="size-3.5" aria-hidden="true" />
+                    List
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={matchesLayout === "board" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      setMatchesLayout("board");
+                      setJobsPage(1);
+                    }}
+                    aria-pressed={matchesLayout === "board"}
+                  >
+                    <Grid className="size-3.5" aria-hidden="true" />
+                    Board
+                  </Button>
+                  {matchesLayout === "board" && !boardFullscreen ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={openBoardFullscreen}
+                      aria-label="Open Kanban in full screen"
+                    >
+                      <Maximize className="size-3.5" aria-hidden="true" />
+                      Full screen
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {matchesLayout === "board" ? (
+                matchesQuery.isLoading ? (
+                  <div className="h-80 animate-pulse rounded-lg bg-muted/60" aria-hidden="true" />
+                ) : matches.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                    <p className="font-heading text-base font-semibold">No jobs yet</p>
+                    <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                      Paste a job description on the left to add your first pipeline card.
+                    </p>
+                  </div>
+                ) : (
+                  <JobPipelineBoard
+                    matches={paginatedMatches}
+                    busyMatchId={busyMatchId}
+                    fullscreen={boardFullscreen}
+                    onStatusChange={(matchId, status) => {
+                      setBusyMatchId(matchId);
+                      updateMatch.mutate({ matchId, applicationStatus: status });
+                    }}
+                  />
+                )
+              ) : (
             <Tabs
               value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as ApplicationStatus | "all")}
+              onValueChange={(value) => {
+                setStatusFilter(value as ApplicationStatus | "all");
+                setJobsPage(1);
+              }}
             >
               <TabsList className="flex w-full flex-wrap">
                 <TabsTrigger value="all">All ({matches.length})</TabsTrigger>
@@ -499,7 +662,7 @@ export default function JobHunterPage() {
                     </p>
                   </div>
                 ) : (
-                  visibleMatches.map((match) => (
+                  paginatedMatches.map((match) => (
                     <JobMatchCard
                       key={match.id}
                       match={match}
@@ -538,6 +701,49 @@ export default function JobHunterPage() {
                 )}
               </TabsContent>
             </Tabs>
+              )}
+
+              {!matchesQuery.isLoading && matchesForCurrentView.length > JOBS_PER_PAGE ? (
+                <nav
+                  className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"
+                  aria-label="Jobs pagination"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Showing {(currentJobsPage - 1) * JOBS_PER_PAGE + 1}–{Math.min(
+                      currentJobsPage * JOBS_PER_PAGE,
+                      matchesForCurrentView.length,
+                    )} of {matchesForCurrentView.length} jobs
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setJobsPage((page) => Math.max(1, page - 1))}
+                      disabled={currentJobsPage === 1}
+                    >
+                      <ChevronLeft className="size-4" aria-hidden="true" />
+                      Previous
+                    </Button>
+                    <span className="min-w-16 text-center text-xs font-medium tabular-nums">
+                      {currentJobsPage} / {totalJobPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setJobsPage((page) => Math.min(totalJobPages, page + 1))}
+                      disabled={currentJobsPage === totalJobPages}
+                    >
+                      Next
+                      <ChevronRight className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </nav>
+              ) : null}
+            </div>
             )}
           </section>
         </div>
