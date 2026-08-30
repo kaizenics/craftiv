@@ -25,11 +25,13 @@ import {
 import { Coins } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface SidebarItem {
   name: string;
   href: string;
   icon: typeof LayoutDashboard;
+  badge?: string;
   children?: { name: string; href: string; icon: typeof LayoutDashboard }[];
 }
 
@@ -54,6 +56,7 @@ const sidebarItems: SidebarItem[] = [
     name: "Job Hunter",
     href: "/dashboard/job-hunter",
     icon: Target,
+    badge: "Beta",
   },
   {
     name: "ATS Checker",
@@ -235,6 +238,11 @@ export function DashboardSidebar() {
             >
               <item.icon className="h-5 w-5 shrink-0" />
               <span>{item.name}</span>
+              {item.badge ? (
+                <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                  {item.badge}
+                </Badge>
+              ) : null}
               {item.name === "Portfolio Builder" ? (
                 <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
               ) : null}
@@ -317,4 +325,3 @@ export function DashboardSidebar() {
     </>
   );
 }
-
