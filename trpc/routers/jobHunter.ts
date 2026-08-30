@@ -377,6 +377,9 @@ export const jobHunterRouter = createTRPCRouter({
         applicationStatus: row.applicationStatus,
         matchedKeywords: row.report.matchedKeywords.slice(0, 8),
         missingKeywords: row.report.missingKeywords.slice(0, 8),
+        sectionScores: row.report.sectionScores,
+        strengths: row.report.strengths.slice(0, 4),
+        topActions: row.report.topActions.slice(0, 3),
         resumeId: row.resumeId,
         // Lets the UI label a score computed against an older resume rather
         // than silently presenting it as current.
