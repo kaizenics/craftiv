@@ -4,22 +4,58 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { JobImportPanel, type JobImportValues } from "@/components/dashboard/job-import-panel";
+import {
+  JobImportPanel,
+  type BulkImportResult,
+  type JobImportValues,
+} from "@/components/dashboard/job-import-panel";
 import { JobMatchCard } from "@/components/dashboard/job-match-card";
+import { JobPipelineBoard } from "@/components/dashboard/job-pipeline-board";
+import {
+  ResumeComparisonDialog,
+  type ResumeComparisonResult,
+} from "@/components/dashboard/resume-comparison-dialog";
 import {
   JobTailorDialog,
   type TailorOutcome,
   type TailorTone,
 } from "@/components/dashboard/job-tailor-dialog";
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
-import { JobClipperPanel } from "@/components/dashboard/job-clipper-panel";
 import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
 import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, RefreshCw, Search, Target } from "@/components/ui/icons";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Grid,
+  Filter,
+  List,
+  Maximize,
+  Minimize,
+  Plus,
+  RefreshCw,
+  Search,
+  Target,
+  X,
+} from "@/components/ui/icons";
 import { trpc } from "@/trpc/client";
 import { saveJobTargetDraft } from "@/lib/ats-client-store";
 import {
@@ -36,6 +72,7 @@ import {
  * -- the part that costs credits -- lands in the next phase.
  */
 export default function JobHunterPage() {
+  const JOBS_PER_PAGE = 6;
   const utils = trpc.useUtils();
 
   const resumesQuery = trpc.resume.listSummary.useQuery();
@@ -47,7 +84,6 @@ export default function JobHunterPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [restrictionNote, setRestrictionNote] = useState<string | null>(null);
   const [busyMatchId, setBusyMatchId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [tailorMatchId, setTailorMatchId] = useState<string | null>(null);
   const [tailorTone, setTailorTone] = useState<TailorTone>("professional");
   const [tailorOutcome, setTailorOutcome] = useState<TailorOutcome | null>(null);
@@ -55,6 +91,19 @@ export default function JobHunterPage() {
   const [savedKinds, setSavedKinds] = useState<("resume" | "cover_letter")[]>([]);
   const [runningHuntId, setRunningHuntId] = useState<string | null>(null);
   const [view, setView] = useState<"matches" | "hunts">("matches");
+  const [matchesLayout, setMatchesLayout] = useState<"list" | "board">("list");
+  const [jobsPage, setJobsPage] = useState(1);
+  const [boardFullscreen, setBoardFullscreen] = useState(false);
+  const [boardFullscreenActive, setBoardFullscreenActive] = useState(false);
+  const [jobSearch, setJobSearch] = useState("");
+  const [minimumScore, setMinimumScore] = useState("all");
+  const [resumeFilter, setResumeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"score" | "newest" | "title" | "company">("score");
+  const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
+  const [compareMatchId, setCompareMatchId] = useState<string | null>(null);
+  const [comparisonResult, setComparisonResult] = useState<ResumeComparisonResult | null>(null);
+  const [mobileAddJobsOpen, setMobileAddJobsOpen] = useState(false);
   /**
    * A clipped job arrives in the URL fragment, which never reaches the server.
    *
@@ -77,6 +126,36 @@ export default function JobHunterPage() {
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [incomingClip]);
+
+  useEffect(() => {
+    if (!boardFullscreen) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      setBoardFullscreenActive(true);
+    });
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeBoardFullscreen();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [boardFullscreen]);
+
+  function openBoardFullscreen() {
+    setBoardFullscreenActive(false);
+    setBoardFullscreen(true);
+  }
+
+  function closeBoardFullscreen() {
+    setBoardFullscreenActive(false);
+    window.setTimeout(() => setBoardFullscreen(false), 200);
+  }
 
   const resumes: ComboboxResume[] = useMemo(
     () =>
@@ -116,6 +195,22 @@ export default function JobHunterPage() {
       toast.success(result.deduped ? "Already in your pipeline — score updated." : "Job scored.");
     },
     onError: (error) => setImportError(error.message),
+  });
+
+  const bulkImportJobs = trpc.jobHunter.bulkImportJobs.useMutation({
+    onSuccess: async (result) => {
+      setBulkImportResult(result);
+      await refresh();
+      toast.success(
+        `${result.imported} imported, ${result.duplicates} already saved, ${result.failed} failed.`,
+      );
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const compareResumes = trpc.jobHunter.compareResumes.useMutation({
+    onSuccess: (result) => setComparisonResult(result as ResumeComparisonResult),
+    onError: (error) => toast.error(error.message),
   });
 
   const updateMatch = trpc.jobHunter.updateMatch.useMutation({
@@ -266,19 +361,69 @@ export default function JobHunterPage() {
     }
   }
 
+  function handleBulkImport(urls: string[]) {
+    if (!activeResumeId) {
+      setImportError("Create a resume first so jobs have something to be scored against.");
+      return;
+    }
+    setBulkImportResult(null);
+    bulkImportJobs.mutate({ resumeId: activeResumeId, urls });
+  }
+
   const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  const availableSources = useMemo(
+    () => [...new Set(matches.map((match) => match.posting.source))].sort(),
+    [matches],
+  );
+  const filteredMatches = useMemo(() => {
+    const query = jobSearch.trim().toLowerCase();
+    const scoreFloor = minimumScore === "all" ? 0 : Number(minimumScore);
+    const filtered = matches.filter((match) => {
+      const searchable = [
+        match.posting.title,
+        match.posting.company,
+        match.posting.location,
+        ...match.matchedKeywords,
+        ...match.missingKeywords,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return (
+        (!query || searchable.includes(query)) &&
+        match.score >= scoreFloor &&
+        (resumeFilter === "all" || match.resumeId === resumeFilter) &&
+        (sourceFilter === "all" || match.posting.source === sourceFilter)
+      );
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === "title") return a.posting.title.localeCompare(b.posting.title);
+      if (sortBy === "company") return a.posting.company.localeCompare(b.posting.company);
+      return b.score - a.score;
+    });
+  }, [jobSearch, matches, minimumScore, resumeFilter, sortBy, sourceFilter]);
   const visibleMatches =
     statusFilter === "all"
-      ? matches
-      : matches.filter((match) => match.applicationStatus === statusFilter);
+      ? filteredMatches
+      : filteredMatches.filter((match) => match.applicationStatus === statusFilter);
+  const matchesForCurrentView = matchesLayout === "board" ? filteredMatches : visibleMatches;
+  const totalJobPages = Math.max(1, Math.ceil(matchesForCurrentView.length / JOBS_PER_PAGE));
+  const currentJobsPage = Math.min(jobsPage, totalJobPages);
+  const paginatedMatches = matchesForCurrentView.slice(
+    (currentJobsPage - 1) * JOBS_PER_PAGE,
+    currentJobsPage * JOBS_PER_PAGE,
+  );
 
   const counts = useMemo(() => {
     const map = new Map<ApplicationStatus, number>();
-    for (const match of matches) {
+    for (const match of filteredMatches) {
       map.set(match.applicationStatus, (map.get(match.applicationStatus) ?? 0) + 1);
     }
     return map;
-  }, [matches]);
+  }, [filteredMatches]);
 
   const tailorJobLabel = useMemo(() => {
     const match = matches.find((item) => item.id === tailorMatchId);
@@ -286,11 +431,22 @@ export default function JobHunterPage() {
     return [match.posting.title, match.posting.company].filter(Boolean).join(" at ") || "this job";
   }, [matches, tailorMatchId]);
 
-  // NEXT_PUBLIC_APP_URL is inlined at build time; the origin is the right
-  // fallback in dev, where the bookmarklet should point at localhost.
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "https://craftiv.app");
+  const comparisonMatch = matches.find((match) => match.id === compareMatchId) ?? null;
+  const activeFilterCount = [
+    Boolean(jobSearch.trim()),
+    minimumScore !== "all",
+    resumeFilter !== "all",
+    sourceFilter !== "all",
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
+
+  function clearFilters() {
+    setJobSearch("");
+    setMinimumScore("all");
+    setResumeFilter("all");
+    setSourceFilter("all");
+    setJobsPage(1);
+  }
 
   const hasNoResumes = resumesQuery.isSuccess && resumes.length === 0;
 
@@ -312,7 +468,12 @@ export default function JobHunterPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-heading text-2xl font-semibold sm:text-3xl">Job Hunter</h1>
+        <div className="flex items-center gap-2.5">
+          <h1 className="font-heading text-2xl font-semibold sm:text-3xl">Job Hunter</h1>
+          <Badge className="h-5 border-transparent bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary">
+            Beta
+          </Badge>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Bring in jobs you find, see how your resume really scores against each one, and track
           them through to applied.
@@ -333,7 +494,37 @@ export default function JobHunterPage() {
         </section>
       ) : (
         <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
-          <aside className="space-y-4 lg:sticky lg:top-6 lg:col-span-2">
+          <div className="rounded-xl border border-border bg-card p-3 lg:hidden">
+            <div className="flex items-end gap-2">
+              <label className="min-w-0 flex-1">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Score against
+                </span>
+                <Select value={activeResumeId ?? undefined} onValueChange={setSelectedResumeId}>
+                  <SelectTrigger className="h-10 w-full rounded-lg bg-background" aria-label="Score jobs against resume">
+                    <SelectValue placeholder="Select a resume" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resumes.map((resume) => (
+                      <SelectItem key={resume.id} value={resume.id}>
+                        {resume.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <Button
+                type="button"
+                className="h-10 shrink-0 px-4"
+                onClick={() => setMobileAddJobsOpen(true)}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Add jobs
+              </Button>
+            </div>
+          </div>
+
+          <aside className="hidden space-y-4 lg:sticky lg:top-6 lg:col-span-2 lg:block">
             <div className="rounded-xl border border-border bg-card p-4">
               <ResumeCombobox
                 resumes={resumes}
@@ -343,65 +534,53 @@ export default function JobHunterPage() {
               />
             </div>
 
-            {onlineJobsPollable ? (
-              <section
-                aria-labelledby="job-search-heading"
-                className="rounded-xl border border-border bg-card p-4"
-              >
-                <h2 id="job-search-heading" className="font-heading text-base font-semibold">
-                  Search OnlineJobs.ph
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Fetches public postings and scores each one. Bounded per search and rate
-                  limited.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <label htmlFor="job-search" className="sr-only">
-                    Search keyword
-                  </label>
-                  <Input
-                    id="job-search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="virtual assistant"
-                    disabled={searchSource.isPending}
-                  />
-                  <Button
-                    onClick={() => {
-                      if (!activeResumeId || searchQuery.trim().length < 2) return;
-                      searchSource.mutate({
-                        resumeId: activeResumeId,
-                        query: searchQuery.trim(),
-                        limit: 5,
-                      });
-                    }}
-                    disabled={
-                      !activeResumeId || searchQuery.trim().length < 2 || searchSource.isPending
-                    }
-                  >
-                    {searchSource.isPending ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Search className="size-4" aria-hidden="true" />
-                    )}
-                    <span className="sr-only">Search</span>
-                  </Button>
-                </div>
-              </section>
-            ) : null}
-
             <JobImportPanel
               disabled={!activeResumeId}
-              pending={importJob.isPending}
+              pending={importJob.isPending || bulkImportJobs.isPending}
+              searchPending={searchSource.isPending}
+              platformSearchAvailable={onlineJobsPollable}
               error={importError}
               restrictionNote={restrictionNote}
               prefill={incomingClip}
+              bulkResult={bulkImportResult}
               onDetectUrl={handleDetectUrl}
               onSubmit={handleImport}
+              onBulkSubmit={handleBulkImport}
+              onPlatformSearch={(query) => {
+                if (!activeResumeId) return;
+                searchSource.mutate({ resumeId: activeResumeId, query, limit: 5 });
+              }}
             />
-
-            <JobClipperPanel appUrl={appUrl} />
           </aside>
+
+          <Drawer open={mobileAddJobsOpen} onOpenChange={setMobileAddJobsOpen}>
+            <DrawerContent className="h-[85dvh] max-h-[85dvh] p-0 before:inset-0 before:rounded-b-none before:rounded-t-2xl lg:hidden">
+              <DrawerHeader className="sr-only">
+                <DrawerTitle>Add jobs</DrawerTitle>
+                <DrawerDescription>
+                  Search a job platform or import jobs into your pipeline.
+                </DrawerDescription>
+              </DrawerHeader>
+              <JobImportPanel
+                embedded
+                disabled={!activeResumeId}
+                pending={importJob.isPending || bulkImportJobs.isPending}
+                searchPending={searchSource.isPending}
+                platformSearchAvailable={onlineJobsPollable}
+                error={importError}
+                restrictionNote={restrictionNote}
+                prefill={incomingClip}
+                bulkResult={bulkImportResult}
+                onDetectUrl={handleDetectUrl}
+                onSubmit={handleImport}
+                onBulkSubmit={handleBulkImport}
+                onPlatformSearch={(query) => {
+                  if (!activeResumeId) return;
+                  searchSource.mutate({ resumeId: activeResumeId, query, limit: 5 });
+                }}
+              />
+            </DrawerContent>
+          </Drawer>
 
           <section className="lg:col-span-3 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -476,12 +655,280 @@ export default function JobHunterPage() {
                 onDelete={(huntId) => deleteHunt.mutate({ id: huntId })}
               />
             ) : (
+            <div
+              className={cn(
+                "space-y-4",
+                boardFullscreen &&
+                  "fixed inset-0 z-50 flex flex-col overflow-hidden bg-background p-4 transition-[opacity,transform] duration-200 ease-out sm:p-6",
+                boardFullscreen &&
+                  (boardFullscreenActive ? "scale-100 opacity-100" : "scale-[0.985] opacity-0"),
+              )}
+            >
+              {boardFullscreen ? (
+                <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+                  <div>
+                    <h2 className="font-heading text-lg font-semibold">Application pipeline</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Drag jobs between stages to keep your search organized.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={closeBoardFullscreen}
+                  >
+                    <Minimize className="size-4" aria-hidden="true" />
+                    Exit full screen
+                  </Button>
+                </div>
+              ) : null}
+
+              <div
+                className={cn(
+                  "flex items-center justify-between gap-3",
+                  boardFullscreen && "hidden",
+                )}
+              >
+                <p className="text-sm text-muted-foreground">
+                  {filteredMatches.length === matches.length
+                    ? `${matches.length} ${matches.length === 1 ? "job" : "jobs"} in your pipeline`
+                    : `${filteredMatches.length} of ${matches.length} jobs`}
+                </p>
+                <div className="flex rounded-lg border border-border bg-muted/30 p-0.5" aria-label="Pipeline layout">
+                  <Button
+                    type="button"
+                    variant={matchesLayout === "list" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      setMatchesLayout("list");
+                      setJobsPage(1);
+                      setBoardFullscreen(false);
+                    }}
+                    aria-pressed={matchesLayout === "list"}
+                  >
+                    <List className="size-3.5" aria-hidden="true" />
+                    List
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={matchesLayout === "board" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      setMatchesLayout("board");
+                      setJobsPage(1);
+                    }}
+                    aria-pressed={matchesLayout === "board"}
+                  >
+                    <Grid className="size-3.5" aria-hidden="true" />
+                    Board
+                  </Button>
+                  {matchesLayout === "board" && !boardFullscreen ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={openBoardFullscreen}
+                      aria-label="Open Kanban in full screen"
+                    >
+                      <Maximize className="size-3.5" aria-hidden="true" />
+                      Full screen
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <section
+                aria-label="Filter and sort jobs"
+                className="overflow-hidden rounded-lg border border-border bg-card"
+              >
+                <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      value={jobSearch}
+                      onChange={(event) => {
+                        setJobSearch(event.target.value);
+                        setJobsPage(1);
+                      }}
+                      className="h-10 rounded-lg bg-background pl-9 pr-9"
+                      placeholder="Search title, company, location, or keyword"
+                      aria-label="Search jobs"
+                    />
+                    {jobSearch ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJobSearch("");
+                          setJobsPage(1);
+                        }}
+                        className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label="Clear job search"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Sort</span>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        setSortBy(value as typeof sortBy);
+                        setJobsPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-full rounded-lg bg-background" aria-label="Sort jobs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="score">Best match</SelectItem>
+                        <SelectItem value="newest">Newest added</SelectItem>
+                        <SelectItem value="title">Job title</SelectItem>
+                        <SelectItem value="company">Company</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-border bg-muted/20 p-3 xl:flex-row xl:items-end xl:justify-between">
+                  <div className="flex flex-wrap items-end gap-2.5">
+                    <div className="mr-1 flex h-9 items-center gap-2 text-sm font-medium">
+                      <Filter className="size-4 text-muted-foreground" aria-hidden="true" />
+                      <span>Filters</span>
+                      {hasActiveFilters ? (
+                        <span className="flex size-5 items-center justify-center rounded-md bg-primary text-[11px] font-semibold text-primary-foreground tabular-nums">
+                          {activeFilterCount}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <label className="grid gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">Match score</span>
+                      <Select
+                        value={minimumScore}
+                        onValueChange={(value) => {
+                          setMinimumScore(value);
+                          setJobsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-32 rounded-lg bg-background" aria-label="Minimum match score">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any score</SelectItem>
+                          <SelectItem value="60">60+ match</SelectItem>
+                          <SelectItem value="70">70+ match</SelectItem>
+                          <SelectItem value="80">80+ match</SelectItem>
+                          <SelectItem value="90">90+ match</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+
+                    <label className="grid min-w-40 flex-1 gap-1 sm:flex-none">
+                      <span className="text-[11px] font-medium text-muted-foreground">Resume</span>
+                      <Select
+                        value={resumeFilter}
+                        onValueChange={(value) => {
+                          setResumeFilter(value);
+                          setJobsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-full rounded-lg bg-background sm:w-44" aria-label="Filter by resume">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All resumes</SelectItem>
+                          {resumes.map((resume) => (
+                            <SelectItem key={resume.id} value={resume.id}>
+                              {resume.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+
+                    <label className="grid min-w-36 flex-1 gap-1 sm:flex-none">
+                      <span className="text-[11px] font-medium text-muted-foreground">Source</span>
+                      <Select
+                        value={sourceFilter}
+                        onValueChange={(value) => {
+                          setSourceFilter(value);
+                          setJobsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-full rounded-lg bg-background sm:w-40" aria-label="Filter by source">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All sources</SelectItem>
+                          {availableSources.map((source) => (
+                            <SelectItem key={source} value={source}>
+                              {sourcesQuery.data?.find((item) => item.id === source)?.label ?? source}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+
+                  {hasActiveFilters ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 self-start text-muted-foreground xl:self-auto"
+                      onClick={clearFilters}
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                      Clear all
+                    </Button>
+                  ) : null}
+                </div>
+              </section>
+
+              {matchesLayout === "board" ? (
+                matchesQuery.isLoading ? (
+                  <div className="h-80 animate-pulse rounded-lg bg-muted/60" aria-hidden="true" />
+                ) : filteredMatches.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                    <p className="font-heading text-base font-semibold">
+                      {matches.length === 0 ? "No jobs yet" : "No jobs match your filters"}
+                    </p>
+                    <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                      {matches.length === 0
+                        ? "Paste a job description on the left to add your first pipeline card."
+                        : "Clear or adjust the filters to see more jobs."}
+                    </p>
+                  </div>
+                ) : (
+                  <JobPipelineBoard
+                    matches={paginatedMatches}
+                    busyMatchId={busyMatchId}
+                    fullscreen={boardFullscreen}
+                    onStatusChange={(matchId, status) => {
+                      setBusyMatchId(matchId);
+                      updateMatch.mutate({ matchId, applicationStatus: status });
+                    }}
+                  />
+                )
+              ) : (
             <Tabs
               value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as ApplicationStatus | "all")}
+              onValueChange={(value) => {
+                setStatusFilter(value as ApplicationStatus | "all");
+                setJobsPage(1);
+              }}
             >
               <TabsList className="flex w-full flex-wrap">
-                <TabsTrigger value="all">All ({matches.length})</TabsTrigger>
+                <TabsTrigger value="all">All ({filteredMatches.length})</TabsTrigger>
                 {APPLICATION_PIPELINE_ORDER.map((status) => (
                   <TabsTrigger key={status} value={status}>
                     {APPLICATION_STATUS_LABELS[status]} ({counts.get(status) ?? 0})
@@ -508,7 +955,7 @@ export default function JobHunterPage() {
                     </p>
                   </div>
                 ) : (
-                  visibleMatches.map((match) => (
+                  paginatedMatches.map((match) => (
                     <JobMatchCard
                       key={match.id}
                       match={match}
@@ -520,6 +967,7 @@ export default function JobHunterPage() {
                       }
                       attribution={attributionBySource.get(match.posting.source) ?? null}
                       busy={busyMatchId === match.id}
+                      canCompare={resumes.length >= 2}
                       onStatusChange={(status) => {
                         setBusyMatchId(match.id);
                         updateMatch.mutate({ matchId: match.id, applicationStatus: status });
@@ -538,6 +986,10 @@ export default function JobHunterPage() {
                         setSavedKinds([]);
                         setTailorMatchId(match.id);
                       }}
+                      onCompare={() => {
+                        setComparisonResult(null);
+                        setCompareMatchId(match.id);
+                      }}
                       onDelete={() => {
                         setBusyMatchId(match.id);
                         deleteMatch.mutate({ matchId: match.id });
@@ -547,6 +999,49 @@ export default function JobHunterPage() {
                 )}
               </TabsContent>
             </Tabs>
+              )}
+
+              {!matchesQuery.isLoading && matchesForCurrentView.length > JOBS_PER_PAGE ? (
+                <nav
+                  className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"
+                  aria-label="Jobs pagination"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Showing {(currentJobsPage - 1) * JOBS_PER_PAGE + 1}–{Math.min(
+                      currentJobsPage * JOBS_PER_PAGE,
+                      matchesForCurrentView.length,
+                    )} of {matchesForCurrentView.length} jobs
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setJobsPage((page) => Math.max(1, page - 1))}
+                      disabled={currentJobsPage === 1}
+                    >
+                      <ChevronLeft className="size-4" aria-hidden="true" />
+                      Previous
+                    </Button>
+                    <span className="min-w-16 text-center text-xs font-medium tabular-nums">
+                      {currentJobsPage} / {totalJobPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setJobsPage((page) => Math.min(totalJobPages, page + 1))}
+                      disabled={currentJobsPage === totalJobPages}
+                    >
+                      Next
+                      <ChevronRight className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </nav>
+              ) : null}
+            </div>
             )}
           </section>
         </div>
@@ -575,6 +1070,26 @@ export default function JobHunterPage() {
           saveToDocuments.mutate({ matchId: tailorMatchId, kind });
         }}
       />
+
+      {comparisonMatch ? (
+        <ResumeComparisonDialog
+          key={comparisonMatch.id}
+          open={compareMatchId !== null}
+          matchResumeId={comparisonMatch.resumeId}
+          resumes={resumes}
+          pending={compareResumes.isPending}
+          result={comparisonResult}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCompareMatchId(null);
+              setComparisonResult(null);
+            }
+          }}
+          onCompare={(resumeIds) =>
+            compareResumes.mutate({ matchId: comparisonMatch.id, resumeIds })
+          }
+        />
+      ) : null}
     </div>
   );
 }

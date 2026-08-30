@@ -10,7 +10,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, RefreshCw, Sparkles, Trash2 } from "@/components/ui/icons";
+import {
+  ArrowUpRight,
+  ArrowUpDown,
+  CheckCircle2,
+  ChevronDown,
+  RefreshCw,
+  Sparkles,
+  Target,
+  Trash2,
+} from "@/components/ui/icons";
 import { bandStyle } from "@/lib/ats-display";
 import {
   APPLICATION_STATUSES,
@@ -25,8 +34,12 @@ export type JobMatchCardData = {
   applicationStatus: ApplicationStatus;
   matchedKeywords: string[];
   missingKeywords: string[];
+  sectionScores: { section: string; score: number; notes: string }[];
+  strengths: string[];
+  topActions: string[];
   scoredAt: Date | string;
   resumeVersionAt: Date | string;
+  resumeId: string;
   pipelineStatus: string;
   posting: {
     title: string;
@@ -49,9 +62,11 @@ type JobMatchCardProps = {
   stale: boolean;
   attribution: string | null;
   busy: boolean;
+  canCompare: boolean;
   onStatusChange: (status: ApplicationStatus) => void;
   onRescore: () => void;
   onTailor: () => void;
+  onCompare: () => void;
   onDelete: () => void;
 };
 
@@ -60,13 +75,17 @@ export function JobMatchCard({
   stale,
   attribution,
   busy,
+  canCompare,
   onStatusChange,
   onRescore,
   onTailor,
+  onCompare,
   onDelete,
 }: JobMatchCardProps) {
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [explanationOpen, setExplanationOpen] = useState(false);
   const overviewId = useId();
+  const explanationId = useId();
 
   const band = bandStyle(match.score);
   const { posting } = match;
@@ -127,6 +146,81 @@ export function JobMatchCard({
           Your resume changed since this was scored. Re-score for an up-to-date match.
         </p>
       ) : null}
+
+      <section className="mt-3 rounded-lg border border-border bg-muted/20">
+        <button
+          type="button"
+          onClick={() => setExplanationOpen((open) => !open)}
+          aria-expanded={explanationOpen}
+          aria-controls={explanationId}
+          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+        >
+          <span>
+            <span className="block text-sm font-medium">Why this score?</span>
+            <span className="block text-xs text-muted-foreground">
+              {match.matchedKeywords.length} matched and {match.missingKeywords.length} missing keywords
+            </span>
+          </span>
+          <ChevronDown
+            className={cn("size-4 shrink-0 text-muted-foreground transition-transform", explanationOpen && "rotate-180")}
+            aria-hidden="true"
+          />
+        </button>
+
+        {explanationOpen ? (
+          <div id={explanationId} className="border-t border-border px-3 py-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {match.sectionScores.map((section) => (
+                <div key={section.section} className="rounded-md bg-background px-2.5 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium">{section.section}</span>
+                    <span className="text-xs font-semibold tabular-nums">{section.score}/100</span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{section.notes}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="flex items-center gap-1.5 text-xs font-medium">
+                  <CheckCircle2 className="size-3.5 text-success-surface-foreground" aria-hidden="true" />
+                  What already works
+                </p>
+                <ul className="mt-1.5 space-y-1 text-xs text-muted-foreground">
+                  {match.strengths.slice(0, 3).map((strength) => (
+                    <li key={strength}>{strength}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-xs font-medium">
+                  <Target className="size-3.5 text-warning-surface-foreground" aria-hidden="true" />
+                  Best next improvements
+                </p>
+                <ol className="mt-1.5 space-y-1 text-xs text-muted-foreground">
+                  {match.topActions.slice(0, 3).map((action, index) => (
+                    <li key={action}>{index + 1}. {action}</li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+
+            {match.matchedKeywords.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-muted-foreground">Matched keywords</p>
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {match.matchedKeywords.map((keyword) => (
+                    <li key={keyword} className="rounded-full border border-success-border bg-success-surface px-2 py-0.5 text-xs text-success-surface-foreground">
+                      {keyword}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       {overview ? (
         <section className="mt-3">
@@ -199,6 +293,18 @@ export function JobMatchCard({
         <Button size="sm" onClick={onTailor} disabled={busy} className="h-9">
           <Sparkles className="size-4" aria-hidden="true" />
           {match.pipelineStatus === "tailored" ? "View tailored" : "Tailor"}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCompare}
+          disabled={busy || !canCompare}
+          className="h-9"
+          title={canCompare ? undefined : "Create another resume to compare"}
+        >
+          <ArrowUpDown className="size-4" aria-hidden="true" />
+          Compare resumes
         </Button>
 
         <Button
