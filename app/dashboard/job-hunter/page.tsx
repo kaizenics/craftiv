@@ -26,6 +26,13 @@ import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -41,9 +48,9 @@ import {
   Grid,
   Filter,
   List,
-  Loader2,
   Maximize,
   Minimize,
+  Plus,
   RefreshCw,
   Search,
   Target,
@@ -77,7 +84,6 @@ export default function JobHunterPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [restrictionNote, setRestrictionNote] = useState<string | null>(null);
   const [busyMatchId, setBusyMatchId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [tailorMatchId, setTailorMatchId] = useState<string | null>(null);
   const [tailorTone, setTailorTone] = useState<TailorTone>("professional");
   const [tailorOutcome, setTailorOutcome] = useState<TailorOutcome | null>(null);
@@ -97,6 +103,7 @@ export default function JobHunterPage() {
   const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
   const [compareMatchId, setCompareMatchId] = useState<string | null>(null);
   const [comparisonResult, setComparisonResult] = useState<ResumeComparisonResult | null>(null);
+  const [mobileAddJobsOpen, setMobileAddJobsOpen] = useState(false);
   /**
    * A clipped job arrives in the URL fragment, which never reaches the server.
    *
@@ -425,9 +432,13 @@ export default function JobHunterPage() {
   }, [matches, tailorMatchId]);
 
   const comparisonMatch = matches.find((match) => match.id === compareMatchId) ?? null;
-  const hasActiveFilters = Boolean(
-    jobSearch || minimumScore !== "all" || resumeFilter !== "all" || sourceFilter !== "all",
-  );
+  const activeFilterCount = [
+    Boolean(jobSearch.trim()),
+    minimumScore !== "all",
+    resumeFilter !== "all",
+    sourceFilter !== "all",
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   function clearFilters() {
     setJobSearch("");
@@ -483,7 +494,37 @@ export default function JobHunterPage() {
         </section>
       ) : (
         <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
-          <aside className="space-y-4 lg:sticky lg:top-6 lg:col-span-2">
+          <div className="rounded-xl border border-border bg-card p-3 lg:hidden">
+            <div className="flex items-end gap-2">
+              <label className="min-w-0 flex-1">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Score against
+                </span>
+                <Select value={activeResumeId ?? undefined} onValueChange={setSelectedResumeId}>
+                  <SelectTrigger className="h-10 w-full rounded-lg bg-background" aria-label="Score jobs against resume">
+                    <SelectValue placeholder="Select a resume" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resumes.map((resume) => (
+                      <SelectItem key={resume.id} value={resume.id}>
+                        {resume.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <Button
+                type="button"
+                className="h-10 shrink-0 px-4"
+                onClick={() => setMobileAddJobsOpen(true)}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Add jobs
+              </Button>
+            </div>
+          </div>
+
+          <aside className="hidden space-y-4 lg:sticky lg:top-6 lg:col-span-2 lg:block">
             <div className="rounded-xl border border-border bg-card p-4">
               <ResumeCombobox
                 resumes={resumes}
@@ -493,56 +534,11 @@ export default function JobHunterPage() {
               />
             </div>
 
-            {onlineJobsPollable ? (
-              <section
-                aria-labelledby="job-search-heading"
-                className="rounded-xl border border-border bg-card p-4"
-              >
-                <h2 id="job-search-heading" className="font-heading text-base font-semibold">
-                  Search OnlineJobs.ph
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Fetches public postings and scores each one. Bounded per search and rate
-                  limited.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <label htmlFor="job-search" className="sr-only">
-                    Search keyword
-                  </label>
-                  <Input
-                    id="job-search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="virtual assistant"
-                    disabled={searchSource.isPending}
-                  />
-                  <Button
-                    onClick={() => {
-                      if (!activeResumeId || searchQuery.trim().length < 2) return;
-                      searchSource.mutate({
-                        resumeId: activeResumeId,
-                        query: searchQuery.trim(),
-                        limit: 5,
-                      });
-                    }}
-                    disabled={
-                      !activeResumeId || searchQuery.trim().length < 2 || searchSource.isPending
-                    }
-                  >
-                    {searchSource.isPending ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Search className="size-4" aria-hidden="true" />
-                    )}
-                    <span className="sr-only">Search</span>
-                  </Button>
-                </div>
-              </section>
-            ) : null}
-
             <JobImportPanel
               disabled={!activeResumeId}
               pending={importJob.isPending || bulkImportJobs.isPending}
+              searchPending={searchSource.isPending}
+              platformSearchAvailable={onlineJobsPollable}
               error={importError}
               restrictionNote={restrictionNote}
               prefill={incomingClip}
@@ -550,8 +546,41 @@ export default function JobHunterPage() {
               onDetectUrl={handleDetectUrl}
               onSubmit={handleImport}
               onBulkSubmit={handleBulkImport}
+              onPlatformSearch={(query) => {
+                if (!activeResumeId) return;
+                searchSource.mutate({ resumeId: activeResumeId, query, limit: 5 });
+              }}
             />
           </aside>
+
+          <Drawer open={mobileAddJobsOpen} onOpenChange={setMobileAddJobsOpen}>
+            <DrawerContent className="h-[85dvh] max-h-[85dvh] p-0 before:inset-0 before:rounded-b-none before:rounded-t-2xl lg:hidden">
+              <DrawerHeader className="sr-only">
+                <DrawerTitle>Add jobs</DrawerTitle>
+                <DrawerDescription>
+                  Search a job platform or import jobs into your pipeline.
+                </DrawerDescription>
+              </DrawerHeader>
+              <JobImportPanel
+                embedded
+                disabled={!activeResumeId}
+                pending={importJob.isPending || bulkImportJobs.isPending}
+                searchPending={searchSource.isPending}
+                platformSearchAvailable={onlineJobsPollable}
+                error={importError}
+                restrictionNote={restrictionNote}
+                prefill={incomingClip}
+                bulkResult={bulkImportResult}
+                onDetectUrl={handleDetectUrl}
+                onSubmit={handleImport}
+                onBulkSubmit={handleBulkImport}
+                onPlatformSearch={(query) => {
+                  if (!activeResumeId) return;
+                  searchSource.mutate({ resumeId: activeResumeId, query, limit: 5 });
+                }}
+              />
+            </DrawerContent>
+          </Drawer>
 
           <section className="lg:col-span-3 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -714,117 +743,154 @@ export default function JobHunterPage() {
 
               <section
                 aria-label="Filter and sort jobs"
-                className="grid gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2 xl:grid-cols-5"
+                className="overflow-hidden rounded-lg border border-border bg-card"
               >
-                <div className="relative sm:col-span-2 xl:col-span-1">
-                  <Search
-                    className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    value={jobSearch}
-                    onChange={(event) => {
-                      setJobSearch(event.target.value);
-                      setJobsPage(1);
-                    }}
-                    className="pl-8"
-                    placeholder="Search jobs..."
-                    aria-label="Search jobs"
-                  />
+                <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      value={jobSearch}
+                      onChange={(event) => {
+                        setJobSearch(event.target.value);
+                        setJobsPage(1);
+                      }}
+                      className="h-10 rounded-lg bg-background pl-9 pr-9"
+                      placeholder="Search title, company, location, or keyword"
+                      aria-label="Search jobs"
+                    />
+                    {jobSearch ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJobSearch("");
+                          setJobsPage(1);
+                        }}
+                        className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label="Clear job search"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Sort</span>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        setSortBy(value as typeof sortBy);
+                        setJobsPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-full rounded-lg bg-background" aria-label="Sort jobs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="score">Best match</SelectItem>
+                        <SelectItem value="newest">Newest added</SelectItem>
+                        <SelectItem value="title">Job title</SelectItem>
+                        <SelectItem value="company">Company</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <Select
-                  value={minimumScore}
-                  onValueChange={(value) => {
-                    setMinimumScore(value);
-                    setJobsPage(1);
-                  }}
-                >
-                  <SelectTrigger aria-label="Minimum match score">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any score</SelectItem>
-                    <SelectItem value="60">60+ match</SelectItem>
-                    <SelectItem value="70">70+ match</SelectItem>
-                    <SelectItem value="80">80+ match</SelectItem>
-                    <SelectItem value="90">90+ match</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col gap-3 border-t border-border bg-muted/20 p-3 xl:flex-row xl:items-end xl:justify-between">
+                  <div className="flex flex-wrap items-end gap-2.5">
+                    <div className="mr-1 flex h-9 items-center gap-2 text-sm font-medium">
+                      <Filter className="size-4 text-muted-foreground" aria-hidden="true" />
+                      <span>Filters</span>
+                      {hasActiveFilters ? (
+                        <span className="flex size-5 items-center justify-center rounded-md bg-primary text-[11px] font-semibold text-primary-foreground tabular-nums">
+                          {activeFilterCount}
+                        </span>
+                      ) : null}
+                    </div>
 
-                <Select
-                  value={resumeFilter}
-                  onValueChange={(value) => {
-                    setResumeFilter(value);
-                    setJobsPage(1);
-                  }}
-                >
-                  <SelectTrigger aria-label="Filter by resume">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All resumes</SelectItem>
-                    {resumes.map((resume) => (
-                      <SelectItem key={resume.id} value={resume.id}>
-                        {resume.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <label className="grid gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">Match score</span>
+                      <Select
+                        value={minimumScore}
+                        onValueChange={(value) => {
+                          setMinimumScore(value);
+                          setJobsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-32 rounded-lg bg-background" aria-label="Minimum match score">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any score</SelectItem>
+                          <SelectItem value="60">60+ match</SelectItem>
+                          <SelectItem value="70">70+ match</SelectItem>
+                          <SelectItem value="80">80+ match</SelectItem>
+                          <SelectItem value="90">90+ match</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
 
-                <Select
-                  value={sourceFilter}
-                  onValueChange={(value) => {
-                    setSourceFilter(value);
-                    setJobsPage(1);
-                  }}
-                >
-                  <SelectTrigger aria-label="Filter by source">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All sources</SelectItem>
-                    {availableSources.map((source) => (
-                      <SelectItem key={source} value={source}>
-                        {sourcesQuery.data?.find((item) => item.id === source)?.label ?? source}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <label className="grid min-w-40 flex-1 gap-1 sm:flex-none">
+                      <span className="text-[11px] font-medium text-muted-foreground">Resume</span>
+                      <Select
+                        value={resumeFilter}
+                        onValueChange={(value) => {
+                          setResumeFilter(value);
+                          setJobsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-full rounded-lg bg-background sm:w-44" aria-label="Filter by resume">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All resumes</SelectItem>
+                          {resumes.map((resume) => (
+                            <SelectItem key={resume.id} value={resume.id}>
+                              {resume.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
 
-                <div className="flex gap-2">
-                  <Select
-                    value={sortBy}
-                    onValueChange={(value) => {
-                      setSortBy(value as typeof sortBy);
-                      setJobsPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="min-w-0 flex-1" aria-label="Sort jobs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="score">Best match</SelectItem>
-                      <SelectItem value="newest">Newest added</SelectItem>
-                      <SelectItem value="title">Job title</SelectItem>
-                      <SelectItem value="company">Company</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <label className="grid min-w-36 flex-1 gap-1 sm:flex-none">
+                      <span className="text-[11px] font-medium text-muted-foreground">Source</span>
+                      <Select
+                        value={sourceFilter}
+                        onValueChange={(value) => {
+                          setSourceFilter(value);
+                          setJobsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-full rounded-lg bg-background sm:w-40" aria-label="Filter by source">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All sources</SelectItem>
+                          {availableSources.map((source) => (
+                            <SelectItem key={source} value={source}>
+                              {sourcesQuery.data?.find((item) => item.id === source)?.label ?? source}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+
                   {hasActiveFilters ? (
                     <Button
                       type="button"
-                      variant="outline"
-                      size="icon"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 self-start text-muted-foreground xl:self-auto"
                       onClick={clearFilters}
-                      aria-label="Clear job filters"
                     >
                       <X className="size-4" aria-hidden="true" />
+                      Clear all
                     </Button>
-                  ) : (
-                    <span className="flex size-9 shrink-0 items-center justify-center text-muted-foreground" title="Filters">
-                      <Filter className="size-4" aria-hidden="true" />
-                    </span>
-                  )}
+                  ) : null}
                 </div>
               </section>
 
