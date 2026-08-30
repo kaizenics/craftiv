@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { z } from "zod";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
@@ -254,71 +254,170 @@ const importJobInput = z
     path: ["description"],
   });
 
+type ImportJobInput = z.infer<typeof importJobInput>;
+
+async function importJobForResume(
+  db: Database,
+  userId: string,
+  resume: Awaited<ReturnType<typeof getOwnedResume>>,
+  input: ImportJobInput,
+) {
+  if (!resume.data) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That resume is empty. Add some content before scoring jobs against it.",
+    });
+  }
+
+  const trimmedUrl = input.url?.trim() || undefined;
+  if (trimmedUrl && !safeParseUrl(trimmedUrl)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "That job URL is not valid." });
+  }
+
+  const adapter = resolveAdapterForUrl(trimmedUrl);
+  if (!adapter.fromUserInput) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "That source cannot be imported." });
+  }
+
+  const provenance: JobProvenance =
+    trimmedUrl && !input.description?.trim() ? "url_import" : "paste";
+  const job = adapter.fromUserInput(
+    {
+      url: trimmedUrl,
+      description: input.description,
+      title: input.title,
+      company: input.company,
+      location: input.location,
+    },
+    provenance,
+  );
+
+  if (!job.description.trim() && !trimmedUrl) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Paste the job description so it can be scored.",
+    });
+  }
+
+  const posting = await upsertPosting(db, userId, job);
+  const matchId = await scoreAndUpsertMatch(db, {
+    userId,
+    postingId: posting.id,
+    resumeId: resume.id,
+    resumeData: resume.data,
+    resumeUpdatedAt: resume.updatedAt,
+    jobDescription: job.description,
+  });
+
+  return {
+    matchId,
+    deduped: posting.deduped,
+    source: job.source,
+    attribution: adapter.capabilities.attribution,
+  };
+}
+
 export const jobHunterRouter = createTRPCRouter({
   /**
    * Import a job the user supplied and score it. No model call, no credits.
    */
   importJob: protectedProcedure.input(importJobInput).mutation(async ({ ctx, input }) => {
     const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
-
-    if (!resume.data) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "That resume is empty. Add some content before scoring jobs against it.",
-      });
-    }
-
-    const trimmedUrl = input.url?.trim() || undefined;
-    if (trimmedUrl && !safeParseUrl(trimmedUrl)) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "That job URL is not valid." });
-    }
-
-    // Resolution is by host, so a job pasted as an OnlineJobs.ph URL dedupes
-    // against the same job clipped from the page later.
-    const adapter = resolveAdapterForUrl(trimmedUrl);
-    if (!adapter.fromUserInput) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "That source cannot be imported." });
-    }
-
-    const provenance: JobProvenance =
-      trimmedUrl && !input.description?.trim() ? "url_import" : "paste";
-
-    const job = adapter.fromUserInput(
-      {
-        url: trimmedUrl,
-        description: input.description,
-        title: input.title,
-        company: input.company,
-        location: input.location,
-      },
-      provenance,
-    );
-
-    if (!job.description.trim() && !trimmedUrl) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Paste the job description so it can be scored.",
-      });
-    }
-
-    const posting = await upsertPosting(ctx.db, ctx.user.id, job);
-
-    const matchId = await scoreAndUpsertMatch(ctx.db, {
-      userId: ctx.user.id,
-      postingId: posting.id,
-      resumeId: resume.id,
-      resumeData: resume.data,
-      resumeUpdatedAt: resume.updatedAt,
-      jobDescription: job.description,
-    });
-
-    return {
-      matchId,
-      deduped: posting.deduped,
-      source: job.source,
-      attribution: adapter.capabilities.attribution,
-    };
+    return importJobForResume(ctx.db, ctx.user.id, resume, input);
   }),
+
+  bulkImportJobs: protectedProcedure
+    .input(
+      z.object({
+        resumeId: z.string().min(1),
+        urls: z.array(z.string().trim().min(1).max(2048)).min(1).max(20),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      const results = [] as Array<{
+        url: string;
+        status: "imported" | "duplicate" | "failed";
+        message?: string;
+      }>;
+
+      for (const url of input.urls) {
+        try {
+          const result = await importJobForResume(ctx.db, ctx.user.id, resume, {
+            resumeId: input.resumeId,
+            url,
+          });
+          results.push({ url, status: result.deduped ? "duplicate" : "imported" });
+        } catch (error) {
+          results.push({
+            url,
+            status: "failed",
+            message: error instanceof Error ? error.message : "Could not import this job.",
+          });
+        }
+      }
+
+      return {
+        imported: results.filter((result) => result.status === "imported").length,
+        duplicates: results.filter((result) => result.status === "duplicate").length,
+        failed: results.filter((result) => result.status === "failed").length,
+        results,
+      };
+    }),
+
+  compareResumes: protectedProcedure
+    .input(
+      z.object({
+        matchId: z.string().min(1),
+        resumeIds: z.array(z.string().min(1)).min(2).max(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+      const uniqueResumeIds = [...new Set(input.resumeIds)];
+      if (uniqueResumeIds.length < 2) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Select at least two resumes." });
+      }
+
+      const [posting, ownedResumes] = await Promise.all([
+        ctx.db.query.jobPostings.findFirst({
+          where: and(
+            eq(jobPostings.id, match.jobPostingId),
+            eq(jobPostings.userId, ctx.user.id),
+          ),
+          columns: { title: true, company: true, description: true },
+        }),
+        ctx.db.query.resumes.findMany({
+          where: and(eq(resumes.userId, ctx.user.id), inArray(resumes.id, uniqueResumeIds)),
+          columns: { id: true, title: true, data: true },
+        }),
+      ]);
+
+      if (!posting) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      if (ownedResumes.length !== uniqueResumeIds.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "One or more resumes were not found." });
+      }
+
+      const comparisons = uniqueResumeIds.map((resumeId) => {
+        const resume = ownedResumes.find((item) => item.id === resumeId)!;
+        if (!resume.data) {
+          return { resumeId, resumeTitle: resume.title, error: "This resume is empty." };
+        }
+
+        const scored = scoreResumeAgainstJob(resume.data, posting.description);
+        const weakestSection = [...scored.report.sectionScores].sort((a, b) => a.score - b.score)[0];
+        return {
+          resumeId,
+          resumeTitle: resume.title,
+          score: scored.score,
+          matchedKeywords: scored.report.matchedKeywords.slice(0, 8),
+          missingKeywords: scored.report.missingKeywords.slice(0, 8),
+          weakestSection,
+        };
+      });
+
+      return { posting: { title: posting.title, company: posting.company }, comparisons };
+    }),
 
   listMatches: protectedProcedure
     .input(
