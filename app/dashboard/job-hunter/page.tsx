@@ -25,6 +25,7 @@ import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
 import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -456,7 +457,12 @@ export default function JobHunterPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-heading text-2xl font-semibold sm:text-3xl">Job Hunter</h1>
+        <div className="flex items-center gap-2.5">
+          <h1 className="font-heading text-2xl font-semibold sm:text-3xl">Job Hunter</h1>
+          <Badge className="h-5 border-transparent bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary">
+            Beta
+          </Badge>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Bring in jobs you find, see how your resume really scores against each one, and track
           them through to applied.

@@ -239,7 +239,7 @@ export function DashboardSidebar() {
               <item.icon className="h-5 w-5 shrink-0" />
               <span>{item.name}</span>
               {item.badge ? (
-                <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                <Badge className="ml-auto h-5 border-transparent bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary">
                   {item.badge}
                 </Badge>
               ) : null}
