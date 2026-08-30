@@ -12,7 +12,6 @@ import {
   type TailorTone,
 } from "@/components/dashboard/job-tailor-dialog";
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
-import { JobClipperPanel } from "@/components/dashboard/job-clipper-panel";
 import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
 import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
@@ -286,12 +285,6 @@ export default function JobHunterPage() {
     return [match.posting.title, match.posting.company].filter(Boolean).join(" at ") || "this job";
   }, [matches, tailorMatchId]);
 
-  // NEXT_PUBLIC_APP_URL is inlined at build time; the origin is the right
-  // fallback in dev, where the bookmarklet should point at localhost.
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "https://craftiv.app");
-
   const hasNoResumes = resumesQuery.isSuccess && resumes.length === 0;
 
   // Only true when the operator has opted into scraping. Otherwise the search
@@ -399,8 +392,6 @@ export default function JobHunterPage() {
               onDetectUrl={handleDetectUrl}
               onSubmit={handleImport}
             />
-
-            <JobClipperPanel appUrl={appUrl} />
           </aside>
 
           <section className="lg:col-span-3 space-y-4">
