@@ -17,6 +17,17 @@ export type JobImportValues = {
   company?: string;
 };
 
+export type BulkImportResult = {
+  imported: number;
+  duplicates: number;
+  failed: number;
+  results: Array<{
+    url: string;
+    status: "imported" | "duplicate" | "failed";
+    message?: string;
+  }>;
+};
+
 type JobImportPanelProps = {
   disabled: boolean;
   pending: boolean;
@@ -25,8 +36,10 @@ type JobImportPanelProps = {
   restrictionNote: string | null;
   /** A job handed over by the clipper, to prefill the form. */
   prefill?: JobImportValues | null;
+  bulkResult?: BulkImportResult | null;
   onDetectUrl: (url: string) => void;
   onSubmit: (values: JobImportValues) => void;
+  onBulkSubmit: (urls: string[]) => void;
 };
 
 const MIN_DESCRIPTION = 40;
@@ -37,16 +50,24 @@ export function JobImportPanel({
   error,
   restrictionNote,
   prefill,
+  bulkResult,
   onDetectUrl,
   onSubmit,
+  onBulkSubmit,
 }: JobImportPanelProps) {
   // A clipped job is present on first render, so it seeds the fields directly.
   // The user still reviews and submits: arriving with a clip never imports it.
-  const [mode, setMode] = useState<"paste" | "url">("paste");
+  const [mode, setMode] = useState<"paste" | "url" | "bulk">("paste");
   const [url, setUrl] = useState(prefill?.url ?? "");
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [company, setCompany] = useState(prefill?.company ?? "");
+  const [bulkUrls, setBulkUrls] = useState("");
+
+  const parsedBulkUrls = useMemo(
+    () => [...new Set(bulkUrls.split(/\r?\n/).map((value) => value.trim()).filter(Boolean))],
+    [bulkUrls],
+  );
 
   const remaining = PROMPT_INPUT_LIMITS.jobDescription - description.length;
 
@@ -62,9 +83,10 @@ export function JobImportPanel({
 
   const canSubmit = useMemo(() => {
     if (disabled || pending) return false;
+    if (mode === "bulk") return parsedBulkUrls.length > 0 && parsedBulkUrls.length <= 20;
     if (mode === "url") return url.trim().length > 0;
     return description.trim().length >= MIN_DESCRIPTION;
-  }, [disabled, pending, mode, url, description]);
+  }, [disabled, pending, mode, url, description, parsedBulkUrls.length]);
 
   function handleUrlChange(value: string) {
     setUrl(value);
@@ -73,6 +95,11 @@ export function JobImportPanel({
 
   function handleSubmit() {
     if (!canSubmit) return;
+
+    if (mode === "bulk") {
+      onBulkSubmit(parsedBulkUrls);
+      return;
+    }
 
     onSubmit({
       url: url.trim() || undefined,
@@ -101,7 +128,7 @@ export function JobImportPanel({
 
       <Tabs
         value={mode}
-        onValueChange={(value) => setMode(value as "paste" | "url")}
+        onValueChange={(value) => setMode(value as "paste" | "url" | "bulk")}
         className="mt-4"
       >
         <TabsList className="w-full">
@@ -110,6 +137,9 @@ export function JobImportPanel({
           </TabsTrigger>
           <TabsTrigger value="url" className="flex-1">
             Job link
+          </TabsTrigger>
+          <TabsTrigger value="bulk" className="flex-1">
+            Bulk links
           </TabsTrigger>
         </TabsList>
 
@@ -200,6 +230,54 @@ export function JobImportPanel({
             aria-label="Job description"
           />
         </TabsContent>
+
+        <TabsContent value="bulk" className="mt-3 space-y-3">
+          <div>
+            <label htmlFor="bulk-job-urls" className="text-sm font-medium">
+              Job links
+            </label>
+            <Textarea
+              id="bulk-job-urls"
+              value={bulkUrls}
+              onChange={(event) => setBulkUrls(event.target.value)}
+              rows={9}
+              disabled={disabled || pending}
+              placeholder={"https://example.com/jobs/one\nhttps://example.com/jobs/two"}
+              aria-describedby="bulk-job-urls-hint"
+            />
+            <p
+              id="bulk-job-urls-hint"
+              className={cn(
+                "mt-1 text-xs",
+                parsedBulkUrls.length > 20
+                  ? "text-destructive-surface-foreground"
+                  : "text-muted-foreground",
+              )}
+            >
+              {parsedBulkUrls.length} unique {parsedBulkUrls.length === 1 ? "link" : "links"}.{" "}
+              Maximum 20 per batch.
+            </p>
+          </div>
+
+          {bulkResult ? (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
+              <p className="font-medium">
+                {bulkResult.imported} imported, {bulkResult.duplicates} already saved, {bulkResult.failed} failed
+              </p>
+              {bulkResult.failed > 0 ? (
+                <ul className="mt-2 space-y-1 text-muted-foreground">
+                  {bulkResult.results
+                    .filter((result) => result.status === "failed")
+                    .map((result) => (
+                      <li key={result.url} className="break-all">
+                        {result.url}: {result.message}
+                      </li>
+                    ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </TabsContent>
       </Tabs>
 
       {restrictionNote ? (
@@ -223,12 +301,12 @@ export function JobImportPanel({
         {pending ? (
           <>
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Scoring...
+            {mode === "bulk" ? "Importing..." : "Scoring..."}
           </>
         ) : (
           <>
             <Plus className="size-4" aria-hidden="true" />
-            Add and score
+            {mode === "bulk" ? `Import ${parsedBulkUrls.length} jobs` : "Add and score"}
           </>
         )}
       </Button>

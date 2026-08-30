@@ -4,9 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { JobImportPanel, type JobImportValues } from "@/components/dashboard/job-import-panel";
+import {
+  JobImportPanel,
+  type BulkImportResult,
+  type JobImportValues,
+} from "@/components/dashboard/job-import-panel";
 import { JobMatchCard } from "@/components/dashboard/job-match-card";
 import { JobPipelineBoard } from "@/components/dashboard/job-pipeline-board";
+import {
+  ResumeComparisonDialog,
+  type ResumeComparisonResult,
+} from "@/components/dashboard/resume-comparison-dialog";
 import {
   JobTailorDialog,
   type TailorOutcome,
@@ -18,11 +26,19 @@ import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChevronLeft,
   ChevronRight,
   Grid,
+  Filter,
   List,
   Loader2,
   Maximize,
@@ -30,6 +46,7 @@ import {
   RefreshCw,
   Search,
   Target,
+  X,
 } from "@/components/ui/icons";
 import { trpc } from "@/trpc/client";
 import { saveJobTargetDraft } from "@/lib/ats-client-store";
@@ -71,6 +88,14 @@ export default function JobHunterPage() {
   const [jobsPage, setJobsPage] = useState(1);
   const [boardFullscreen, setBoardFullscreen] = useState(false);
   const [boardFullscreenActive, setBoardFullscreenActive] = useState(false);
+  const [jobSearch, setJobSearch] = useState("");
+  const [minimumScore, setMinimumScore] = useState("all");
+  const [resumeFilter, setResumeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"score" | "newest" | "title" | "company">("score");
+  const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
+  const [compareMatchId, setCompareMatchId] = useState<string | null>(null);
+  const [comparisonResult, setComparisonResult] = useState<ResumeComparisonResult | null>(null);
   /**
    * A clipped job arrives in the URL fragment, which never reaches the server.
    *
@@ -162,6 +187,22 @@ export default function JobHunterPage() {
       toast.success(result.deduped ? "Already in your pipeline — score updated." : "Job scored.");
     },
     onError: (error) => setImportError(error.message),
+  });
+
+  const bulkImportJobs = trpc.jobHunter.bulkImportJobs.useMutation({
+    onSuccess: async (result) => {
+      setBulkImportResult(result);
+      await refresh();
+      toast.success(
+        `${result.imported} imported, ${result.duplicates} already saved, ${result.failed} failed.`,
+      );
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const compareResumes = trpc.jobHunter.compareResumes.useMutation({
+    onSuccess: (result) => setComparisonResult(result as ResumeComparisonResult),
+    onError: (error) => toast.error(error.message),
   });
 
   const updateMatch = trpc.jobHunter.updateMatch.useMutation({
@@ -312,12 +353,55 @@ export default function JobHunterPage() {
     }
   }
 
+  function handleBulkImport(urls: string[]) {
+    if (!activeResumeId) {
+      setImportError("Create a resume first so jobs have something to be scored against.");
+      return;
+    }
+    setBulkImportResult(null);
+    bulkImportJobs.mutate({ resumeId: activeResumeId, urls });
+  }
+
   const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  const availableSources = useMemo(
+    () => [...new Set(matches.map((match) => match.posting.source))].sort(),
+    [matches],
+  );
+  const filteredMatches = useMemo(() => {
+    const query = jobSearch.trim().toLowerCase();
+    const scoreFloor = minimumScore === "all" ? 0 : Number(minimumScore);
+    const filtered = matches.filter((match) => {
+      const searchable = [
+        match.posting.title,
+        match.posting.company,
+        match.posting.location,
+        ...match.matchedKeywords,
+        ...match.missingKeywords,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return (
+        (!query || searchable.includes(query)) &&
+        match.score >= scoreFloor &&
+        (resumeFilter === "all" || match.resumeId === resumeFilter) &&
+        (sourceFilter === "all" || match.posting.source === sourceFilter)
+      );
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === "title") return a.posting.title.localeCompare(b.posting.title);
+      if (sortBy === "company") return a.posting.company.localeCompare(b.posting.company);
+      return b.score - a.score;
+    });
+  }, [jobSearch, matches, minimumScore, resumeFilter, sortBy, sourceFilter]);
   const visibleMatches =
     statusFilter === "all"
-      ? matches
-      : matches.filter((match) => match.applicationStatus === statusFilter);
-  const matchesForCurrentView = matchesLayout === "board" ? matches : visibleMatches;
+      ? filteredMatches
+      : filteredMatches.filter((match) => match.applicationStatus === statusFilter);
+  const matchesForCurrentView = matchesLayout === "board" ? filteredMatches : visibleMatches;
   const totalJobPages = Math.max(1, Math.ceil(matchesForCurrentView.length / JOBS_PER_PAGE));
   const currentJobsPage = Math.min(jobsPage, totalJobPages);
   const paginatedMatches = matchesForCurrentView.slice(
@@ -327,17 +411,30 @@ export default function JobHunterPage() {
 
   const counts = useMemo(() => {
     const map = new Map<ApplicationStatus, number>();
-    for (const match of matches) {
+    for (const match of filteredMatches) {
       map.set(match.applicationStatus, (map.get(match.applicationStatus) ?? 0) + 1);
     }
     return map;
-  }, [matches]);
+  }, [filteredMatches]);
 
   const tailorJobLabel = useMemo(() => {
     const match = matches.find((item) => item.id === tailorMatchId);
     if (!match) return "this job";
     return [match.posting.title, match.posting.company].filter(Boolean).join(" at ") || "this job";
   }, [matches, tailorMatchId]);
+
+  const comparisonMatch = matches.find((match) => match.id === compareMatchId) ?? null;
+  const hasActiveFilters = Boolean(
+    jobSearch || minimumScore !== "all" || resumeFilter !== "all" || sourceFilter !== "all",
+  );
+
+  function clearFilters() {
+    setJobSearch("");
+    setMinimumScore("all");
+    setResumeFilter("all");
+    setSourceFilter("all");
+    setJobsPage(1);
+  }
 
   const hasNoResumes = resumesQuery.isSuccess && resumes.length === 0;
 
@@ -439,12 +536,14 @@ export default function JobHunterPage() {
 
             <JobImportPanel
               disabled={!activeResumeId}
-              pending={importJob.isPending}
+              pending={importJob.isPending || bulkImportJobs.isPending}
               error={importError}
               restrictionNote={restrictionNote}
               prefill={incomingClip}
+              bulkResult={bulkImportResult}
               onDetectUrl={handleDetectUrl}
               onSubmit={handleImport}
+              onBulkSubmit={handleBulkImport}
             />
           </aside>
 
@@ -557,7 +656,9 @@ export default function JobHunterPage() {
                 )}
               >
                 <p className="text-sm text-muted-foreground">
-                  {matches.length} {matches.length === 1 ? "job" : "jobs"} in your pipeline
+                  {filteredMatches.length === matches.length
+                    ? `${matches.length} ${matches.length === 1 ? "job" : "jobs"} in your pipeline`
+                    : `${filteredMatches.length} of ${matches.length} jobs`}
                 </p>
                 <div className="flex rounded-lg border border-border bg-muted/30 p-0.5" aria-label="Pipeline layout">
                   <Button
@@ -605,14 +706,134 @@ export default function JobHunterPage() {
                 </div>
               </div>
 
+              <section
+                aria-label="Filter and sort jobs"
+                className="grid gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2 xl:grid-cols-5"
+              >
+                <div className="relative sm:col-span-2 xl:col-span-1">
+                  <Search
+                    className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    value={jobSearch}
+                    onChange={(event) => {
+                      setJobSearch(event.target.value);
+                      setJobsPage(1);
+                    }}
+                    className="pl-8"
+                    placeholder="Search jobs..."
+                    aria-label="Search jobs"
+                  />
+                </div>
+
+                <Select
+                  value={minimumScore}
+                  onValueChange={(value) => {
+                    setMinimumScore(value);
+                    setJobsPage(1);
+                  }}
+                >
+                  <SelectTrigger aria-label="Minimum match score">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any score</SelectItem>
+                    <SelectItem value="60">60+ match</SelectItem>
+                    <SelectItem value="70">70+ match</SelectItem>
+                    <SelectItem value="80">80+ match</SelectItem>
+                    <SelectItem value="90">90+ match</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={resumeFilter}
+                  onValueChange={(value) => {
+                    setResumeFilter(value);
+                    setJobsPage(1);
+                  }}
+                >
+                  <SelectTrigger aria-label="Filter by resume">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All resumes</SelectItem>
+                    {resumes.map((resume) => (
+                      <SelectItem key={resume.id} value={resume.id}>
+                        {resume.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={sourceFilter}
+                  onValueChange={(value) => {
+                    setSourceFilter(value);
+                    setJobsPage(1);
+                  }}
+                >
+                  <SelectTrigger aria-label="Filter by source">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All sources</SelectItem>
+                    {availableSources.map((source) => (
+                      <SelectItem key={source} value={source}>
+                        {sourcesQuery.data?.find((item) => item.id === source)?.label ?? source}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex gap-2">
+                  <Select
+                    value={sortBy}
+                    onValueChange={(value) => {
+                      setSortBy(value as typeof sortBy);
+                      setJobsPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="min-w-0 flex-1" aria-label="Sort jobs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="score">Best match</SelectItem>
+                      <SelectItem value="newest">Newest added</SelectItem>
+                      <SelectItem value="title">Job title</SelectItem>
+                      <SelectItem value="company">Company</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {hasActiveFilters ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={clearFilters}
+                      aria-label="Clear job filters"
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </Button>
+                  ) : (
+                    <span className="flex size-9 shrink-0 items-center justify-center text-muted-foreground" title="Filters">
+                      <Filter className="size-4" aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
+              </section>
+
               {matchesLayout === "board" ? (
                 matchesQuery.isLoading ? (
                   <div className="h-80 animate-pulse rounded-lg bg-muted/60" aria-hidden="true" />
-                ) : matches.length === 0 ? (
+                ) : filteredMatches.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                    <p className="font-heading text-base font-semibold">No jobs yet</p>
+                    <p className="font-heading text-base font-semibold">
+                      {matches.length === 0 ? "No jobs yet" : "No jobs match your filters"}
+                    </p>
                     <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                      Paste a job description on the left to add your first pipeline card.
+                      {matches.length === 0
+                        ? "Paste a job description on the left to add your first pipeline card."
+                        : "Clear or adjust the filters to see more jobs."}
                     </p>
                   </div>
                 ) : (
@@ -635,7 +856,7 @@ export default function JobHunterPage() {
               }}
             >
               <TabsList className="flex w-full flex-wrap">
-                <TabsTrigger value="all">All ({matches.length})</TabsTrigger>
+                <TabsTrigger value="all">All ({filteredMatches.length})</TabsTrigger>
                 {APPLICATION_PIPELINE_ORDER.map((status) => (
                   <TabsTrigger key={status} value={status}>
                     {APPLICATION_STATUS_LABELS[status]} ({counts.get(status) ?? 0})
@@ -674,6 +895,7 @@ export default function JobHunterPage() {
                       }
                       attribution={attributionBySource.get(match.posting.source) ?? null}
                       busy={busyMatchId === match.id}
+                      canCompare={resumes.length >= 2}
                       onStatusChange={(status) => {
                         setBusyMatchId(match.id);
                         updateMatch.mutate({ matchId: match.id, applicationStatus: status });
@@ -691,6 +913,10 @@ export default function JobHunterPage() {
                         setTailorOutcome(null);
                         setSavedKinds([]);
                         setTailorMatchId(match.id);
+                      }}
+                      onCompare={() => {
+                        setComparisonResult(null);
+                        setCompareMatchId(match.id);
                       }}
                       onDelete={() => {
                         setBusyMatchId(match.id);
@@ -772,6 +998,26 @@ export default function JobHunterPage() {
           saveToDocuments.mutate({ matchId: tailorMatchId, kind });
         }}
       />
+
+      {comparisonMatch ? (
+        <ResumeComparisonDialog
+          key={comparisonMatch.id}
+          open={compareMatchId !== null}
+          matchResumeId={comparisonMatch.resumeId}
+          resumes={resumes}
+          pending={compareResumes.isPending}
+          result={comparisonResult}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCompareMatchId(null);
+              setComparisonResult(null);
+            }
+          }}
+          onCompare={(resumeIds) =>
+            compareResumes.mutate({ matchId: comparisonMatch.id, resumeIds })
+          }
+        />
+      ) : null}
     </div>
   );
 }

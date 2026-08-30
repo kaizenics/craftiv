@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   ArrowUpRight,
+  ArrowUpDown,
   CheckCircle2,
   ChevronDown,
   RefreshCw,
@@ -61,9 +62,11 @@ type JobMatchCardProps = {
   stale: boolean;
   attribution: string | null;
   busy: boolean;
+  canCompare: boolean;
   onStatusChange: (status: ApplicationStatus) => void;
   onRescore: () => void;
   onTailor: () => void;
+  onCompare: () => void;
   onDelete: () => void;
 };
 
@@ -72,9 +75,11 @@ export function JobMatchCard({
   stale,
   attribution,
   busy,
+  canCompare,
   onStatusChange,
   onRescore,
   onTailor,
+  onCompare,
   onDelete,
 }: JobMatchCardProps) {
   const [overviewOpen, setOverviewOpen] = useState(false);
@@ -288,6 +293,18 @@ export function JobMatchCard({
         <Button size="sm" onClick={onTailor} disabled={busy} className="h-9">
           <Sparkles className="size-4" aria-hidden="true" />
           {match.pipelineStatus === "tailored" ? "View tailored" : "Tailor"}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCompare}
+          disabled={busy || !canCompare}
+          className="h-9"
+          title={canCompare ? undefined : "Create another resume to compare"}
+        >
+          <ArrowUpDown className="size-4" aria-hidden="true" />
+          Compare resumes
         </Button>
 
         <Button
