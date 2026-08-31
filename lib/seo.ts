@@ -28,6 +28,9 @@ export const siteConfig = {
     "ATS friendly resume",
     "professional resume maker",
     "resume checker",
+    "ATS checker",
+    "AI resume assistant",
+    "job hunter",
     "job application tools",
   ],
 };
@@ -151,6 +154,8 @@ export const softwareApplicationJsonLd = {
     "ATS-friendly resume templates",
     "AI bullet point rewriting",
     "Resume ATS score checker",
+    "Job matching and job search workspace",
+    "AI resume assistant",
     "Cover letter builder",
     "PDF and DOCX export",
   ],

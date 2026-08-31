@@ -7,6 +7,7 @@ import { FAQ } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { Testimonials } from "@/components/testimonials";
 import { CompanyMarquee } from "@/components/company-marquee";
+import { FeatureDemo } from "@/components/feature-demo";
 import {
   organizationJsonLd,
   softwareApplicationJsonLd,
@@ -16,9 +17,9 @@ import {
 } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
-  title: "AI Resume Builder & ATS-Friendly Templates | Craftiv",
+  title: "AI Resume Builder, ATS Checker & Job Hunter | Craftiv",
   description:
-    "Create professional resumes with Craftiv's AI resume builder, ATS-friendly templates, resume upload tools, and cover letter templates built for job seekers.",
+    "Find relevant jobs, check your resume against ATS requirements, and improve every application with Craftiv's AI resume assistant and ATS-friendly templates.",
   titleAbsolute: true,
 });
 
@@ -41,6 +42,7 @@ export default function Home() {
       <NavbarComponent />
       <Hero />
       <CompanyMarquee />
+      <FeatureDemo />
       <About />
       <Works />
       <Testimonials />
