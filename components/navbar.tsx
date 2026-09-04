@@ -19,6 +19,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+  { label: "Features", href: "#features", isHash: true },
   { label: "About", href: "#about", isHash: true },
   { label: "FAQ", href: "#faq", isHash: true },
   { label: "Pricing", href: "/pricing" },
@@ -88,6 +89,7 @@ export function NavbarComponent() {
           <NavbarLogo />
 
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 lg:flex">
+            <NavLink href="#features" label="Features" pathname={pathname} isHash />
             <NavLink href="#about" label="About" pathname={pathname} isHash />
             <NavLink href="#faq" label="FAQ" pathname={pathname} isHash />
             <NavLink href="/pricing" label="Pricing" pathname={pathname} />
