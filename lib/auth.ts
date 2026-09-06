@@ -84,6 +84,16 @@ export const auth = betterAuth({
      */
     requireEmailVerification: true,
     minPasswordLength: MIN_PASSWORD_LENGTH,
+    /**
+     * A reset is how someone recovers an account they may have lost control of,
+     * so the old sessions must not outlive it. Without this an attacker holding
+     * a stolen session keeps their access after the owner resets the password,
+     * which defeats the point of the reset.
+     *
+     * The user is signed out during the reset flow, so there is no current
+     * session to preserve; they sign in again afterwards.
+     */
+    revokeSessionsOnPasswordReset: true,
   },
 
   emailVerification: {

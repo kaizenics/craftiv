@@ -25,9 +25,11 @@ const sent: SentEmail[] = [];
 
 const EMAIL = "person@example.com";
 const PASSWORD = "correct-horse-battery";
+const NEW_PASSWORD = "a-different-passphrase-entirely";
 
 let auth: typeof import("@/lib/auth").auth;
 let db: import("@libsql/client").Client;
+let authMethodRoute: typeof import("@/app/api/auth-method/route").POST;
 
 beforeAll(async () => {
   // Intercept Resend: nothing leaves the machine, and delivery is assertable.
@@ -62,11 +64,16 @@ beforeAll(async () => {
     `CREATE UNIQUE INDEX accounts_issuer_account_id_idx ON accounts (issuer, account_id)`,
     `CREATE TABLE verifications (id text PRIMARY KEY, identifier text NOT NULL, value text NOT NULL,
        expires_at integer NOT NULL, created_at integer, updated_at integer)`,
+    `CREATE TABLE rate_limits (key text PRIMARY KEY, scope text NOT NULL, route text NOT NULL,
+       subject_type text NOT NULL, subject_id text NOT NULL, window_name text NOT NULL,
+       window_size_seconds integer NOT NULL, window_start_ms integer NOT NULL,
+       count integer NOT NULL DEFAULT 0, created_at integer NOT NULL, updated_at integer NOT NULL)`,
   ]) {
     await db.execute(stmt);
   }
 
   ({ auth } = await import("@/lib/auth"));
+  ({ POST: authMethodRoute } = await import("@/app/api/auth-method/route"));
 });
 
 afterAll(() => {
@@ -165,4 +172,110 @@ test("changing the email confirms against the old address and defers the write",
 
   const row = await db.execute({ sql: "SELECT email FROM users WHERE email = ?", args: [EMAIL] });
   assert.equal(row.rows.length, 1, "the address must not change before confirmation");
+});
+
+test("a reset request for an unknown address sends nothing and gives nothing away", async () => {
+  sent.length = 0;
+
+  const result = await auth.api.requestPasswordResetEmailOTP({
+    body: { email: "nobody@example.com" },
+  });
+
+  // Same shape as the registered case: the response is what stops this endpoint
+  // being an oracle for which addresses hold an account.
+  assert.equal(result.success, true);
+  assert.equal(sent.length, 0, `nothing should be mailed: ${JSON.stringify(sent)}`);
+});
+
+test("the reset code sets a new password and revokes sessions that predate it", async () => {
+  // Taken before the reset: this stands in for a session an attacker still holds.
+  const staleSession = await signInCookie();
+  sent.length = 0;
+
+  await auth.api.requestPasswordResetEmailOTP({ body: { email: EMAIL } });
+
+  const otp = (sent.at(-1)?.text ?? "").match(/\b(\d{4,8})\b/)?.[1];
+  assert.ok(otp, `no code in the delivered email: ${JSON.stringify(sent)}`);
+
+  await auth.api.resetPasswordEmailOTP({
+    body: { email: EMAIL, otp, password: NEW_PASSWORD },
+  });
+
+  const signedIn = await auth.api.signInEmail({
+    body: { email: EMAIL, password: NEW_PASSWORD },
+  });
+  assert.ok(signedIn.token, "the new password must work");
+
+  await assert.rejects(
+    () => auth.api.signInEmail({ body: { email: EMAIL, password: PASSWORD } }),
+    /invalid|INVALID_EMAIL_OR_PASSWORD/i,
+  );
+
+  // revokeSessionsOnPasswordReset. Without it a stolen session outlives the
+  // reset that was meant to end it, and the recovery achieves nothing.
+  const survivor = await auth.api.getSession({ headers: staleSession });
+  assert.equal(survivor, null, "a session from before the reset must not survive it");
+});
+
+/** Calls the real route handler and returns the reported sign-in method. */
+async function lookupAuthMethod(address: string): Promise<string> {
+  const response = await authMethodRoute(
+    new Request("http://localhost/api/auth-method", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: address }),
+    }),
+  );
+  assert.equal(response.status, 200, `lookup failed: ${await response.clone().text()}`);
+  const body = (await response.json()) as { method: string };
+  return body.method;
+}
+
+test("the sign-in method lookup separates Google accounts from password accounts", async () => {
+  assert.equal(await lookupAuthMethod("nobody-at-all@example.com"), "none");
+
+  // EMAIL signed up with a password earlier in this file.
+  assert.equal(await lookupAuthMethod(EMAIL), "password");
+
+  const now = Date.now();
+  await db.execute({
+    sql: `INSERT INTO users (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+    args: ["google-only-user", "G Person", "google-only@example.com", now, now],
+  });
+  await db.execute({
+    sql: `INSERT INTO accounts (id, account_id, provider_id, issuer, user_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      "google-only-account",
+      "google-sub-1",
+      "google",
+      "https://accounts.google.com",
+      "google-only-user",
+      now,
+      now,
+    ],
+  });
+
+  assert.equal(await lookupAuthMethod("google-only@example.com"), "google");
+  // Case is not the user's problem: the address is matched case-insensitively.
+  assert.equal(await lookupAuthMethod("Google-Only@Example.com"), "google");
+
+  // Linking a password to the same account moves it back onto the reset path —
+  // routing it to "use Google" would strand someone who does have a password.
+  await db.execute({
+    sql: `INSERT INTO accounts (id, account_id, provider_id, issuer, user_id, password, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      "google-plus-credential",
+      "google-only-user",
+      "credential",
+      "local:credential",
+      "google-only-user",
+      "hashed",
+      now,
+      now,
+    ],
+  });
+
+  assert.equal(await lookupAuthMethod("google-only@example.com"), "password");
 });
