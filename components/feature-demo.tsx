@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Briefcase,
@@ -20,6 +20,11 @@ import {
   Target,
   Trophy,
 } from "@/components/ui/icons";
+import {
+  DemoCursor,
+  TypingCaret,
+  useCursorTarget,
+} from "@/components/feature-demo-cursor";
 import { cn } from "@/lib/utils";
 
 type FeatureId = "hunter" | "ats" | "assistant";
@@ -51,6 +56,143 @@ const features = [
   },
 ];
 
+const RESUME_NAME = "Angela - Virtual Assistant";
+const RESUME_OPTIONS = [RESUME_NAME, "Angela - Executive Support", "Angela - Operations"];
+
+/**
+ * One instant of the tour.
+ *
+ * Everything except the typed text is declared per beat rather than held in
+ * state, so the whole demo is a pure function of (feature, beat index). That
+ * keeps the runner down to a single timer and makes each script readable as a
+ * storyboard.
+ */
+type Beat = {
+  /** `data-cursor-target` the pointer travels to. */
+  target?: string;
+  action?: "click" | "type";
+  /** Key into the typed-text map, for `type` beats. */
+  field?: string;
+  text?: string;
+  ms: number;
+  /** Which result pane the right-hand column shows. */
+  step: number;
+  selectOpen?: boolean;
+  /** Whether the resume dropdown has been chosen yet. */
+  selected?: boolean;
+};
+
+const HUNTER_TITLE = "Executive Virtual Assistant";
+const HUNTER_DESC =
+  "Manage calendars, CRM updates, client email, and weekly reporting for a remote leadership team.";
+const ATS_DESC =
+  "We are looking for an executive virtual assistant with calendar management, CRM, client communication, and reporting experience.";
+const ASSISTANT_ROLE = "Executive Virtual Assistant";
+const ASSISTANT_DESC =
+  "Manage schedules, client communication, CRM updates, and weekly reporting for a growing remote team.";
+
+/**
+ * Each interaction is staged in three beats: arrive, press, then act.
+ *
+ * Collapsing that breaks the illusion in one of two ways. Act on the same beat
+ * as the press and the change appears to have happened already; act on a later
+ * beat once the cursor has moved on and it looks self-triggered. Typing has the
+ * same requirement as clicking -- characters must not start landing until the
+ * pointer is in the field and has pressed it.
+ */
+const SCRIPTS: Record<FeatureId, Beat[]> = {
+  hunter: [
+    { target: "hunter-select", ms: 720, step: 0 },
+    { target: "hunter-select", action: "click", ms: 400, step: 0 },
+    { target: "hunter-select", ms: 560, step: 0, selectOpen: true },
+    { target: "hunter-select-option", ms: 580, step: 0, selectOpen: true },
+    { target: "hunter-select-option", action: "click", ms: 420, step: 0, selectOpen: true },
+    { target: "hunter-title", ms: 520, step: 0, selected: true },
+    { target: "hunter-title", action: "click", ms: 360, step: 0, selected: true },
+    { target: "hunter-title", action: "type", field: "hunterTitle", text: HUNTER_TITLE, ms: 1400, step: 0, selected: true },
+    { target: "hunter-desc", ms: 480, step: 0, selected: true },
+    { target: "hunter-desc", action: "click", ms: 360, step: 0, selected: true },
+    { target: "hunter-desc", action: "type", field: "hunterDesc", text: HUNTER_DESC, ms: 2200, step: 0, selected: true },
+    { target: "hunter-submit", ms: 480, step: 0, selected: true },
+    { target: "hunter-submit", action: "click", ms: 440, step: 0, selected: true },
+    { target: "hunter-why", ms: 900, step: 1, selected: true },
+    { target: "hunter-why", action: "click", ms: 440, step: 1, selected: true },
+    { target: "hunter-why", ms: 2100, step: 2, selected: true },
+  ],
+  ats: [
+    { target: "ats-select", ms: 720, step: 0 },
+    { target: "ats-select", action: "click", ms: 400, step: 0 },
+    { target: "ats-select", ms: 560, step: 0, selectOpen: true },
+    { target: "ats-select-option", ms: 580, step: 0, selectOpen: true },
+    { target: "ats-select-option", action: "click", ms: 420, step: 0, selectOpen: true },
+    { target: "ats-desc", ms: 520, step: 0, selected: true },
+    { target: "ats-desc", action: "click", ms: 360, step: 0, selected: true },
+    { target: "ats-desc", action: "type", field: "atsDesc", text: ATS_DESC, ms: 2400, step: 0, selected: true },
+    { target: "ats-submit", ms: 460, step: 0, selected: true },
+    { target: "ats-submit", action: "click", ms: 440, step: 0, selected: true },
+    { target: "ats-submit", ms: 1400, step: 1, selected: true },
+    { target: "ats-submit", ms: 2100, step: 2, selected: true },
+  ],
+  assistant: [
+    { target: "assistant-select", ms: 720, step: 0 },
+    { target: "assistant-select", action: "click", ms: 400, step: 0 },
+    { target: "assistant-select", ms: 560, step: 0, selectOpen: true },
+    { target: "assistant-select-option", ms: 580, step: 0, selectOpen: true },
+    { target: "assistant-select-option", action: "click", ms: 420, step: 0, selectOpen: true },
+    { target: "assistant-role", ms: 520, step: 0, selected: true },
+    { target: "assistant-role", action: "click", ms: 360, step: 0, selected: true },
+    { target: "assistant-role", action: "type", field: "assistantRole", text: ASSISTANT_ROLE, ms: 1300, step: 0, selected: true },
+    { target: "assistant-desc", ms: 480, step: 0, selected: true },
+    { target: "assistant-desc", action: "click", ms: 360, step: 0, selected: true },
+    { target: "assistant-desc", action: "type", field: "assistantDesc", text: ASSISTANT_DESC, ms: 2200, step: 0, selected: true },
+    { target: "assistant-submit", ms: 460, step: 0, selected: true },
+    { target: "assistant-submit", action: "click", ms: 440, step: 0, selected: true },
+    { target: "assistant-submit", ms: 1200, step: 1, selected: true },
+    { target: "assistant-submit", ms: 2100, step: 2, selected: true },
+  ],
+};
+
+/** What a reduced-motion visitor sees: the finished demo, no cursor, no typing. */
+const RESTING_TYPED: Record<string, string> = {
+  hunterTitle: HUNTER_TITLE,
+  hunterDesc: HUNTER_DESC,
+  atsDesc: ATS_DESC,
+  assistantRole: ASSISTANT_ROLE,
+  assistantDesc: ASSISTANT_DESC,
+};
+
+/**
+ * Targets that behave like text inputs. Drives both the I-beam and the focus
+ * ring, so the two can never disagree about which field the cursor is in.
+ */
+const TEXT_FIELD_TARGETS: Record<string, string> = {
+  "hunter-title": "hunterTitle",
+  "hunter-desc": "hunterDesc",
+  "ats-desc": "atsDesc",
+  "assistant-role": "assistantRole",
+  "assistant-desc": "assistantDesc",
+};
+
+type DemoState = {
+  step: number;
+  selectOpen: boolean;
+  selected: boolean;
+  typed: Record<string, string>;
+  /** Field showing a focus ring: set from the click, held through the typing. */
+  focusField: string | null;
+  /** Field currently receiving characters, which is what shows the caret. */
+  typingField: string | null;
+};
+
+const RESTING_STATE: DemoState = {
+  step: 2,
+  selectOpen: false,
+  selected: true,
+  typed: RESTING_TYPED,
+  focusField: null,
+  typingField: null,
+};
+
 function TourSteps({ step }: { step: number }) {
   return (
     <div className="flex items-center gap-1.5" aria-label={`Tour step ${step + 1} of 3`}>
@@ -61,23 +203,80 @@ function TourSteps({ step }: { step: number }) {
   );
 }
 
-function MiniSelect({ label, value }: { label: string; value: string }) {
+/** Text as the cursor has typed it so far, with a caret while it is the focus. */
+function Typed({ value, placeholder, typing }: { value?: string; placeholder: string; typing: boolean }) {
+  if (!value) return <span className="text-zinc-400 dark:text-zinc-500">{placeholder}</span>;
   return (
-    <label className="block">
-      <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">{label}</span>
-      <span className="mt-1.5 flex h-9 items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-        {value}<ChevronDown className="size-3.5 text-zinc-400" />
-      </span>
-    </label>
+    <>
+      {value}
+      {typing ? <TypingCaret /> : null}
+    </>
   );
 }
 
-function JobHunterPreview({ step, onStep }: { step: number; onStep: (value: number) => void }) {
+function MiniSelect({
+  label,
+  targetKey,
+  optionTargetKey,
+  open,
+  selected,
+}: {
+  label: string;
+  targetKey: string;
+  optionTargetKey: string;
+  open: boolean;
+  selected: boolean;
+}) {
+  return (
+    <div className="relative block">
+      <span className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">{label}</span>
+      <span
+        data-cursor-target={targetKey}
+        className={cn(
+          "mt-1.5 flex h-9 items-center justify-between rounded-lg border bg-white px-3 text-xs font-medium transition-colors dark:bg-zinc-950",
+          open ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700",
+          selected ? "text-zinc-800 dark:text-zinc-200" : "text-zinc-400 dark:text-zinc-500",
+        )}
+      >
+        {selected ? RESUME_NAME : "Select a resume"}
+        <ChevronDown className={cn("size-3.5 text-zinc-400 transition-transform", open && "rotate-180")} />
+      </span>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.14 }}
+            className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-950"
+          >
+            {RESUME_OPTIONS.map((option, index) => (
+              <span
+                key={option}
+                data-cursor-target={index === 0 ? optionTargetKey : undefined}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 text-[11px]",
+                  index === 0 ? "bg-primary/5 font-semibold text-zinc-900 dark:text-zinc-100" : "text-zinc-500",
+                )}
+              >
+                <FileText className="size-3 shrink-0 text-zinc-400" />
+                {option}
+              </span>
+            ))}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function JobHunterPreview({ state }: { state: DemoState }) {
+  const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
       <aside className="space-y-3 lg:col-span-2">
         <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-950">
-          <MiniSelect label="Score against" value="Angela - Virtual Assistant" />
+          <MiniSelect label="Score against" targetKey="hunter-select" optionTargetKey="hunter-select-option" open={state.selectOpen} selected={state.selected} />
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-950">
           <p className="text-xs font-semibold">Add a job</p>
@@ -86,10 +285,14 @@ function JobHunterPreview({ step, onStep }: { step: number; onStep: (value: numb
             <span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Job URL</span>
           </div>
           <p className="mt-3 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Job title</p>
-          <div className="mt-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">Executive Virtual Assistant</div>
+          <div data-cursor-target="hunter-title" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "hunterTitle" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700")}>
+            <Typed value={typed.hunterTitle} placeholder="Paste or type the job title" typing={typingField === "hunterTitle"} />
+          </div>
           <p className="mt-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Job description</p>
-          <div className="mt-1.5 min-h-16 rounded-lg border border-zinc-200 px-3 py-2 text-[11px] leading-relaxed text-zinc-500 dark:border-zinc-700">Manage calendars, CRM updates, client email, and weekly reporting for a remote leadership team.</div>
-          <button type="button" onClick={() => onStep(1)} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-semibold text-white active:translate-y-px"><Plus className="size-3.5" />Add and score job</button>
+          <div data-cursor-target="hunter-desc" className={cn("mt-1.5 min-h-16 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "hunterDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}>
+            <Typed value={typed.hunterDesc} placeholder="Paste the job description..." typing={typingField === "hunterDesc"} />
+          </div>
+          <span data-cursor-target="hunter-submit" className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-semibold text-white"><Plus className="size-3.5" />Add and score job</span>
         </div>
       </aside>
 
@@ -105,9 +308,9 @@ function JobHunterPreview({ step, onStep }: { step: number; onStep: (value: numb
           ) : (
             <motion.article key="match" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
               <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h4 className="truncate text-sm font-semibold">Executive Virtual Assistant</h4><p className="mt-1 text-xs text-zinc-500">Northstar Commerce · Remote</p><div className="mt-2 flex gap-4 text-[11px]"><span><span className="text-zinc-400">Type </span>Full-time</span><span><span className="text-zinc-400">Hours </span>40 / week</span></div></div><div className="rounded-lg border border-success-border bg-success-surface px-3 py-2 text-center text-success-surface-foreground"><span className="block text-xl font-bold tabular-nums">86</span><span className="block text-[10px] font-semibold">Strong</span></div></div>
-              <button type="button" onClick={() => onStep(step === 2 ? 1 : 2)} className="mt-3 flex w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left dark:border-zinc-800 dark:bg-zinc-900"><span><span className="block text-xs font-semibold">Why this score?</span><span className="mt-0.5 block text-[11px] text-zinc-500">6 matched and 2 missing keywords</span></span><ChevronDown className={cn("size-3.5 text-zinc-400 transition-transform", step === 2 && "rotate-180")} /></button>
+              <span data-cursor-target="hunter-why" className="mt-3 flex w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left dark:border-zinc-800 dark:bg-zinc-900"><span><span className="block text-xs font-semibold">Why this score?</span><span className="mt-0.5 block text-[11px] text-zinc-500">6 matched and 2 missing keywords</span></span><ChevronDown className={cn("size-3.5 text-zinc-400 transition-transform", step === 2 && "rotate-180")} /></span>
               <AnimatePresence initial={false}>{step === 2 ? <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden"><div className="grid gap-2 pt-3 sm:grid-cols-3">{[["Keywords", "88"], ["Experience", "84"], ["Formatting", "91"]].map(([label, score]) => <div key={label} className="rounded-lg bg-zinc-50 p-2.5 dark:bg-zinc-900"><div className="flex justify-between text-[11px]"><span>{label}</span><strong>{score}</strong></div></div>)}</div><div className="mt-3 flex flex-wrap gap-1.5">{["calendar management", "CRM", "client communication"].map((keyword) => <span key={keyword} className="rounded-md border border-success-border bg-success-surface px-2 py-1 text-[10px] font-medium text-success-surface-foreground">{keyword}</span>)}</div></motion.div> : null}</AnimatePresence>
-              <div className="mt-4 flex flex-wrap gap-2"><button type="button" className="rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-white">Tailor application</button><button type="button" className="rounded-lg border border-zinc-200 px-3 py-2 text-[11px] font-semibold dark:border-zinc-700">Move to applied</button></div>
+              <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-white">Tailor application</span><span className="rounded-lg border border-zinc-200 px-3 py-2 text-[11px] font-semibold dark:border-zinc-700">Move to applied</span></div>
             </motion.article>
           )}
         </AnimatePresence>
@@ -116,13 +319,14 @@ function JobHunterPreview({ step, onStep }: { step: number; onStep: (value: numb
   );
 }
 
-function AtsPreview({ step, onStep }: { step: number; onStep: (value: number) => void }) {
+function AtsPreview({ state }: { state: DemoState }) {
+  const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
       <aside className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
-        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>What should we check?</p><div className="mt-3 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900"><span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-800"><FileText className="size-3" />Saved resume</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Upload a file</span></div><div className="mt-2"><MiniSelect label="Resume" value="Angela - Virtual Assistant" /></div></div>
-        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>Target job description</p><div className="mt-2 min-h-24 rounded-lg border border-zinc-200 px-3 py-2 text-[11px] leading-relaxed text-zinc-500 dark:border-zinc-700">We are looking for an executive virtual assistant with calendar management, CRM, client communication, and reporting experience...</div></div>
-        <button type="button" onClick={() => onStep(1)} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <ScanSearch className="size-3.5" />}{step === 1 ? "Analyzing resume" : "Run ATS check"}</button>
+        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>What should we check?</p><div className="mt-3 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900"><span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-800"><FileText className="size-3" />Saved resume</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Upload a file</span></div><div className="mt-2"><MiniSelect label="Resume" targetKey="ats-select" optionTargetKey="ats-select-option" open={state.selectOpen} selected={state.selected} /></div></div>
+        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>Target job description</p><div data-cursor-target="ats-desc" className={cn("mt-2 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "atsDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}><Typed value={typed.atsDesc} placeholder="Paste the job description for sharper matching..." typing={typingField === "atsDesc"} /></div></div>
+        <span data-cursor-target="ats-submit" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <ScanSearch className="size-3.5" />}{step === 1 ? "Analyzing resume" : "Run ATS check"}</span>
       </aside>
       <div className="min-w-0 lg:col-span-3">
         <AnimatePresence mode="wait">
@@ -135,14 +339,19 @@ function AtsPreview({ step, onStep }: { step: number; onStep: (value: number) =>
   );
 }
 
-function AssistantPreview({ step, onStep }: { step: number; onStep: (value: number) => void }) {
+function AssistantPreview({ state }: { state: DemoState }) {
+  const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
-      <aside className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2"><MiniSelect label="Working on" value="Angela - Virtual Assistant" /><div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Target role</p><div className="mt-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">Executive Virtual Assistant</div></div><div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Job description</p><div className="mt-1.5 min-h-24 rounded-lg border border-zinc-200 px-3 py-2 text-[11px] leading-relaxed text-zinc-500 dark:border-zinc-700">Manage schedules, client communication, CRM updates, and weekly reporting for a growing remote team.</div></div></aside>
+      <aside className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
+        <MiniSelect label="Working on" targetKey="assistant-select" optionTargetKey="assistant-select-option" open={state.selectOpen} selected={state.selected} />
+        <div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Target role</p><div data-cursor-target="assistant-role" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "assistantRole" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700")}><Typed value={typed.assistantRole} placeholder="e.g. Senior Frontend Engineer" typing={typingField === "assistantRole"} /></div></div>
+        <div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Job description</p><div data-cursor-target="assistant-desc" className={cn("mt-1.5 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "assistantDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}><Typed value={typed.assistantDesc} placeholder="Paste the job description to tailor the output..." typing={typingField === "assistantDesc"} /></div></div>
+      </aside>
       <div className="min-w-0 space-y-3 lg:col-span-3">
         <div className="flex rounded-lg bg-zinc-200/60 p-1 dark:bg-zinc-800"><span className="flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-950"><Sparkles className="size-3" />Resume Improver</span><span className="flex flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500"><Target className="size-3" />Keywords</span><span className="hidden flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500 sm:flex"><Trophy className="size-3" />Achievements</span></div>
         <p className="text-[11px] text-zinc-500">Rewrite your summary, experience, or the whole resume.</p>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Goal</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{[["Rewrite summary", FileText], ["Improve experience", Briefcase], ["Full resume", Sparkles]].map(([label, Icon], index) => { const GoalIcon = Icon as typeof FileText; return <div key={label as string} className={cn("rounded-lg border p-3", index === 1 ? "border-primary bg-primary/5" : "border-zinc-200 dark:border-zinc-700")}><GoalIcon className={cn("size-3.5", index === 1 ? "text-primary" : "text-zinc-400")} /><span className="mt-2 block text-[11px] font-semibold">{label as string}</span></div>; })}</div><button type="button" onClick={() => onStep(1)} className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}{step === 1 ? "Improving" : "Improve resume"}</button></div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Goal</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{[["Rewrite summary", FileText], ["Improve experience", Briefcase], ["Full resume", Sparkles]].map(([label, Icon], index) => { const GoalIcon = Icon as typeof FileText; return <div key={label as string} className={cn("rounded-lg border p-3", index === 1 ? "border-primary bg-primary/5" : "border-zinc-200 dark:border-zinc-700")}><GoalIcon className={cn("size-3.5", index === 1 ? "text-primary" : "text-zinc-400")} /><span className="mt-2 block text-[11px] font-semibold">{label as string}</span></div>; })}</div><span data-cursor-target="assistant-submit" className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}{step === 1 ? "Improving" : "Improve resume"}</span></div>
         <AnimatePresence mode="wait">
           {step === 0 ? <motion.div key="current" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Current experience</p><p className="mt-2 text-xs leading-relaxed text-zinc-500">Helped my manager with schedules, emails, CRM updates, and weekly tasks.</p></motion.div> : null}
           {step === 1 ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800"><div className="h-9 animate-pulse bg-zinc-100 dark:bg-zinc-800" /><div className="space-y-2 p-4"><div className="h-3 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-3 w-11/12 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-3 w-4/5 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /></div></motion.div> : null}
@@ -155,22 +364,74 @@ function AssistantPreview({ step, onStep }: { step: number; onStep: (value: numb
 
 export function FeatureDemo() {
   const [active, setActive] = useState<FeatureId>("hunter");
-  const [step, setStep] = useState(0);
+  const [beatIndex, setBeatIndex] = useState(0);
+  const [typed, setTyped] = useState<Record<string, string>>({});
   const [playing, setPlaying] = useState(true);
   const reduceMotion = useReducedMotion();
+  const stageRef = useRef<HTMLDivElement>(null);
+
   const activeIndex = features.findIndex((feature) => feature.id === active);
   const activeFeature = features[activeIndex] ?? features[0];
 
-  useEffect(() => {
-    if (!playing || reduceMotion) return;
-    const timer = window.setTimeout(() => {
-      if (step < 2) setStep((current) => current + 1);
-      else { setActive(features[(activeIndex + 1) % features.length].id); setStep(0); }
-    }, 2600);
-    return () => window.clearTimeout(timer);
-  }, [activeIndex, playing, reduceMotion, step]);
+  const script = SCRIPTS[active];
+  const beat = script[Math.min(beatIndex, script.length - 1)];
+  const isAnimating = playing && !reduceMotion;
 
-  function selectFeature(id: FeatureId) { setActive(id); setStep(0); }
+  const targetField = beat.target ? (TEXT_FIELD_TARGETS[beat.target] ?? null) : null;
+  const state: DemoState = reduceMotion
+    ? RESTING_STATE
+    : {
+        step: beat.step,
+        selectOpen: Boolean(beat.selectOpen),
+        selected: Boolean(beat.selected),
+        typed,
+        // Focus starts at the press and persists while typing; merely hovering
+        // the field does not ring it, which is how a real input behaves.
+        focusField:
+          targetField && (beat.action === "click" || beat.action === "type") ? targetField : null,
+        typingField: beat.action === "type" && playing ? (beat.field ?? null) : null,
+      };
+
+  // Advances the storyboard. State is only ever set from the timer callback, so
+  // no render is triggered synchronously from the effect body.
+  useEffect(() => {
+    if (!isAnimating) return;
+    const timer = window.setTimeout(() => {
+      if (beatIndex + 1 < script.length) {
+        setBeatIndex(beatIndex + 1);
+        return;
+      }
+      setActive(features[(activeIndex + 1) % features.length].id);
+      setBeatIndex(0);
+      setTyped({});
+    }, beat.ms);
+    return () => window.clearTimeout(timer);
+  }, [activeIndex, beat.ms, beatIndex, isAnimating, script.length]);
+
+  // Types the current field one character at a time across the beat's duration.
+  useEffect(() => {
+    if (!isAnimating || beat.action !== "type" || !beat.field || !beat.text) return;
+    const field = beat.field;
+    const text = beat.text;
+    const perCharacter = Math.max(12, beat.ms / Math.max(text.length, 1));
+
+    let index = 0;
+    const ticker = window.setInterval(() => {
+      index += 1;
+      setTyped((previous) => ({ ...previous, [field]: text.slice(0, index) }));
+      if (index >= text.length) window.clearInterval(ticker);
+    }, perCharacter);
+
+    return () => window.clearInterval(ticker);
+  }, [beat.action, beat.field, beat.ms, beat.text, isAnimating]);
+
+  const cursorPoint = useCursorTarget(stageRef, isAnimating ? (beat.target ?? null) : null, beatIndex);
+
+  function selectFeature(id: FeatureId) {
+    setActive(id);
+    setBeatIndex(0);
+    setTyped({});
+  }
 
   return (
     <section id="features" className="relative bg-white py-20 font-sans dark:bg-zinc-950 lg:py-28">
@@ -187,9 +448,10 @@ export function FeatureDemo() {
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2 scrollbar-none" role="tablist" aria-label="Craftiv product tour">{features.map((feature) => { const Icon = feature.icon; const selected = feature.id === active; return <button key={feature.id} type="button" role="tab" aria-selected={selected} onClick={() => selectFeature(feature.id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition active:translate-y-px sm:text-sm", selected ? "bg-primary text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100")}><Icon className="size-4" />{feature.name}</button>; })}</div>
             <button type="button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause autoplay" : "Play autoplay"} className="hidden shrink-0 items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 active:translate-y-px dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:inline-flex">{playing ? <span className="flex gap-0.5"><span className="h-3 w-0.5 rounded bg-current" /><span className="h-3 w-0.5 rounded bg-current" /></span> : <Play className="size-3.5" />}{playing ? "Pause" : "Play"}</button>
           </div>
-          <div className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:flex sm:items-center sm:justify-between sm:px-5"><div><h3 className="text-base font-semibold">{activeFeature.name}</h3><p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 sm:text-sm">{activeFeature.description}</p></div><div className="mt-3 flex items-center justify-between gap-4 sm:mt-0 sm:justify-end"><TourSteps step={step} /><Link href={activeFeature.href} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline dark:text-zinc-200">{activeFeature.cta}<ArrowRight className="size-3.5" /></Link></div></div>
-          <div className="relative min-h-[38rem] overflow-hidden bg-zinc-50 dark:bg-zinc-900 sm:min-h-[35rem]">
-            <AnimatePresence mode="wait" initial={false}><motion.div key={active} initial={reduceMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: -12 }} transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}>{active === "hunter" ? <JobHunterPreview step={step} onStep={setStep} /> : null}{active === "ats" ? <AtsPreview step={step} onStep={setStep} /> : null}{active === "assistant" ? <AssistantPreview step={step} onStep={setStep} /> : null}</motion.div></AnimatePresence>
+          <div className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:flex sm:items-center sm:justify-between sm:px-5"><div><h3 className="text-base font-semibold">{activeFeature.name}</h3><p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 sm:text-sm">{activeFeature.description}</p></div><div className="mt-3 flex items-center justify-between gap-4 sm:mt-0 sm:justify-end"><TourSteps step={state.step} /><Link href={activeFeature.href} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline dark:text-zinc-200">{activeFeature.cta}<ArrowRight className="size-3.5" /></Link></div></div>
+          <div ref={stageRef} className="relative min-h-[38rem] overflow-hidden bg-zinc-50 dark:bg-zinc-900 sm:min-h-[35rem]">
+            <AnimatePresence mode="wait" initial={false}><motion.div key={active} initial={reduceMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: -12 }} transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}>{active === "hunter" ? <JobHunterPreview state={state} /> : null}{active === "ats" ? <AtsPreview state={state} /> : null}{active === "assistant" ? <AssistantPreview state={state} /> : null}</motion.div></AnimatePresence>
+            <DemoCursor point={cursorPoint} clicking={isAnimating && beat.action === "click"} clickKey={beatIndex} variant={targetField ? "text" : "arrow"} />
           </div>
         </div>
       </div>
