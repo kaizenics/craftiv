@@ -35,9 +35,14 @@ export function useCursorTarget(
 
       const containerBox = container.getBoundingClientRect();
       const targetBox = element.getBoundingClientRect();
+      // The stage is scaled during a zoom, so both rects come back in screen
+      // pixels. Dividing by the live scale converts them to the container's own
+      // layout space, which is where the cursor and the zoom maths both live.
+      const scale = container.offsetWidth > 0 ? containerBox.width / container.offsetWidth : 1;
+      const safeScale = scale > 0 ? scale : 1;
       setPoint({
-        x: targetBox.left - containerBox.left + targetBox.width / 2,
-        y: targetBox.top - containerBox.top + targetBox.height / 2,
+        x: (targetBox.left - containerBox.left + targetBox.width / 2) / safeScale,
+        y: (targetBox.top - containerBox.top + targetBox.height / 2) / safeScale,
       });
     };
 
@@ -53,6 +58,24 @@ export function useCursorTarget(
   }, [containerRef, targetKey, revision]);
 
   return point;
+}
+
+/** Layout size of an element, unaffected by any transform applied to it. */
+export function useElementSize(ref: RefObject<HTMLElement | null>) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver(() => {
+      setSize({ width: element.offsetWidth, height: element.offsetHeight });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return size;
 }
 
 /** The I-beam's hotspot is its middle; the arrow's is its tip. */

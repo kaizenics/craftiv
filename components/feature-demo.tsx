@@ -24,6 +24,7 @@ import {
   DemoCursor,
   TypingCaret,
   useCursorTarget,
+  useElementSize,
 } from "@/components/feature-demo-cursor";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +81,15 @@ type Beat = {
   selectOpen?: boolean;
   /** Whether the resume dropdown has been chosen yet. */
   selected?: boolean;
+  /** Stage magnification for this beat. 1 is the full, unzoomed panel. */
+  zoom?: number;
+  /**
+   * Region the zoom frames, as a `data-cursor-target`. Deliberately a region
+   * rather than the pointer's own target: framing each control in turn would
+   * lurch the whole panel on every beat, where holding one region lets the
+   * cursor work inside a steady frame.
+   */
+  zoomTarget?: string;
 };
 
 const HUNTER_TITLE = "Executive Virtual Assistant";
@@ -99,56 +109,60 @@ const ASSISTANT_DESC =
  * beat once the cursor has moved on and it looks self-triggered. Typing has the
  * same requirement as clicking -- characters must not start landing until the
  * pointer is in the field and has pressed it.
+ *
+ * Beats also carry the framing. The tour pushes in on whichever panel is being
+ * worked and pulls back out to show the result, so the eye is led rather than
+ * left to hunt for what changed on a full-width screenshot.
  */
 const SCRIPTS: Record<FeatureId, Beat[]> = {
   hunter: [
-    { target: "hunter-select", ms: 720, step: 0 },
-    { target: "hunter-select", action: "click", ms: 400, step: 0 },
-    { target: "hunter-select", ms: 560, step: 0, selectOpen: true },
-    { target: "hunter-select-option", ms: 580, step: 0, selectOpen: true },
-    { target: "hunter-select-option", action: "click", ms: 420, step: 0, selectOpen: true },
-    { target: "hunter-title", ms: 520, step: 0, selected: true },
-    { target: "hunter-title", action: "click", ms: 360, step: 0, selected: true },
-    { target: "hunter-title", action: "type", field: "hunterTitle", text: HUNTER_TITLE, ms: 1400, step: 0, selected: true },
-    { target: "hunter-desc", ms: 480, step: 0, selected: true },
-    { target: "hunter-desc", action: "click", ms: 360, step: 0, selected: true },
-    { target: "hunter-desc", action: "type", field: "hunterDesc", text: HUNTER_DESC, ms: 2200, step: 0, selected: true },
-    { target: "hunter-submit", ms: 480, step: 0, selected: true },
-    { target: "hunter-submit", action: "click", ms: 440, step: 0, selected: true },
-    { target: "hunter-why", ms: 900, step: 1, selected: true },
-    { target: "hunter-why", action: "click", ms: 440, step: 1, selected: true },
-    { target: "hunter-why", ms: 2100, step: 2, selected: true },
+    { target: "hunter-select", ms: 900, step: 0, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-select", action: "click", ms: 400, step: 0, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-select", ms: 560, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-select-option", ms: 580, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-select-option", action: "click", ms: 420, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-title", ms: 520, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-title", action: "click", ms: 360, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-title", action: "type", field: "hunterTitle", text: HUNTER_TITLE, ms: 1400, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-desc", ms: 480, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-desc", action: "click", ms: 360, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-desc", action: "type", field: "hunterDesc", text: HUNTER_DESC, ms: 2200, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-submit", ms: 480, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-submit", action: "click", ms: 440, step: 0, selected: true, zoom: 1.35, zoomTarget: "hunter-form" },
+    { target: "hunter-why", ms: 1100, step: 1, selected: true },
+    { target: "hunter-why", action: "click", ms: 440, step: 1, selected: true, zoom: 1.2, zoomTarget: "hunter-result" },
+    { target: "hunter-why", ms: 2200, step: 2, selected: true, zoom: 1.2, zoomTarget: "hunter-result" },
   ],
   ats: [
-    { target: "ats-select", ms: 720, step: 0 },
-    { target: "ats-select", action: "click", ms: 400, step: 0 },
-    { target: "ats-select", ms: 560, step: 0, selectOpen: true },
-    { target: "ats-select-option", ms: 580, step: 0, selectOpen: true },
-    { target: "ats-select-option", action: "click", ms: 420, step: 0, selectOpen: true },
-    { target: "ats-desc", ms: 520, step: 0, selected: true },
-    { target: "ats-desc", action: "click", ms: 360, step: 0, selected: true },
-    { target: "ats-desc", action: "type", field: "atsDesc", text: ATS_DESC, ms: 2400, step: 0, selected: true },
-    { target: "ats-submit", ms: 460, step: 0, selected: true },
-    { target: "ats-submit", action: "click", ms: 440, step: 0, selected: true },
-    { target: "ats-submit", ms: 1400, step: 1, selected: true },
-    { target: "ats-submit", ms: 2100, step: 2, selected: true },
+    { target: "ats-select", ms: 900, step: 0, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-select", action: "click", ms: 400, step: 0, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-select", ms: 560, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-select-option", ms: 580, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-select-option", action: "click", ms: 420, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-desc", ms: 520, step: 0, selected: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-desc", action: "click", ms: 360, step: 0, selected: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-desc", action: "type", field: "atsDesc", text: ATS_DESC, ms: 2400, step: 0, selected: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-submit", ms: 460, step: 0, selected: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-submit", action: "click", ms: 440, step: 0, selected: true, zoom: 1.35, zoomTarget: "ats-form" },
+    { target: "ats-submit", ms: 1500, step: 1, selected: true },
+    { target: "ats-submit", ms: 2200, step: 2, selected: true, zoom: 1.15, zoomTarget: "ats-result" },
   ],
   assistant: [
-    { target: "assistant-select", ms: 720, step: 0 },
-    { target: "assistant-select", action: "click", ms: 400, step: 0 },
-    { target: "assistant-select", ms: 560, step: 0, selectOpen: true },
-    { target: "assistant-select-option", ms: 580, step: 0, selectOpen: true },
-    { target: "assistant-select-option", action: "click", ms: 420, step: 0, selectOpen: true },
-    { target: "assistant-role", ms: 520, step: 0, selected: true },
-    { target: "assistant-role", action: "click", ms: 360, step: 0, selected: true },
-    { target: "assistant-role", action: "type", field: "assistantRole", text: ASSISTANT_ROLE, ms: 1300, step: 0, selected: true },
-    { target: "assistant-desc", ms: 480, step: 0, selected: true },
-    { target: "assistant-desc", action: "click", ms: 360, step: 0, selected: true },
-    { target: "assistant-desc", action: "type", field: "assistantDesc", text: ASSISTANT_DESC, ms: 2200, step: 0, selected: true },
-    { target: "assistant-submit", ms: 460, step: 0, selected: true },
-    { target: "assistant-submit", action: "click", ms: 440, step: 0, selected: true },
-    { target: "assistant-submit", ms: 1200, step: 1, selected: true },
-    { target: "assistant-submit", ms: 2100, step: 2, selected: true },
+    { target: "assistant-select", ms: 900, step: 0, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-select", action: "click", ms: 400, step: 0, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-select", ms: 560, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-select-option", ms: 580, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-select-option", action: "click", ms: 420, step: 0, selectOpen: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-role", ms: 520, step: 0, selected: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-role", action: "click", ms: 360, step: 0, selected: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-role", action: "type", field: "assistantRole", text: ASSISTANT_ROLE, ms: 1300, step: 0, selected: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-desc", ms: 480, step: 0, selected: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-desc", action: "click", ms: 360, step: 0, selected: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-desc", action: "type", field: "assistantDesc", text: ASSISTANT_DESC, ms: 2200, step: 0, selected: true, zoom: 1.35, zoomTarget: "assistant-form" },
+    { target: "assistant-submit", ms: 460, step: 0, selected: true, zoom: 1.3, zoomTarget: "assistant-result" },
+    { target: "assistant-submit", action: "click", ms: 440, step: 0, selected: true, zoom: 1.3, zoomTarget: "assistant-result" },
+    { target: "assistant-submit", ms: 1300, step: 1, selected: true },
+    { target: "assistant-submit", ms: 2200, step: 2, selected: true, zoom: 1.15, zoomTarget: "assistant-result" },
   ],
 };
 
@@ -274,7 +288,7 @@ function JobHunterPreview({ state }: { state: DemoState }) {
   const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
-      <aside className="space-y-3 lg:col-span-2">
+      <aside data-cursor-target="hunter-form" className="space-y-3 lg:col-span-2">
         <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-950">
           <MiniSelect label="Score against" targetKey="hunter-select" optionTargetKey="hunter-select-option" open={state.selectOpen} selected={state.selected} />
         </div>
@@ -296,7 +310,7 @@ function JobHunterPreview({ state }: { state: DemoState }) {
         </div>
       </aside>
 
-      <div className="min-w-0 space-y-3 lg:col-span-3">
+      <div data-cursor-target="hunter-result" className="min-w-0 space-y-3 lg:col-span-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex rounded-lg bg-zinc-200/60 p-1 dark:bg-zinc-800"><span className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-950">Jobs</span><span className="px-3 py-1.5 text-[11px] text-zinc-500">Scheduled hunts (1)</span></div>
           <div className="hidden items-center rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700 sm:flex"><span className="rounded-md bg-zinc-100 p-1.5 dark:bg-zinc-800"><List className="size-3" /></span><span className="p-1.5 text-zinc-400"><Grid className="size-3" /></span></div>
@@ -323,12 +337,12 @@ function AtsPreview({ state }: { state: DemoState }) {
   const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
-      <aside className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
+      <aside data-cursor-target="ats-form" className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
         <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>What should we check?</p><div className="mt-3 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900"><span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-800"><FileText className="size-3" />Saved resume</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Upload a file</span></div><div className="mt-2"><MiniSelect label="Resume" targetKey="ats-select" optionTargetKey="ats-select-option" open={state.selectOpen} selected={state.selected} /></div></div>
         <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>Target job description</p><div data-cursor-target="ats-desc" className={cn("mt-2 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "atsDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}><Typed value={typed.atsDesc} placeholder="Paste the job description for sharper matching..." typing={typingField === "atsDesc"} /></div></div>
         <span data-cursor-target="ats-submit" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <ScanSearch className="size-3.5" />}{step === 1 ? "Analyzing resume" : "Run ATS check"}</span>
       </aside>
-      <div className="min-w-0 lg:col-span-3">
+      <div data-cursor-target="ats-result" className="min-w-0 lg:col-span-3">
         <AnimatePresence mode="wait">
           {step === 0 ? <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-[25rem] flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center dark:border-zinc-700 dark:bg-zinc-950/40"><span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"><ScanSearch className="size-6" /></span><p className="mt-4 text-sm font-semibold">Your report will appear here</p><p className="mt-2 max-w-xs text-xs leading-relaxed text-zinc-500">Run the check for an overall score, keyword gaps, and specific rewrites.</p></motion.div> : null}
           {step === 1 ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3"><div className="flex items-center gap-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"><div className="size-24 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" /><div className="flex-1 space-y-3"><div className="h-3 w-24 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-8 w-36 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-14 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" /></div></div><div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" /><div className="h-36 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" /></motion.div> : null}
@@ -343,12 +357,12 @@ function AssistantPreview({ state }: { state: DemoState }) {
   const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
-      <aside className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
+      <aside data-cursor-target="assistant-form" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
         <MiniSelect label="Working on" targetKey="assistant-select" optionTargetKey="assistant-select-option" open={state.selectOpen} selected={state.selected} />
         <div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Target role</p><div data-cursor-target="assistant-role" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "assistantRole" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700")}><Typed value={typed.assistantRole} placeholder="e.g. Senior Frontend Engineer" typing={typingField === "assistantRole"} /></div></div>
         <div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Job description</p><div data-cursor-target="assistant-desc" className={cn("mt-1.5 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "assistantDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}><Typed value={typed.assistantDesc} placeholder="Paste the job description to tailor the output..." typing={typingField === "assistantDesc"} /></div></div>
       </aside>
-      <div className="min-w-0 space-y-3 lg:col-span-3">
+      <div data-cursor-target="assistant-result" className="min-w-0 space-y-3 lg:col-span-3">
         <div className="flex rounded-lg bg-zinc-200/60 p-1 dark:bg-zinc-800"><span className="flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-950"><Sparkles className="size-3" />Resume Improver</span><span className="flex flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500"><Target className="size-3" />Keywords</span><span className="hidden flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500 sm:flex"><Trophy className="size-3" />Achievements</span></div>
         <p className="text-[11px] text-zinc-500">Rewrite your summary, experience, or the whole resume.</p>
         <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Goal</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{[["Rewrite summary", FileText], ["Improve experience", Briefcase], ["Full resume", Sparkles]].map(([label, Icon], index) => { const GoalIcon = Icon as typeof FileText; return <div key={label as string} className={cn("rounded-lg border p-3", index === 1 ? "border-primary bg-primary/5" : "border-zinc-200 dark:border-zinc-700")}><GoalIcon className={cn("size-3.5", index === 1 ? "text-primary" : "text-zinc-400")} /><span className="mt-2 block text-[11px] font-semibold">{label as string}</span></div>; })}</div><span data-cursor-target="assistant-submit" className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}{step === 1 ? "Improving" : "Improve resume"}</span></div>
@@ -427,6 +441,37 @@ export function FeatureDemo() {
 
   const cursorPoint = useCursorTarget(stageRef, isAnimating ? (beat.target ?? null) : null, beatIndex);
 
+  // Framing. The zoom is clamped to the stage's own edges so a push-in can
+  // never reveal blank space beyond the panel, and it resolves to the identity
+  // transform at zoom 1 rather than re-centring an unzoomed stage.
+  const stageSize = useElementSize(stageRef);
+  /**
+   * How much of a beat's zoom the stage can afford, judged on the stage's own
+   * width rather than the viewport.
+   *
+   * The two-column desktop layout has somewhere to push in to. Below `lg` the
+   * previews collapse to a single full-width column, so magnifying it only
+   * crops the edges off -- labels and field text ran off the left on phones.
+   * Damping through a middle band avoids a visible jump at the boundary.
+   */
+  const zoomAllowance = stageSize.width >= 1180 ? 1 : stageSize.width >= 900 ? 0.5 : 0;
+  const zoom = isAnimating ? 1 + ((beat.zoom ?? 1) - 1) * zoomAllowance : 1;
+  const zoomPoint = useCursorTarget(
+    stageRef,
+    isAnimating && zoom > 1 ? (beat.zoomTarget ?? beat.target ?? null) : null,
+    beatIndex,
+  );
+  const frame = (() => {
+    const { width, height } = stageSize;
+    if (zoom <= 1 || !zoomPoint || width === 0 || height === 0) return { x: 0, y: 0 };
+    const clamp = (value: number, min: number, max: number) =>
+      Math.min(Math.max(value, min), max);
+    return {
+      x: clamp(width / 2 - zoomPoint.x * zoom, width - width * zoom, 0),
+      y: clamp(height / 2 - zoomPoint.y * zoom, height - height * zoom, 0),
+    };
+  })();
+
   function selectFeature(id: FeatureId) {
     setActive(id);
     setBeatIndex(0);
@@ -449,9 +494,19 @@ export function FeatureDemo() {
             <button type="button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause autoplay" : "Play autoplay"} className="hidden shrink-0 items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 active:translate-y-px dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:inline-flex">{playing ? <span className="flex gap-0.5"><span className="h-3 w-0.5 rounded bg-current" /><span className="h-3 w-0.5 rounded bg-current" /></span> : <Play className="size-3.5" />}{playing ? "Pause" : "Play"}</button>
           </div>
           <div className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:flex sm:items-center sm:justify-between sm:px-5"><div><h3 className="text-base font-semibold">{activeFeature.name}</h3><p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 sm:text-sm">{activeFeature.description}</p></div><div className="mt-3 flex items-center justify-between gap-4 sm:mt-0 sm:justify-end"><TourSteps step={state.step} /><Link href={activeFeature.href} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline dark:text-zinc-200">{activeFeature.cta}<ArrowRight className="size-3.5" /></Link></div></div>
-          <div ref={stageRef} className="relative min-h-[38rem] overflow-hidden bg-zinc-50 dark:bg-zinc-900 sm:min-h-[35rem]">
+          <div className="relative min-h-[38rem] overflow-hidden bg-zinc-50 dark:bg-zinc-900 sm:min-h-[35rem]">
+            {/* The ref sits on the transformed element, not its parent, so the
+                cursor and the framing share one coordinate space. */}
+            <motion.div
+              ref={stageRef}
+              className="relative origin-top-left"
+              initial={false}
+              animate={{ scale: zoom, x: frame.x, y: frame.y }}
+              transition={{ type: "spring", stiffness: 55, damping: 20, mass: 1 }}
+            >
             <AnimatePresence mode="wait" initial={false}><motion.div key={active} initial={reduceMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: -12 }} transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}>{active === "hunter" ? <JobHunterPreview state={state} /> : null}{active === "ats" ? <AtsPreview state={state} /> : null}{active === "assistant" ? <AssistantPreview state={state} /> : null}</motion.div></AnimatePresence>
-            <DemoCursor point={cursorPoint} clicking={isAnimating && beat.action === "click"} clickKey={beatIndex} variant={targetField ? "text" : "arrow"} />
+              <DemoCursor point={cursorPoint} clicking={isAnimating && beat.action === "click"} clickKey={beatIndex} variant={targetField ? "text" : "arrow"} />
+            </motion.div>
           </div>
         </div>
       </div>
