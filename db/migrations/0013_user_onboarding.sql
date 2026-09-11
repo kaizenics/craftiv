@@ -1,0 +1,13 @@
+-- Records when a user finished or dismissed the dashboard tour. Null means it
+-- has not run for them yet, which is the condition the tour keys off.
+--
+-- Kept on the account rather than in the browser so the tour does not replay on
+-- the person's next device, and is not suppressed for a new account merely
+-- because someone else dismissed it in the same browser.
+--
+-- Nullable with no default, so this is an ADD COLUMN rather than a table
+-- rebuild, and every existing account reads as "has not seen it". That is the
+-- deliberate choice: established users will see the tour once. Backfilling them
+-- to NOW() instead would suppress it, at the cost of hiding it from anyone who
+-- signed up recently and has not actually been shown it.
+ALTER TABLE `users` ADD COLUMN `onboarding_completed_at` integer;

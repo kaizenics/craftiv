@@ -25,6 +25,11 @@ import {
   getUserPreferencesFromRecord,
   userPreferencesSchema,
 } from "@/lib/user-preferences";
+import {
+  onboardingTourKeySchema,
+  parseCompletedTours,
+  serializeCompletedTours,
+} from "@/lib/onboarding";
 
 function getEffectivePlan(user: {
   plan: "free" | "active" | "plus" | "pro" | null;
@@ -49,6 +54,52 @@ export const userRouter = createTRPCRouter({
 
     return user ?? null;
   }),
+
+  /**
+   * Which guided tours this account has already been offered.
+   *
+   * Its own query rather than a field read off `me`, so a page can ask for just
+   * this without pulling the whole user row.
+   */
+  onboardingStatus: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.query.users.findFirst({
+      columns: { onboardingToursCompleted: true },
+      where: eq(users.id, ctx.user.id),
+    });
+
+    return { completed: parseCompletedTours(user?.onboardingToursCompleted) };
+  }),
+
+  /**
+   * Marks one tour as done. Called both when it is finished and when it is
+   * skipped: either way the person has been offered it, and replaying it after
+   * a deliberate dismissal is worse than not showing it at all.
+   *
+   * Read-modify-write on a JSON column, so it is deliberately additive -- two
+   * tours completed in quick succession must not clobber one another, and the
+   * set union means a repeat call is harmless.
+   */
+  completeOnboarding: protectedProcedure
+    .input(z.object({ tour: onboardingTourKeySchema }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.query.users.findFirst({
+        columns: { onboardingToursCompleted: true },
+        where: eq(users.id, ctx.user.id),
+      });
+
+      const completed = new Set(parseCompletedTours(user?.onboardingToursCompleted));
+      completed.add(input.tour);
+
+      await ctx.db
+        .update(users)
+        .set({
+          onboardingToursCompleted: serializeCompletedTours(completed),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
+
+      return { completed: [...completed] };
+    }),
 
   preferences: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.query.users.findFirst({

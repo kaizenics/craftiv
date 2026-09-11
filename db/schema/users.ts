@@ -38,6 +38,15 @@ export const users = sqliteTable("users", {
   compactEditor: integer("compact_editor", { mode: "boolean" })
     .notNull()
     .default(false),
+  /**
+   * JSON array of the guided tours this account has finished or skipped, e.g.
+   * `["dashboard","ats-checker"]`. See lib/onboarding.ts for the keys.
+   *
+   * Stored per account rather than in the browser: it is a fact about the
+   * person, so tours should not replay on their next device, nor be suppressed
+   * for them because someone else dismissed one in a shared browser.
+   */
+  onboardingToursCompleted: text("onboarding_tours_completed").notNull().default("[]"),
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),
