@@ -1,175 +1,26 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { MoveHorizontal } from "lucide-react";
 import { motion } from "motion/react";
 import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 
-const beforeExperience = [
-  "Responsible for email, scheduling and tasks.",
-  "Did CRM work and customer replies when needed.",
-  "Helped manager and team with different duties.",
-];
-
-const beforeSkills = ["Microsoft Office", "Communication", "Hardworking", "Team player"];
-
+/**
+ * A real-world "before" resume: a photo banner and a two-column layout that looks
+ * polished but reads poorly for applicant tracking systems. The image is A4 in
+ * proportion, matching the comparison frame, so it fills it without distortion.
+ */
 function NonAtsResume() {
   return (
-    <div className="flex h-full w-full items-start justify-center overflow-hidden bg-white">
-      <div className="hidden h-full aspect-[210/297] max-w-full overflow-hidden border border-zinc-300 bg-[#f5f1ea] shadow-[0_28px_60px_-34px_rgba(63,63,70,0.5)] sm:block">
-        <div className="flex h-full flex-col gap-5 p-6 font-serif text-zinc-800 sm:p-8 lg:p-10">
-          <header className="border-b border-zinc-400 pb-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                  Non-ATS Resume
-                </p>
-                <h4 className="mt-2 text-2xl font-semibold uppercase tracking-[0.08em]">
-                  Angela Martinez
-                </h4>
-                <p className="mt-1 text-sm italic text-zinc-600">
-                  Virtual Assistant | Remote Operations Support
-                </p>
-              </div>
-
-              <div className="border border-zinc-400 px-4 py-3 text-right text-sm leading-relaxed text-zinc-700">
-                <p>angela@email.com</p>
-                <p>+63 917 555 0184</p>
-                <p>Manila, PH</p>
-              </div>
-            </div>
-          </header>
-
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-              Summary
-            </p>
-            <p className="mt-3 text-[15px] leading-relaxed text-zinc-700">
-              Looking for a job where I can use my skills and help a company with admin work,
-              communication, and other tasks as assigned.
-            </p>
-          </section>
-
-          <section>
-            <div className="flex items-end justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                Experience
-              </p>
-              <p className="text-xs italic text-zinc-500">
-                Executive Assistant | 2022 - Present
-              </p>
-            </div>
-
-            <div className="mt-3 space-y-3">
-              {beforeExperience.map((item) => (
-                <div key={item} className="flex gap-3 text-[15px] leading-relaxed text-zinc-700">
-                  <span className="mt-2 h-2 w-2 shrink-0 bg-zinc-500" />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="grid gap-4 border-t border-zinc-400 pt-5 sm:grid-cols-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                Core Skills
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {beforeSkills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="border border-zinc-400 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                Education
-              </p>
-              <div className="mt-3 border border-zinc-400 p-4">
-                <p className="text-sm font-semibold">Bachelor of Business Administration</p>
-                <p className="mt-1 text-sm text-zinc-600">University of Manila</p>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <div className="flex h-full aspect-[210/297] max-w-full flex-col overflow-hidden border border-zinc-300 bg-[#f5f1ea] px-4 py-5 font-serif text-zinc-800 shadow-[0_28px_60px_-34px_rgba(63,63,70,0.5)] sm:hidden">
-        <div className="border-b border-zinc-400 pb-3 text-center">
-          <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-            Non-ATS Resume
-          </p>
-          <h4 className="mt-2 text-[17px] font-semibold uppercase tracking-[0.08em]">
-            Angela Martinez
-          </h4>
-          <p className="mt-1 text-[9px] italic text-zinc-600">
-            Virtual Assistant | Remote Operations Support
-          </p>
-        </div>
-
-        <div className="mt-3 border-b border-zinc-400 pb-3 text-center text-[8px] leading-relaxed text-zinc-700">
-          <p>angela@email.com</p>
-          <p>+63 917 555 0184</p>
-          <p>Manila, PH</p>
-        </div>
-
-        <div className="mt-3">
-          <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-            Summary
-          </p>
-          <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-700">
-            Looking for a job where I can use my skills and help a company with admin work,
-            communication, and other tasks as assigned.
-          </p>
-        </div>
-
-        <div className="mt-3">
-          <div className="flex items-end justify-between gap-2">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              Experience
-            </p>
-            <p className="text-[7px] italic text-zinc-500">2022 - Present</p>
-          </div>
-          <div className="mt-1.5 space-y-1.5">
-            {beforeExperience.map((item) => (
-              <div key={item} className="flex gap-1.5 text-[8px] leading-relaxed text-zinc-700">
-                <span className="mt-1.5 h-1 w-1 shrink-0 bg-zinc-500" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-zinc-400 pt-3">
-          <div>
-            <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              Core Skills
-            </p>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {beforeSkills.map((skill) => (
-                <span key={skill} className="border border-zinc-400 bg-zinc-100 px-1.5 py-0.5 text-[7px] text-zinc-700">
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              Education
-            </p>
-            <div className="mt-1.5 border border-zinc-400 p-1.5">
-              <p className="text-[7px] font-semibold">BBA</p>
-              <p className="mt-0.5 text-[7px] text-zinc-600">University of Manila</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="relative h-full w-full bg-white">
+      <Image
+        src="/non-ats.png"
+        alt="Example of a non-ATS-friendly resume: a two-column design with a photo banner, sidebar sections and decorative headings"
+        fill
+        sizes="(max-width: 768px) 100vw, 672px"
+        className="object-cover object-top"
+      />
     </div>
   );
 }
