@@ -23,6 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/trpc/client";
+import { PageTour, useTourPending } from "@/components/onboarding/page-tour";
+import { SampleBanner } from "@/components/onboarding/sample-banner";
+import { SAMPLE_REWRITE } from "@/lib/tour-samples";
 import type { ResumeDataJSON } from "@/db/schema";
 import type { AtsImpact } from "@/lib/ats";
 import { saveJobTargetDraft, useJobTargetDraft } from "@/lib/ats-client-store";
@@ -536,6 +539,9 @@ export default function AIAssistantPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // Called above the early returns so the hook order never changes.
+  const tourPending = useTourPending("ai-assistant");
+
   if (resumesLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -547,7 +553,9 @@ export default function AIAssistantPage() {
     );
   }
 
-  if (resumes.length === 0) {
+  // Held back while the tour is owed: this screen replaces the whole layout,
+  // so for a brand-new account the tour had nothing to point at and never ran.
+  if (resumes.length === 0 && !tourPending) {
     return (
       <div className="space-y-8">
         <div>
@@ -595,6 +603,7 @@ export default function AIAssistantPage() {
 
   return (
     <div className="space-y-6">
+      <PageTour tour="ai-assistant" />
       <header>
         <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">
           AI Assistant
@@ -611,6 +620,7 @@ export default function AIAssistantPage() {
       <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
         {/* Shared context: one resume and one job target for every tool. */}
         <section
+          data-tour="assistant-context"
           aria-labelledby="ai-context-heading"
           className="space-y-5 rounded-xl border border-border bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
         >
@@ -663,7 +673,7 @@ export default function AIAssistantPage() {
           </div>
         </section>
 
-        <div className="space-y-4 lg:col-span-3">
+        <div data-tour="assistant-results" className="space-y-4 lg:col-span-3">
           <Tabs
             value={activeTool}
             onValueChange={(value) => {
@@ -673,7 +683,7 @@ export default function AIAssistantPage() {
             className="gap-4"
           >
             <div className="space-y-2">
-              <TabsList className="w-full">
+              <TabsList data-tour="assistant-tools" className="w-full">
                 {TOOLS.map((tool) => (
                   <TabsTrigger key={tool.id} value={tool.id}>
                     <tool.icon aria-hidden="true" />
@@ -870,6 +880,24 @@ export default function AIAssistantPage() {
                           : null
                       }
                     />
+                  </>
+                ) : tourPending ? (
+                  <>
+                    <SampleBanner title="Sample rewrite.">
+                      This is what an improvement looks like. Nothing here is saved, and it
+                      disappears when the tour ends.
+                    </SampleBanner>
+                    <div className="space-y-3">
+                      {SAMPLE_REWRITE.blocks.map((block) => (
+                        <AiSuggestionBlock
+                          key={block.label}
+                          label={block.label}
+                          before={block.before}
+                          after={block.after}
+                        />
+                      ))}
+                    </div>
+                    <AtsImpactSummary impact={SAMPLE_REWRITE.impact} />
                   </>
                 ) : activeResumeId && !resumeLoading ? (
                   <div className="rounded-xl border border-border bg-card p-5">

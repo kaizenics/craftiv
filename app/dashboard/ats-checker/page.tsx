@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/trpc/client";
+import { PageTour, useTourPending } from "@/components/onboarding/page-tour";
+import { SampleBanner } from "@/components/onboarding/sample-banner";
+import { SAMPLE_ATS_REPORT } from "@/lib/tour-samples";
 import {
   saveAtsReport,
   saveJobDescriptionDraft,
@@ -99,6 +102,8 @@ export default function AtsCheckerPage() {
   // The last report lives in localStorage and is read through an external store,
   // so a finished run and a page reload both render from the same source.
   const lastReport = useLastAtsReport();
+  // A real report always wins; the sample only fills an empty results panel.
+  const tourPending = useTourPending("ats-checker");
 
   const persistedJobDescription = useJobDescriptionDraft();
   const [jobDescriptionDraft, setJobDescriptionDraft] = useState<string | null>(null);
@@ -204,6 +209,7 @@ export default function AtsCheckerPage() {
 
   return (
     <div className="space-y-6">
+      <PageTour tour="ats-checker" />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground lg:text-3xl">
@@ -226,6 +232,7 @@ export default function AtsCheckerPage() {
 
       <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
         <section
+          data-tour="ats-setup"
           aria-labelledby="ats-setup-heading"
           className="space-y-5 rounded-xl border border-border bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
         >
@@ -364,6 +371,7 @@ export default function AtsCheckerPage() {
             </label>
             <textarea
               id="job-description"
+              data-tour="ats-jobdesc"
               value={jobDescription}
               onChange={(event) => setJobDescriptionDraft(event.target.value)}
               placeholder="Paste the job description for sharper keyword matching..."
@@ -425,7 +433,7 @@ export default function AtsCheckerPage() {
           </div>
         </section>
 
-        <div ref={resultsRef} className="scroll-mt-6 lg:col-span-3">
+        <div ref={resultsRef} data-tour="ats-report" className="scroll-mt-6 lg:col-span-3">
           {isAnalyzing ? (
             <ReportSkeleton />
           ) : lastReport ? (
@@ -434,6 +442,14 @@ export default function AtsCheckerPage() {
               sourceLabel={lastReport.sourceLabel}
               savedAt={lastReport.savedAt}
             />
+          ) : tourPending ? (
+            <div className="space-y-4">
+              <SampleBanner title="Sample report.">
+                This is what a check produces. Nothing here is saved, and it disappears when the
+                tour ends.
+              </SampleBanner>
+              <AtsReportPanel report={SAMPLE_ATS_REPORT} sourceLabel="Sample resume" savedAt="" />
+            </div>
           ) : (
             <EmptyReportState />
           )}
