@@ -22,7 +22,6 @@ const CHARGE_SITES = [
   "app/api/ats-check/route.ts",
   "app/api/chatbot/stream/route.ts",
   "app/api/credits/consume/route.ts",
-  "app/api/resume/parse/route.ts",
   "app/api/resume-layout/chat/route.ts",
   "trpc/routers/ai.ts",
 ];
@@ -45,6 +44,21 @@ test("no charge key is assembled from request input", () => {
       );
     }
   }
+});
+
+/**
+ * Resume import was a charge site until it moved to the deterministic parser in
+ * lib/resume-import. It is free by design -- it runs on every upload, including
+ * chat attachments and cover-letter uploads -- so a model call or a charge
+ * creeping back into it is the regression to catch.
+ */
+test("resume import neither charges credits nor calls a model", () => {
+  const source = readFileSync("app/api/resume/parse/route.ts", "utf8");
+
+  for (const forbidden of ["consumeCredits", "callWithFallback", "@/lib/ai", "@/lib/credits"]) {
+    assert.ok(!source.includes(forbidden), `resume import must stay free, but references ${forbidden}`);
+  }
+  assert.ok(source.includes("parseResumeText("), "resume import should use the deterministic parser");
 });
 
 test("the cover-letter day session is the only exempt charge key", () => {

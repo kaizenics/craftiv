@@ -16,7 +16,6 @@ import {
   COVER_LETTER_AI_SESSION_COST,
   JOB_TAILOR_COST,
   RESUME_LAYOUT_CHAT_COST,
-  RESUME_PARSE_COST,
   fromCreditUnits,
 } from "@/lib/credit-costs";
 
@@ -35,7 +34,6 @@ export {
   CREDIT_UNITS_PER_CREDIT,
   JOB_TAILOR_COST,
   RESUME_LAYOUT_CHAT_COST,
-  RESUME_PARSE_COST,
   formatCreditValue,
   fromCreditUnits,
   toCreditUnits,
@@ -44,7 +42,6 @@ export {
 export const SERVER_CREDIT_COSTS = {
   ats_check: ATS_CHECK_COST,
   cover_letter_ai_session: COVER_LETTER_AI_SESSION_COST,
-  resume_parse: RESUME_PARSE_COST,
   resume_layout_chat: RESUME_LAYOUT_CHAT_COST,
   chatbot_stream: CHATBOT_STREAM_COST,
   ai_resume_improver: AI_RESUME_IMPROVER_COST,

@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Upload,
@@ -31,7 +30,6 @@ export default function ResumeUploadPageClient() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [outOfCredits, setOutOfCredits] = useState(false);
 
   const validateFile = (file: File): string | null => {
     const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
@@ -101,7 +99,6 @@ export default function ResumeUploadPageClient() {
     }
 
     setUploadState("scanning");
-    setOutOfCredits(false);
 
     try {
       const formData = new FormData();
@@ -119,18 +116,6 @@ export default function ResumeUploadPageClient() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // A credit failure answers with { code, message, ... } and no `error`,
-        // so reading only `error` used to bury the reason under a generic string.
-        if (errorData.code === "INSUFFICIENT_CREDITS") {
-          setUploadState("error");
-          setOutOfCredits(true);
-          setErrorMessage(
-            `Scanning a resume uses ${errorData.requiredCredits} credit${
-              errorData.requiredCredits === 1 ? "" : "s"
-            } and your balance is ${errorData.currentBalance}.`,
-          );
-          return;
-        }
         throw new Error(errorData.message || errorData.error || "Failed to parse resume");
       }
 
@@ -143,9 +128,11 @@ export default function ResumeUploadPageClient() {
       setTimeout(() => {
         router.push("/resume/templates?from=upload");
       }, 1200);
-    } catch (error: any) {
+    } catch (error) {
       setUploadState("error");
-      setErrorMessage(error.message || "Something went wrong. Please try again.");
+      setErrorMessage(
+        (error instanceof Error ? error.message : "") || "Something went wrong. Please try again.",
+      );
     }
   };
 
@@ -202,7 +189,7 @@ export default function ResumeUploadPageClient() {
             transition={{ delay: 0.2 }}
             className="mt-3 text-base text-zinc-600"
           >
-            We&apos;ll scan your existing resume and pre-fill everything for you.
+            We&apos;ll read your existing resume and pre-fill everything for you.
             Then just pick a template and customize.
           </motion.p>
         </div>
@@ -268,6 +255,9 @@ export default function ResumeUploadPageClient() {
                   <p className="text-xs text-zinc-400">
                     Supports PDF and DOCX up to 10MB
                   </p>
+                  <p className="text-xs text-zinc-400">
+                    Read straight from your file &mdash; free, no credits used.
+                  </p>
                 </motion.div>
               )}
 
@@ -315,7 +305,7 @@ export default function ResumeUploadPageClient() {
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-zinc-900">
-                      Scanning your resume...
+                      Reading your resume...
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
                       This may take a few seconds. Please keep this tab open.
@@ -340,10 +330,11 @@ export default function ResumeUploadPageClient() {
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-zinc-900">
-                      Resume scanned successfully!
+                      Resume imported!
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
-                      Redirecting to template selection...
+                      Redirecting to template selection. Check each section
+                      afterwards &mdash; unusual layouts can put content in the wrong place.
                     </p>
                   </div>
                 </motion.div>
@@ -361,14 +352,6 @@ export default function ResumeUploadPageClient() {
             <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
             <div className="text-sm text-red-700">
               <p>{errorMessage}</p>
-              {outOfCredits && (
-                <Link
-                  href="/pricing"
-                  className="mt-1 inline-block font-medium underline underline-offset-2"
-                >
-                  Get more credits
-                </Link>
-              )}
             </div>
           </motion.div>
         )}
@@ -402,7 +385,7 @@ export default function ResumeUploadPageClient() {
 
         {!session?.user && !isProcessing && uploadState !== "success" && (
           <p className="mt-3 text-center text-xs text-zinc-500">
-            Guest mode is enabled. We&apos;ll ask you to sign up before AI scanning starts.
+            Guest mode is enabled. We&apos;ll ask you to sign up before importing your resume.
           </p>
         )}
       </div>

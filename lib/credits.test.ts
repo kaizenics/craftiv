@@ -5,7 +5,6 @@ import { SERVER_CREDIT_COSTS } from "@/lib/credits";
 
 test("server credit costs include all protected event types", () => {
   const required = [
-    "resume_parse",
     "ats_check",
     "resume_layout_chat",
     "chatbot_stream",
@@ -31,7 +30,6 @@ test("server credit costs keep their current unit values", () => {
     {
       ats_check: 100,
       cover_letter_ai_session: 50,
-      resume_parse: 50,
       resume_layout_chat: 25,
       chatbot_stream: 10,
       ai_resume_improver: 50,

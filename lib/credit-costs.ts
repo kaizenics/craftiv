@@ -15,7 +15,6 @@ export const ATS_CHECK_COST = 100;
 export const AI_RESUME_IMPROVER_COST = 50;
 export const AI_KEYWORD_BOOSTER_COST = 25;
 export const AI_ACHIEVEMENT_BUILDER_COST = 25;
-export const RESUME_PARSE_COST = 50;
 export const RESUME_LAYOUT_CHAT_COST = 25;
 export const CHATBOT_STREAM_COST = 10;
 export const AI_SPELL_CHECK_COST = 25;
@@ -84,12 +83,6 @@ export const CREDIT_ACTIONS: {
     label: "Cover letter",
     detail: "Generate a tailored letter",
     costUnits: AI_COVER_LETTER_COST,
-  },
-  {
-    id: "resume_parse",
-    label: "Resume import",
-    detail: "Parse an uploaded PDF or DOCX",
-    costUnits: RESUME_PARSE_COST,
   },
   {
     id: "ai_keyword_booster",

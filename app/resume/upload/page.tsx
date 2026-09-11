@@ -2,9 +2,9 @@ import ResumeUploadPageClient from "./client";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
-  title: "Upload Resume for AI Review",
+  title: "Import Your Resume",
   description:
-    "Upload an existing resume to Craftiv, scan your content, and turn it into a cleaner ATS-friendly resume template.",
+    "Upload an existing PDF or Word resume and Craftiv fills in the builder for you, ready to restyle with an ATS-friendly template.",
   path: "/resume/upload",
 });
 
