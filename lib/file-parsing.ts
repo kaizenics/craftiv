@@ -17,7 +17,21 @@ const MAX_PDF_PAGES = 50;
  * page count is capped so a deeply-paginated file cannot occupy the process
  * indefinitely.
  */
+/**
+ * pdf.js builds a `new DOMMatrix()` as soon as its module loads, and Node has no
+ * DOMMatrix. It tries to borrow one from the optional @napi-rs/canvas, but that
+ * is a native binary the standalone build does not trace, so in production the
+ * import itself threw "DOMMatrix is not defined". Text extraction never draws a
+ * page, so inert stand-ins are enough — and keep a canvas binary out of the image.
+ */
+function stubCanvasGlobals() {
+  const globals = globalThis as Record<string, unknown>;
+  globals.DOMMatrix ??= class DOMMatrix {};
+  globals.Path2D ??= class Path2D {};
+}
+
 async function extractTextFromPdf(buffer: Buffer, fieldGaps: boolean): Promise<string> {
+  stubCanvasGlobals();
   // The legacy build is the one that runs outside a browser.
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
