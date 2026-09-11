@@ -22,6 +22,7 @@ import {
 } from "@/components/dashboard/job-tailor-dialog";
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
 import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
+import { buildDemoHunts, buildDemoMatches, isDemoId } from "@/lib/job-hunter/demo";
 import { cn } from "@/lib/utils";
 import { ResumeCombobox, type ComboboxResume } from "@/components/dashboard/resume-combobox";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageTour, useTourPending } from "@/components/onboarding/page-tour";
+import { SampleBanner } from "@/components/onboarding/sample-banner";
 import {
   ChevronLeft,
   ChevronRight,
@@ -77,6 +80,7 @@ export default function JobHunterPage() {
 
   const resumesQuery = trpc.resume.listSummary.useQuery();
   const matchesQuery = trpc.jobHunter.listMatches.useQuery({ limit: 50 });
+  const jobHunterTourPending = useTourPending("job-hunter");
   const sourcesQuery = trpc.jobHunter.listSources.useQuery();
 
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
@@ -370,7 +374,34 @@ export default function JobHunterPage() {
     bulkImportJobs.mutate({ resumeId: activeResumeId, urls });
   }
 
-  const matches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  const realMatches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+
+  /**
+   * Sample jobs stand in for an empty pipeline while the Job Hunter tour is
+   * still owed to this account, so the tour has something real-looking to point
+   * at instead of an empty state.
+   *
+   * Only ever when the real pipeline is empty: sample data must never sit
+   * alongside, or hide, jobs the person actually added. Nothing here is written
+   * anywhere -- it exists only in this render.
+   */
+  const demoMode = jobHunterTourPending && matchesQuery.isSuccess && realMatches.length === 0;
+  const demoMatches = useMemo(() => buildDemoMatches(), []);
+  const demoHunts = useMemo(() => buildDemoHunts(), []);
+  const matches = demoMode ? demoMatches : realMatches;
+  const hunts =
+    demoMode && (huntsQuery.data?.length ?? 0) === 0 ? demoHunts : (huntsQuery.data ?? []);
+
+  /**
+   * Refuses any action aimed at a sample record. Keyed on the id rather than on
+   * demoMode, so a sample can never reach the API even if that flag were ever
+   * computed wrong.
+   */
+  function refuseDemo(id: string | null | undefined): boolean {
+    if (!isDemoId(id)) return false;
+    toast.info("That's a sample job. Add a real one to try this.");
+    return true;
+  }
   const availableSources = useMemo(
     () => [...new Set(matches.map((match) => match.posting.source))].sort(),
     [matches],
@@ -467,6 +498,7 @@ export default function JobHunterPage() {
 
   return (
     <div className="space-y-6">
+      <PageTour tour="job-hunter" />
       <header>
         <div className="flex items-center gap-2.5">
           <h1 className="font-heading text-2xl font-semibold sm:text-3xl">Job Hunter</h1>
@@ -480,7 +512,10 @@ export default function JobHunterPage() {
         </p>
       </header>
 
-      {hasNoResumes ? (
+      {/* A brand-new account has no resume, and that branch replaced the whole
+          layout -- so the Job Hunter tour had nothing to point at and never
+          ran. The samples are shown regardless while it is pending. */}
+      {hasNoResumes && !demoMode ? (
         <section className="rounded-xl border border-border bg-card p-8 text-center">
           <Target className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
           <h2 className="mt-3 font-heading text-lg font-semibold">Create a resume first</h2>
@@ -524,7 +559,7 @@ export default function JobHunterPage() {
             </div>
           </div>
 
-          <aside className="hidden space-y-4 lg:sticky lg:top-6 lg:col-span-2 lg:block">
+          <aside data-tour="jobhunter-intake" className="hidden space-y-4 lg:sticky lg:top-6 lg:col-span-2 lg:block">
             <div className="rounded-xl border border-border bg-card p-4">
               <ResumeCombobox
                 resumes={resumes}
@@ -584,11 +619,11 @@ export default function JobHunterPage() {
 
           <section className="lg:col-span-3 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Tabs value={view} onValueChange={(value) => setView(value as "matches" | "hunts")}>
+              <Tabs data-tour="jobhunter-views" value={view} onValueChange={(value) => setView(value as "matches" | "hunts")}>
                 <TabsList>
                   <TabsTrigger value="matches">Jobs</TabsTrigger>
                   <TabsTrigger value="hunts">
-                    Scheduled hunts ({huntsQuery.data?.length ?? 0})
+                    Scheduled hunts ({hunts.length})
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -596,7 +631,7 @@ export default function JobHunterPage() {
               {/* Rows saved by an older parser keep whatever it read. This
                   re-fetches them in place rather than making anyone delete and
                   re-add every job. */}
-              {onlineJobsPollable && view === "matches" && matches.length > 0 ? (
+              {onlineJobsPollable && view === "matches" && realMatches.length > 0 ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -614,7 +649,7 @@ export default function JobHunterPage() {
 
             {view === "hunts" ? (
               <HuntManager
-                hunts={(huntsQuery.data ?? []) as HuntSummary[]}
+                hunts={hunts as HuntSummary[]}
                 loading={huntsQuery.isLoading}
                 pollableSources={pollableSources}
                 savingHunt={upsertHunt.isPending}
@@ -633,7 +668,8 @@ export default function JobHunterPage() {
                     isActive: true,
                   });
                 }}
-                onToggleActive={(hunt, isActive) =>
+                onToggleActive={(hunt, isActive) => {
+                  if (refuseDemo(hunt.id)) return;
                   upsertHunt.mutate({
                     id: hunt.id,
                     name: hunt.name,
@@ -646,16 +682,21 @@ export default function JobHunterPage() {
                     minScore: 0,
                     emailDigest: hunt.emailDigest,
                     isActive,
-                  })
-                }
+                  });
+                }}
                 onRunNow={(huntId) => {
+                  if (refuseDemo(huntId)) return;
                   setRunningHuntId(huntId);
                   runHuntNow.mutate({ id: huntId });
                 }}
-                onDelete={(huntId) => deleteHunt.mutate({ id: huntId })}
+                onDelete={(huntId) => {
+                  if (refuseDemo(huntId)) return;
+                  deleteHunt.mutate({ id: huntId });
+                }}
               />
             ) : (
             <div
+              data-tour="jobhunter-pipeline"
               className={cn(
                 "space-y-4",
                 boardFullscreen &&
@@ -664,6 +705,12 @@ export default function JobHunterPage() {
                   (boardFullscreenActive ? "scale-100 opacity-100" : "scale-[0.985] opacity-0"),
               )}
             >
+              {demoMode ? (
+                <SampleBanner title="Sample jobs.">
+                  These show how Job Hunter scores and tracks roles. They are not saved, and they
+                  disappear when the tour ends.
+                </SampleBanner>
+              ) : null}
               {boardFullscreen ? (
                 <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
                   <div>
@@ -914,6 +961,7 @@ export default function JobHunterPage() {
                     busyMatchId={busyMatchId}
                     fullscreen={boardFullscreen}
                     onStatusChange={(matchId, status) => {
+                      if (refuseDemo(matchId)) return;
                       setBusyMatchId(matchId);
                       updateMatch.mutate({ matchId, applicationStatus: status });
                     }}
@@ -969,10 +1017,12 @@ export default function JobHunterPage() {
                       busy={busyMatchId === match.id}
                       canCompare={resumes.length >= 2}
                       onStatusChange={(status) => {
+                        if (refuseDemo(match.id)) return;
                         setBusyMatchId(match.id);
                         updateMatch.mutate({ matchId: match.id, applicationStatus: status });
                       }}
                       onRescore={() => {
+                        if (refuseDemo(match.id)) return;
                         setBusyMatchId(match.id);
                         rescore.mutate({
                           matchId: match.id,
@@ -980,6 +1030,7 @@ export default function JobHunterPage() {
                         });
                       }}
                       onTailor={() => {
+                        if (refuseDemo(match.id)) return;
                         // Fresh dialog state per job, so a previous result is
                         // never shown against a different posting.
                         setTailorOutcome(null);
@@ -987,10 +1038,12 @@ export default function JobHunterPage() {
                         setTailorMatchId(match.id);
                       }}
                       onCompare={() => {
+                        if (refuseDemo(match.id)) return;
                         setComparisonResult(null);
                         setCompareMatchId(match.id);
                       }}
                       onDelete={() => {
+                        if (refuseDemo(match.id)) return;
                         setBusyMatchId(match.id);
                         deleteMatch.mutate({ matchId: match.id });
                       }}
@@ -1059,13 +1112,16 @@ export default function JobHunterPage() {
         outcome={tailorOutcome}
         savingKind={savingKind}
         savedKinds={savedKinds}
+        // The buttons that open this dialog already refuse samples; these repeat
+        // the check where the request is actually sent, so a sample id cannot
+        // reach the API however the dialog came to be open.
         onRun={() => {
-          if (!tailorMatchId) return;
+          if (!tailorMatchId || refuseDemo(tailorMatchId)) return;
           setTailorOutcome(null);
           tailor.mutate({ matchId: tailorMatchId, tone: tailorTone });
         }}
         onSave={(kind) => {
-          if (!tailorMatchId) return;
+          if (!tailorMatchId || refuseDemo(tailorMatchId)) return;
           setSavingKind(kind);
           saveToDocuments.mutate({ matchId: tailorMatchId, kind });
         }}
@@ -1085,9 +1141,10 @@ export default function JobHunterPage() {
               setComparisonResult(null);
             }
           }}
-          onCompare={(resumeIds) =>
-            compareResumes.mutate({ matchId: comparisonMatch.id, resumeIds })
-          }
+          onCompare={(resumeIds) => {
+            if (refuseDemo(comparisonMatch.id)) return;
+            compareResumes.mutate({ matchId: comparisonMatch.id, resumeIds });
+          }}
         />
       ) : null}
     </div>
