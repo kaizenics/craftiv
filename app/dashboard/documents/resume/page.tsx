@@ -7,6 +7,7 @@ import { ResumeCard } from "@/components/dashboard/resume-card";
 import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageTour } from "@/components/onboarding/page-tour";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,6 +76,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
+      <PageTour tour="documents" />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -85,7 +87,7 @@ export default function DocumentsPage() {
             Manage all your resumes and cover letters in one place.
           </p>
         </div>
-        <Button asChild>
+        <Button asChild data-tour="documents-new">
           <Link href="/resume/templates">
             <Plus className="h-4 w-4" />
             New Resume
@@ -95,7 +97,7 @@ export default function DocumentsPage() {
 
       {/* Toolbar */}
       {hasResumes && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div data-tour="documents-toolbar" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -194,6 +196,7 @@ export default function DocumentsPage() {
         <>
           {filteredResumes.length > 0 ? (
             <div
+              data-tour="documents-list"
               className={cn(
                 viewMode === "grid"
                   ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

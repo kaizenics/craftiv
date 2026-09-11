@@ -162,7 +162,7 @@ export function DashboardSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav data-tour="sidebar-nav" className="flex-1 space-y-1 px-3 py-4">
         {sidebarItems.map((item) => {
           const hasChildren = !!item.children;
           const isExpanded = expandedItems.has(item.name);
@@ -253,7 +253,7 @@ export function DashboardSidebar() {
 
       {session ? (
         <div className="px-3 pb-2">
-          <div className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+          <div data-tour="credits" className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
             <Coins className="h-3.5 w-3.5 text-amber-700" />
             <span>{credits}</span>
               <span className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-amber-900 transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 group-hover:max-w-[220px] max-w-0 opacity-0">

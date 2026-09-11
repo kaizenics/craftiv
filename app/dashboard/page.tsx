@@ -16,6 +16,7 @@ import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
 import { CoverLetterCardPreview } from "@/components/dashboard/cover-letter-card-preview";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { TipsCard } from "@/components/dashboard/tips-card";
+import { PageTour } from "@/components/onboarding/page-tour";
 import {
   Accordion,
   AccordionContent,
@@ -99,6 +100,7 @@ export default function Dashboard() {
 
   return (
     <TooltipProvider>
+    <PageTour tour="dashboard" />
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -115,7 +117,7 @@ export default function Dashboard() {
       </div>
 
       {/* Action Plan - Show for all users, including new accounts */}
-      <div className="w-full">
+      <div data-tour="action-plan" className="w-full">
         <div className="relative overflow-hidden rounded-3xl border border-sky-200/60 bg-sky-50 to-white p-4 sm:p-6">
             <div
               aria-hidden
@@ -192,7 +194,9 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <QuickActions />
+      <div data-tour="quick-actions">
+        <QuickActions />
+      </div>
 
       {/* Resume Tips */}
       <TipsCard />
