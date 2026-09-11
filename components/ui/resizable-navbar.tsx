@@ -8,6 +8,8 @@ import {
   useMotionValueEvent,
 } from "motion/react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import React, { useState } from "react";
 
@@ -226,9 +228,21 @@ export const MobileNavToggle = ({
 };
 
 export const NavbarLogo = () => {
+  const pathname = usePathname();
+
   return (
-    <a
-      href="#"
+    // Points at "/", not "#": "#" only means "top of this page", so the logo
+    // looked like it went home from the home page but stayed put everywhere else.
+    <Link
+      href="/"
+      aria-label="Craftiv home"
+      onClick={(event) => {
+        // Already home: scroll back to the top, as the old "#" did.
+        if (pathname === "/") {
+          event.preventDefault();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }}
       className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
     >
       <Image
@@ -239,7 +253,7 @@ export const NavbarLogo = () => {
         sizes="30px"
       />
       <span className="font-display text-lg font-bold text-black dark:text-white">Craftiv</span>
-    </a>
+    </Link>
   );
 };
 
