@@ -6,6 +6,6 @@
  * password is shorter. Keep the forms on this constant: a client minimum below
  * the server's turns a clear field error into a failed request.
  */
-export const MIN_PASSWORD_LENGTH = 12;
+export const MIN_PASSWORD_LENGTH = 8;
 
 export const MIN_PASSWORD_MESSAGE = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;

@@ -108,7 +108,7 @@ test("a password below the minimum is refused at signup", async () => {
   await assert.rejects(
     () =>
       auth.api.signUpEmail({
-        body: { email: "short@example.com", password: "Short1!a", name: "S" },
+        body: { email: "short@example.com", password: "Short1!", name: "S" },
       }),
     /too short|PASSWORD_TOO_SHORT/i,
   );
