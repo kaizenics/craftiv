@@ -346,8 +346,9 @@ function ExperienceEntries({ kit }: { kit: SectionKit }) {
 
   return (
     <div className="flex flex-col" style={{ gap: `${entryGap(design)}px` }}>
-      {data.experiences.map((exp) => {
+      {data.experiences.map((exp, i) => {
         if (variant === 'timeline') {
+          const isLast = i === data.experiences.length - 1;
           return (
             <div
               key={exp.id}
@@ -363,8 +364,10 @@ function ExperienceEntries({ kit }: { kit: SectionKit }) {
                   radius="9999px"
                 />
                 <span
-                  className="mt-1 flex-1"
+                  className="flex-1"
                   style={{
+                    // Run the line through the entry gap so it meets the next dot.
+                    marginBottom: isLast ? 0 : `calc(-${entryGap(design)}px - 0.42em)`,
                     borderLeftWidth: '1px',
                     borderLeftStyle: 'solid',
                     borderLeftColor: `${accent}33`,
