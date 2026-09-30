@@ -22,7 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { OtpCodeInput, OTP_LENGTH } from "@/components/auth/otp-code-input";
+import { PasswordChecklist } from "@/components/auth/password-checklist";
 import type { AuthMethodResponse } from "@/app/api/auth-method/route";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_MESSAGE } from "@/lib/constants/auth";
 
@@ -52,7 +53,7 @@ const resetSchema = z
 type EmailFormValues = z.infer<typeof emailSchema>;
 type ResetFormValues = z.infer<typeof resetSchema>;
 
-type Step = "request" | "google" | "reset";
+type Step = "request" | "google" | "reset" | "password";
 
 /** Better Auth allows 3 reset requests per 60s; keep the button in step with it. */
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -78,6 +79,7 @@ export default function ForgotPasswordPage() {
   const [isChecking, setIsChecking] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   const emailForm = useForm<EmailFormValues>({
@@ -99,7 +101,7 @@ export default function ForgotPasswordPage() {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
-  const isBusy = isChecking || isSending || isResetting;
+  const isBusy = isChecking || isSending || isResetting || isCheckingCode;
 
   async function requestCode(target: string, { isResend }: { isResend: boolean }) {
     setError(null);
@@ -188,12 +190,43 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  const onResetSubmit = async (data: ResetFormValues) => {
-    if (otpCode.length !== 6) {
+  /**
+   * Gate the password fields behind a confirmed code. The check does not spend
+   * the code (resetPassword does), and Better Auth counts failed checks toward
+   * the same attempt limit, so this adds no extra guesses.
+   */
+  const checkCode = async (code = otpCode) => {
+    if (code.length !== OTP_LENGTH) {
       setOtpError("Enter the 6-digit code from your email.");
       return;
     }
 
+    setOtpError(null);
+    setError(null);
+    setIsCheckingCode(true);
+
+    try {
+      const { error: checkError } = await authClient.emailOtp.checkVerificationOtp({
+        email,
+        otp: code,
+        type: "forget-password",
+      });
+
+      if (checkError) {
+        setOtpError(checkError.message || "That code didn't work. Please try again.");
+        setOtpCode("");
+        return;
+      }
+
+      setStep("password");
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Could not check the code. Please try again.");
+    } finally {
+      setIsCheckingCode(false);
+    }
+  };
+
+  const onResetSubmit = async (data: ResetFormValues) => {
     setOtpError(null);
     setError(null);
     setIsResetting(true);
@@ -208,7 +241,11 @@ export default function ForgotPasswordPage() {
       if (resetError) {
         const message =
           resetError.message || "Could not reset your password. Please try again.";
-        setError(message);
+        // The code can expire while the password is being typed; send the user
+        // back to enter a fresh one rather than leave them on a dead form.
+        setStep("reset");
+        setOtpCode("");
+        setOtpError(message);
         toast.error(message);
         return;
       }
@@ -231,15 +268,32 @@ export default function ForgotPasswordPage() {
     step === "request"
       ? "Forgot your password?"
       : step === "google"
-        ? "This account uses Google"
-        : "Choose a new password";
+        ? "You sign in with Google"
+        : step === "reset"
+          ? "Check your email"
+          : "Choose a new password";
 
   const subheading =
-    step === "request"
-      ? "Enter your email and we'll help you get back in."
-      : step === "google"
-        ? "There's no password to reset on this account yet."
-        : "Enter the code we sent you, then pick a new password.";
+    step === "request" ? (
+      "Enter your email and we'll help you get back in."
+    ) : step === "google" ? (
+      <>
+        <span className="font-medium text-zinc-900">{email}</span> doesn&apos;t have a
+        password. Continue with Google to get back in.
+      </>
+    ) : step === "reset" ? (
+      <>
+        Enter the 6-digit code we sent to
+        <br />
+        <span className="font-medium text-zinc-900">{email}</span>
+      </>
+    ) : (
+      <>
+        Code confirmed. Pick a new password for
+        <br />
+        <span className="font-medium text-zinc-900">{email}</span>
+      </>
+    );
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 font-sans">
@@ -257,7 +311,7 @@ export default function ForgotPasswordPage() {
                 variant="ghost"
                 className="h-auto p-0 text-zinc-700 hover:bg-transparent hover:text-zinc-900"
                 onClick={() => {
-                  setStep("request");
+                  setStep(step === "password" ? "reset" : "request");
                   setError(null);
                   setOtpError(null);
                 }}
@@ -320,14 +374,7 @@ export default function ForgotPasswordPage() {
           )}
 
           {step === "google" && (
-            <div className="mt-8 space-y-4">
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-sm text-zinc-700">
-                  <span className="font-medium text-zinc-900">{email}</span> signs in with
-                  Google, so there is no password to reset. Use the Google button below.
-                </p>
-              </div>
-
+            <div className="mt-8 space-y-6">
               <Button
                 type="button"
                 variant="outline"
@@ -342,20 +389,20 @@ export default function ForgotPasswordPage() {
                 Continue with Google
               </Button>
 
+              <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-zinc-400">
+                <span className="h-px flex-1 bg-zinc-200" />
+                or
+                <span className="h-px flex-1 bg-zinc-200" />
+              </div>
+
               {/* Settings hides "Change password" for Google accounts, so this flow is
                   the only way one can gain a password. Offering it here keeps that
                   door open instead of closing it behind the Google branch. */}
-              <div className="rounded-lg border border-zinc-200 p-4">
-                <p className="text-sm font-medium text-zinc-900">
-                  Prefer signing in with a password?
-                </p>
-                <p className="mt-1 text-xs text-zinc-600">
-                  We can email you a code and let you set one. Google sign-in keeps working.
-                </p>
+              <div className="text-center">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="mt-2 h-auto p-0 text-zinc-900 hover:bg-transparent hover:underline"
+                  className="h-auto p-0 font-medium text-zinc-900 hover:bg-transparent hover:underline"
                   disabled={isBusy}
                   onClick={() => startReset(email)}
                 >
@@ -368,61 +415,79 @@ export default function ForgotPasswordPage() {
                     "Set a password instead"
                   )}
                 </Button>
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  We&apos;ll email you a code. Google sign-in keeps working.
+                </p>
               </div>
             </div>
           )}
 
           {step === "reset" && (
-            <div className="mt-8 space-y-4">
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-xs text-zinc-600">
-                  We sent a 6-digit code to{" "}
-                  <span className="font-medium text-zinc-800">{email}</span>. It expires in 5
-                  minutes.
-                </p>
+            <div className="mt-8 space-y-6">
+              <div className="space-y-2">
+                <OtpCodeInput
+                  value={otpCode}
+                  onChange={(value) => {
+                    setOtpCode(value);
+                    if (otpError) setOtpError(null);
+                  }}
+                  onComplete={(code) => void checkCode(code)}
+                  disabled={isBusy}
+                  invalid={!!otpError}
+                />
+                {otpError && (
+                  <p className="text-center text-sm text-red-600" role="alert">
+                    {otpError}
+                  </p>
+                )}
               </div>
 
+              <Button
+                type="button"
+                className="w-full"
+                size="lg"
+                onClick={() => checkCode()}
+                disabled={isBusy || otpCode.length < OTP_LENGTH}
+              >
+                {isCheckingCode ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Checking...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+
+              <p className="text-center text-sm text-zinc-600">
+                Didn&apos;t get it?{" "}
+                {cooldown > 0 ? (
+                  <span className="text-zinc-400 tabular-nums">Resend in {cooldown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => requestCode(email, { isResend: true })}
+                    disabled={isBusy}
+                    className="font-medium text-zinc-900 hover:underline disabled:opacity-50"
+                  >
+                    {isSending ? "Sending..." : "Resend code"}
+                  </button>
+                )}
+              </p>
+            </div>
+          )}
+
+          {step === "password" && (
+            <div className="mt-8">
               <Form {...resetForm}>
                 <form
                   onSubmit={resetForm.handleSubmit(onResetSubmit)}
                   className="space-y-4"
                 >
-                  <div className="space-y-2">
-                    <label htmlFor="reset-otp" className="text-sm font-medium text-zinc-900">
-                      One-time code
-                    </label>
-                    <div className="flex justify-center">
-                      <InputOTP
-                        id="reset-otp"
-                        maxLength={6}
-                        value={otpCode}
-                        onChange={(value) => {
-                          setOtpCode(value);
-                          if (otpError) setOtpError(null);
-                        }}
-                        disabled={isBusy}
-                      >
-                        <InputOTPGroup className="justify-center">
-                          <InputOTPSlot index={0} className="size-11 text-base" />
-                          <InputOTPSlot index={1} className="size-11 text-base" />
-                          <InputOTPSlot index={2} className="size-11 text-base" />
-                          <InputOTPSlot index={3} className="size-11 text-base" />
-                          <InputOTPSlot index={4} className="size-11 text-base" />
-                          <InputOTPSlot index={5} className="size-11 text-base" />
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </div>
-                    {otpError && (
-                      <p className="text-center text-sm text-red-600" role="alert">
-                        {otpError}
-                      </p>
-                    )}
-                  </div>
-
                   <FormField
                     control={resetForm.control}
                     name="password"
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
                         <FormLabel>New password</FormLabel>
                         <FormControl>
@@ -448,7 +513,7 @@ export default function ForgotPasswordPage() {
                             </button>
                           </div>
                         </FormControl>
-                        <FormMessage />
+                        <PasswordChecklist password={field.value} showErrors={!!fieldState.error} />
                       </FormItem>
                     )}
                   />
@@ -489,36 +554,16 @@ export default function ForgotPasswordPage() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button type="submit" className="w-full" disabled={isBusy}>
-                      {isResetting ? (
-                        <>
-                          <Spinner className="mr-2 h-4 w-4" />
-                          Resetting...
-                        </>
-                      ) : (
-                        "Reset password"
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => requestCode(email, { isResend: true })}
-                      disabled={isBusy || cooldown > 0}
-                    >
-                      {isSending ? (
-                        <>
-                          <Spinner className="mr-2 h-4 w-4" />
-                          Sending...
-                        </>
-                      ) : cooldown > 0 ? (
-                        `Resend in ${cooldown}s`
-                      ) : (
-                        "Resend code"
-                      )}
-                    </Button>
-                  </div>
+                  <Button type="submit" className="!mt-6 w-full" size="lg" disabled={isBusy}>
+                    {isResetting ? (
+                      <>
+                        <Spinner className="mr-2 h-4 w-4" />
+                        Resetting...
+                      </>
+                    ) : (
+                      "Reset password"
+                    )}
+                  </Button>
                 </form>
               </Form>
             </div>
