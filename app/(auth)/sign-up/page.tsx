@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
@@ -22,7 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { OtpCodeInput } from "@/components/auth/otp-code-input";
+import { PasswordChecklist } from "@/components/auth/password-checklist";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_MESSAGE } from "@/lib/constants/auth";
 
 const signUpSchema = z
@@ -51,12 +52,21 @@ const otpSchema = z.object({
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 type SignUpStep = "details" | "otp";
 
+/** Better Auth allows 3 OTP requests per 60s; keep the resend link in step with it. */
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export default function SignUpPage() {
   const router = useRouter();
   const [step, setStep] = useState<SignUpStep>("details");
   const [pendingSignUp, setPendingSignUp] = useState<SignUpFormValues | null>(null);
   const [otpCode, setOtpCode] = useState("");
-  const [otpInfo, setOtpInfo] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOtpSending, setIsOtpSending] = useState(false);
   const [isOtpSigningIn, setIsOtpSigningIn] = useState(false);
@@ -109,19 +119,46 @@ export default function SignUpPage() {
       return false;
     }
 
-    setOtpInfo("We sent a one-time code to your email.");
-    toast.success("OTP sent. Check your inbox.");
+    setResendIn(RESEND_COOLDOWN_SECONDS);
+    toast.success("Code sent. Check your inbox.");
     return true;
   };
 
   const onSubmit = async (data: SignUpFormValues) => {
     setIsLoading(true);
     setError(null);
-    setOtpInfo(null);
 
     try {
-      const didSend = await sendOtp(data.email);
-      if (!didSend) return;
+      /**
+       * The account must exist before the code is requested: Better Auth
+       * silently skips "email-verification" codes for unknown addresses (so the
+       * endpoint cannot be used to probe who is registered). signUp creates the
+       * user unverified and without a session, and answers the same way for an
+       * address that is already taken, so this reveals nothing either.
+       */
+      if (pendingSignUp?.email !== data.email) {
+        const { error: signUpError } = await authClient.signUp.email({
+          email: data.email,
+          password: data.password,
+          name: `${data.firstName} ${data.lastName}`,
+          callbackURL: redirectTo,
+        });
+
+        if (signUpError) {
+          const authError = signUpError.message || "Failed to create account. Please try again.";
+          setError(authError);
+          toast.error(authError);
+          return;
+        }
+      }
+
+      // Back-then-resubmit with the same address reuses the code already sent
+      // while the resend cooldown runs, rather than mailing a new one each time.
+      const codeStillFresh = pendingSignUp?.email === data.email && resendIn > 0;
+      if (!codeStillFresh) {
+        const didSend = await sendOtp(data.email);
+        if (!didSend) return;
+      }
 
       setPendingSignUp(data);
       setOtpCode("");
@@ -154,11 +191,11 @@ export default function SignUpPage() {
     }
   };
 
-  const handleVerifyAndCreateAccount = async () => {
+  const handleVerifyAndCreateAccount = async (code = otpCode) => {
     if (!pendingSignUp) return;
 
     setError(null);
-    const parsed = otpSchema.safeParse({ otp: otpCode });
+    const parsed = otpSchema.safeParse({ otp: code });
     if (!parsed.success) {
       const authError = parsed.error.issues[0]?.message || "Please enter a valid OTP code.";
       setError(authError);
@@ -169,74 +206,26 @@ export default function SignUpPage() {
     setIsOtpSigningIn(true);
 
     try {
-      // Checked before the account is created so a wrong code does not leave a
-      // half-finished user behind. This read does not consume the code.
-      const { error: verifyOtpError } = await authClient.emailOtp.checkVerificationOtp({
+      /**
+       * The account was created unverified when the code was sent. Spending the
+       * code marks it verified and, via autoSignInAfterVerification, starts the
+       * session that sign-up could not (sign-in requires a verified address).
+       */
+      const { error: verifyError } = await authClient.emailOtp.verifyEmail({
         email: pendingSignUp.email,
         otp: parsed.data.otp,
-        type: "email-verification",
       });
 
-      if (verifyOtpError) {
-        const authError = verifyOtpError.message || "Invalid OTP. Please try again.";
+      if (verifyError) {
+        const authError = verifyError.message || "Invalid code. Please try again.";
         setError(authError);
         toast.error(authError);
         return;
       }
 
-      let didSucceed = false;
-      const { error: signUpError } = await authClient.signUp.email(
-        {
-          email: pendingSignUp.email,
-          password: pendingSignUp.password,
-          name: `${pendingSignUp.firstName} ${pendingSignUp.lastName}`,
-          callbackURL: redirectTo,
-        },
-        {
-          onSuccess: () => {
-            didSucceed = true;
-          },
-          onError: (ctx) => {
-            const authError =
-              ctx.error.message || "Failed to create account. Please try again.";
-            setError(authError);
-            toast.error(authError);
-          },
-        },
-      );
-
-      /**
-       * Sign-in requires a verified address, and signUp always creates the user
-       * unverified — so without this the account exists but cannot be used, and
-       * signUp skips its auto sign-in for the same reason. Spending the code
-       * here marks the account verified and, via autoSignInAfterVerification,
-       * establishes the session signUp declined to create.
-       */
-      if (didSucceed) {
-        const { error: markVerifiedError } = await authClient.emailOtp.verifyEmail({
-          email: pendingSignUp.email,
-          otp: parsed.data.otp,
-        });
-
-        if (markVerifiedError) {
-          const authError =
-            markVerifiedError.message ||
-            "Your account was created but we could not verify your email. Please sign in to receive a new link.";
-          setError(authError);
-          toast.error(authError);
-          return;
-        }
-
-        toast.success("Account created successfully.");
-        router.push(redirectTo);
-        router.refresh();
-      }
-
-      if (signUpError && !didSucceed) {
-        const authError = signUpError.message || "Failed to create account. Please try again.";
-        setError(authError);
-        toast.error(authError);
-      }
+      toast.success("Account created successfully.");
+      router.push(redirectTo);
+      router.refresh();
     } catch (err) {
       const authError =
         err instanceof Error ? err.message : "Failed to complete sign up.";
@@ -284,12 +273,18 @@ export default function SignUpPage() {
 
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold text-zinc-900">
-              {step === "details" ? "Create an account" : "Verify your email"}
+              {step === "details" ? "Create an account" : "Check your email"}
             </h1>
             <p className="mt-2 text-sm text-zinc-600">
-              {step === "details"
-                ? "Get started with Craftiv today"
-                : "Enter the one-time code we sent to your email"}
+              {step === "details" ? (
+                "Get started with Craftiv today"
+              ) : (
+                <>
+                  Enter the 6-digit code we sent to
+                  <br />
+                  <span className="font-medium text-zinc-900">{pendingSignUp?.email}</span>
+                </>
+              )}
             </p>
             {step === "details" && fromResumeUpload && (
               <p className="mt-2 text-xs text-zinc-500">
@@ -339,7 +334,7 @@ export default function SignUpPage() {
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 items-start gap-4">
                     <FormField
                       control={form.control}
                       name="firstName"
@@ -386,7 +381,7 @@ export default function SignUpPage() {
                   <FormField
                     control={form.control}
                     name="password"
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
@@ -411,7 +406,7 @@ export default function SignUpPage() {
                             </button>
                           </div>
                         </FormControl>
-                        <FormMessage />
+                        <PasswordChecklist password={field.value} showErrors={!!fieldState.error} />
                       </FormItem>
                     )}
                   />
@@ -463,86 +458,60 @@ export default function SignUpPage() {
               </Form>
             </>
           ) : (
-            <div className="mt-8 space-y-4">
-              {otpInfo && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                  <p className="text-sm text-emerald-700">{otpInfo}</p>
-                </div>
-              )}
+            <div className="mt-8 space-y-6">
+              <OtpCodeInput
+                value={otpCode}
+                onChange={setOtpCode}
+                onComplete={(code) => void handleVerifyAndCreateAccount(code)}
+                disabled={isAuthBusy}
+              />
 
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-xs text-zinc-600">
-                  OTP sent to{" "}
-                  <span className="font-medium text-zinc-800">{pendingSignUp?.email}</span>
-                </p>
-              </div>
+              <Button
+                type="button"
+                className="w-full"
+                size="lg"
+                onClick={() => handleVerifyAndCreateAccount()}
+                disabled={isAuthBusy || otpCode.length < 6}
+              >
+                {isOtpSigningIn ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify and continue"
+                )}
+              </Button>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-900">One-time code</label>
-                <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={setOtpCode}
-                    disabled={isAuthBusy}
+              <p className="text-center text-sm text-zinc-600">
+                Didn&apos;t get it?{" "}
+                {resendIn > 0 ? (
+                  <span className="text-zinc-400 tabular-nums">Resend in {resendIn}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isAuthBusy || !pendingSignUp}
+                    className="font-medium text-zinc-900 hover:underline disabled:opacity-50"
                   >
-                    <InputOTPGroup className="justify-center">
-                      <InputOTPSlot index={0} className="size-11 text-base" />
-                      <InputOTPSlot index={1} className="size-11 text-base" />
-                      <InputOTPSlot index={2} className="size-11 text-base" />
-                      <InputOTPSlot index={3} className="size-11 text-base" />
-                      <InputOTPSlot index={4} className="size-11 text-base" />
-                      <InputOTPSlot index={5} className="size-11 text-base" />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={handleVerifyAndCreateAccount}
-                  disabled={isAuthBusy}
-                >
-                  {isOtpSigningIn ? (
-                    <>
-                      <Spinner className="mr-2 h-4 w-4" />
-                      Verifying...
-                    </>
-                  ) : (
-                    "Create Account"
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleResendOtp}
-                  disabled={isAuthBusy || !pendingSignUp}
-                >
-                  {isOtpSending ? (
-                    <>
-                      <Spinner className="mr-2 h-4 w-4" />
-                      Resending...
-                    </>
-                  ) : (
-                    "Resend OTP"
-                  )}
-                </Button>
-              </div>
+                    {isOtpSending ? "Sending..." : "Resend code"}
+                  </button>
+                )}
+              </p>
             </div>
           )}
 
-          <p className="mt-6 text-center text-sm text-zinc-600">
-            Already have an account?{" "}
-            <Link
-              href={`/sign-in?redirect=${encodeURIComponent(redirectTo)}`}
-              className="font-medium text-zinc-900 hover:underline"
-            >
-              Sign in
-            </Link>
-          </p>
+          {step === "details" && (
+            <p className="mt-6 text-center text-sm text-zinc-600">
+              Already have an account?{" "}
+              <Link
+                href={`/sign-in?redirect=${encodeURIComponent(redirectTo)}`}
+                className="font-medium text-zinc-900 hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
+          )}
         </div>
       </motion.div>
     </div>
