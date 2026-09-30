@@ -3,6 +3,7 @@
 import * as React from "react"
 import type * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
+import { AnimatePresence, motion } from "motion/react"
 import {
   Controller,
   FormProvider,
@@ -139,19 +140,32 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message ?? "") : props.children
 
-  if (!body) {
-    return null
-  }
-
+  // Height and the parent grid's gap-2 (the -8px margin) animate together, so
+  // fields below slide instead of jumping when a message appears or clears.
   return (
-    <p
-      data-slot="form-message"
-      id={formMessageId}
-      className={cn("text-destructive text-sm", className)}
-      {...props}
-    >
-      {body}
-    </p>
+    <AnimatePresence initial={false}>
+      {body && (
+        <motion.div
+          key="form-message"
+          initial={{ height: 0, opacity: 0, marginTop: -8 }}
+          animate={{ height: "auto", opacity: 1, marginTop: 0 }}
+          exit={{ height: 0, opacity: 0, marginTop: -8 }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          className="overflow-hidden"
+        >
+          <motion.p
+            data-slot="form-message"
+            id={formMessageId}
+            initial={{ y: -4 }}
+            animate={{ y: 0 }}
+            className={cn("text-destructive text-sm", className)}
+            {...(props as React.ComponentProps<typeof motion.p>)}
+          >
+            {body}
+          </motion.p>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
