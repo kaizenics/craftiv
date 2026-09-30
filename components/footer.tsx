@@ -14,8 +14,11 @@ const navigation = {
     { name: "Refund Policy", href: "/refund-policy" },
     { name: "Data Deletion", href: "/data-deletion" },
   ],
-  support: [
-    { name: "Contact", href: "/contact" },
+  resources: [
+    { name: "Documentation", href: "https://github.com/kaizenics/craftiv#readme" },
+    { name: "Changelog", href: "https://github.com/kaizenics/craftiv/releases" },
+    { name: "Source Code", href: "https://github.com/kaizenics/craftiv" },
+    { name: "Sponsorships", href: "https://github.com/sponsors/kaizenics" },
   ],
 };
 
@@ -100,16 +103,18 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-display text-sm font-semibold text-white">Support</h3>
+              <h3 className="font-display text-sm font-semibold text-white">Resources</h3>
               <ul className="mt-4 space-y-3">
-                {navigation.support.map((item) => (
+                {navigation.resources.map((item) => (
                   <li key={item.name}>
-                    <Link
+                    <a
                       href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-sm text-white/80 hover:text-white transition-colors"
                     >
                       {item.name}
-                    </Link>
+                    </a>
                   </li>
                 ))}
               </ul>
