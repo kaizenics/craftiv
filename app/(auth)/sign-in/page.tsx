@@ -108,8 +108,6 @@ export default function SignInPage() {
         const authError = result.error.message || "Google sign-in failed. Please try again.";
         setError(authError);
         toast.error(authError);
-      } else {
-        toast.success("Redirecting to Google sign in...");
       }
     } catch (err) {
       const authError =
