@@ -11,12 +11,13 @@ import { computeNextRunAt } from "@/lib/job-hunter/schedule";
 import { runHunt } from "@/lib/job-hunter/runner";
 import { JOB_SOURCE_IDS } from "@/lib/types/job-hunter";
 import {
-  consumeCredits,
   InsufficientCreditsError,
   JOB_TAILOR_COST,
   newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
+import type { AiConnection } from "@/lib/ai";
+import { beginAiAction } from "@/lib/own-ai-access";
 import { normalizeCoverLetterData } from "@/lib/types/cover-letter";
 import { TailorError, tailorResumeForJob } from "@/lib/job-hunter/tailor";
 import type { Database } from "@/db";
@@ -673,14 +674,18 @@ export const jobHunterRouter = createTRPCRouter({
 
       const idempotencyKey = newChargeIdempotencyKey("job_tailor", ctx.user.id);
 
+      let ai: AiConnection;
+      let charged: boolean;
       try {
-        await consumeCredits({
+        const started = await beginAiAction({
           userId: ctx.user.id,
           eventType: "job_tailor",
           costUnits: JOB_TAILOR_COST,
           idempotencyKey,
           metadata: { matchId: match.id, jobPostingId: posting.id },
         });
+        ai = started.ai;
+        charged = started.charge !== null;
       } catch (error) {
         if (error instanceof InsufficientCreditsError) {
           throw new TRPCError({
@@ -697,13 +702,15 @@ export const jobHunterRouter = createTRPCRouter({
         .where(eq(jobMatches.id, match.id));
 
       const refund = async (reason: string) => {
-        await refundCredits({
-          userId: ctx.user.id,
-          eventType: "job_tailor_refund",
-          refundUnits: JOB_TAILOR_COST,
-          idempotencyKey: `refund:${idempotencyKey}`,
-          metadata: { reason, matchId: match.id },
-        });
+        if (charged) {
+          await refundCredits({
+            userId: ctx.user.id,
+            eventType: "job_tailor_refund",
+            refundUnits: JOB_TAILOR_COST,
+            idempotencyKey: `refund:${idempotencyKey}`,
+            metadata: { reason, matchId: match.id },
+          });
+        }
         await ctx.db
           .update(jobMatches)
           .set({ pipelineStatus: "scored", updatedAt: new Date() })
@@ -718,6 +725,7 @@ export const jobHunterRouter = createTRPCRouter({
           companyName: posting.company,
           jobDescription: posting.description,
           tone: input.tone,
+          ai,
         });
       } catch (error) {
         await refund("ai_failure");
@@ -733,8 +741,9 @@ export const jobHunterRouter = createTRPCRouter({
         return {
           accepted: false as const,
           impact: result.impact,
-          message:
-            "The rewrite did not improve your match score, so nothing was saved and your credits were returned.",
+          message: charged
+            ? "The rewrite did not improve your match score, so nothing was saved and your credits were returned."
+            : "The rewrite did not improve your match score, so nothing was saved.",
         };
       }
 

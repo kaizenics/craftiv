@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { analyzeResumeData, type AtsImpact, type AtsReport } from "@/lib/ats";
-import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import { callWithFallback, extractJsonObject, type AiConnection } from "@/lib/ai";
 import { buildJobTailorPrompt } from "@/lib/prompts";
 import type { ResumeDataJSON } from "@/db/schema/resumes";
 import { evaluateTailoring } from "./scoring";
@@ -131,6 +131,7 @@ export async function tailorResumeForJob(params: {
   companyName: string;
   jobDescription: string;
   tone?: TailorTone;
+  ai?: AiConnection;
 }): Promise<TailorResult> {
   const beforeReport = analyzeResumeData(params.resumeData, params.jobDescription);
 
@@ -147,7 +148,7 @@ export async function tailorResumeForJob(params: {
     messages: [{ role: "user", content: prompt }],
     maxTokens: 4500,
     temperature: 0.4,
-  });
+  }, params.ai);
 
   const raw = extractJsonObject(content);
   if (!raw) {

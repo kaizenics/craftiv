@@ -1,4 +1,4 @@
-import { callWithFallback, extractJsonObject } from "@/lib/ai";
+import { callWithFallback, extractJsonObject, type AiConnection } from "@/lib/ai";
 import { templates } from "@/lib/data/templates";
 import type { ResumeLayoutAssistantResponse } from "@/lib/types/resume-layout-chat";
 import { resumeLayoutAssistantResponseSchema } from "@/lib/types/resume-layout-chat";
@@ -200,6 +200,7 @@ function normalizeModelResponse(
 export async function generateResumeLayoutResponse(params: {
   message: string;
   history?: Array<{ role: "user" | "assistant"; content: string }>;
+  ai?: AiConnection;
 }) {
   const message = params.message.trim();
   const history = (params.history ?? [])
@@ -256,7 +257,7 @@ export async function generateResumeLayoutResponse(params: {
     messages: aiMessages,
     maxTokens: 1200,
     temperature: 0.25,
-  });
+  }, params.ai);
 
   const rawJson = extractJsonObject(content);
   const parsed = resumeLayoutAssistantResponseSchema.safeParse(rawJson);

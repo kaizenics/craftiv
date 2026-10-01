@@ -12,6 +12,7 @@ import {
   sessions,
   resumes,
   coverLetters,
+  userAiProviders,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import {
@@ -21,7 +22,6 @@ import {
 } from "@/lib/polar";
 import { fromCreditUnits } from "@/lib/credits";
 import {
-  DEFAULT_USER_PREFERENCES,
   getUserPreferencesFromRecord,
   userPreferencesSchema,
 } from "@/lib/user-preferences";
@@ -211,7 +211,7 @@ export const userRouter = createTRPCRouter({
 
       const successUrl =
         process.env.POLAR_SUCCESS_URL?.trim() ||
-        `${origin.replace(/\/$/, "")}/dashboard/settings`;
+        `${origin.replace(/\/$/, "")}/dashboard/settings/profile`;
 
       try {
         validatePolarConfig();
@@ -249,13 +249,17 @@ export const userRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  updateSettings: protectedProcedure
+  /**
+   * Profile and preferences are saved separately because they live on separate
+   * settings pages. One combined mutation would make each page send the other's
+   * fields, and a page that didn't know them would overwrite them with defaults.
+   */
+  updateProfile: protectedProcedure
     .input(
       z.object({
         firstName: z.string().trim().min(1, "First name is required").max(100),
         lastName: z.string().trim().max(100).optional().default(""),
         email: z.string().trim().email(),
-        preferences: userPreferencesSchema.default(DEFAULT_USER_PREFERENCES),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -269,10 +273,6 @@ export const userRouter = createTRPCRouter({
         .update(users)
         .set({
           name: fullName,
-          autoSaveDrafts: input.preferences.autoSaveDrafts,
-          defaultSpellCheck: input.preferences.defaultSpellCheck,
-          showResumeScore: input.preferences.showResumeScore,
-          compactEditor: input.preferences.compactEditor,
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.user.id));
@@ -288,7 +288,7 @@ export const userRouter = createTRPCRouter({
       if (emailChangeRequested) {
         try {
           await auth.api.changeEmail({
-            body: { newEmail: requestedEmail, callbackURL: "/dashboard/settings" },
+            body: { newEmail: requestedEmail, callbackURL: "/dashboard/settings/profile" },
             headers: ctx.requestHeaders,
           });
         } catch (error) {
@@ -309,8 +309,24 @@ export const userRouter = createTRPCRouter({
         // told the address on file rather than the one that was requested.
         email: ctx.user.email,
         emailChangePending: emailChangeRequested,
-        preferences: input.preferences,
       };
+    }),
+
+  updatePreferences: protectedProcedure
+    .input(userPreferencesSchema)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(users)
+        .set({
+          autoSaveDrafts: input.autoSaveDrafts,
+          defaultSpellCheck: input.defaultSpellCheck,
+          showResumeScore: input.showResumeScore,
+          compactEditor: input.compactEditor,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, ctx.user.id));
+
+      return input;
     }),
 
   /**
@@ -326,6 +342,9 @@ export const userRouter = createTRPCRouter({
 
     // Delete user's accounts (OAuth connections)
     await ctx.db.delete(accounts).where(eq(accounts.userId, ctx.user.id));
+
+    // Delete the user's own AI provider key
+    await ctx.db.delete(userAiProviders).where(eq(userAiProviders.userId, ctx.user.id));
 
     // Delete user's sessions
     await ctx.db.delete(sessions).where(

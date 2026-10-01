@@ -21,6 +21,9 @@ import {
   Mail,
   ArrowUpRight,
   Target,
+  UserCircle,
+  UserCog,
+  Plug,
 } from "@/components/ui/icons";
 import { Coins } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -37,7 +40,12 @@ interface SidebarItem {
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
-const sidebarItems: SidebarItem[] = [
+interface SidebarSection {
+  label: string;
+  items: SidebarItem[];
+}
+
+const appItems: SidebarItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -73,12 +81,31 @@ const sidebarItems: SidebarItem[] = [
     href: "/coming-soon",
     icon: Briefcase,
   },
-  {
-    name: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-  },
 ];
+
+const settingsItems: SidebarItem[] = [
+  { name: "Profile", href: "/dashboard/settings/profile", icon: UserCircle },
+  { name: "Preferences", href: "/dashboard/settings/preferences", icon: Settings },
+  { name: "Integrations", href: "/dashboard/settings/integrations", icon: Plug },
+  { name: "Account", href: "/dashboard/settings/account", icon: UserCog },
+];
+
+const sidebarSections: SidebarSection[] = [
+  { label: "Workspace", items: appItems },
+  { label: "Settings", items: settingsItems },
+];
+
+const sidebarItems = sidebarSections.flatMap((section) => section.items);
+
+/**
+ * "/dashboard" itself must match exactly -- every dashboard page sits under it.
+ * Anything else also owns its sub-pages, so Account stays highlighted on
+ * Account → Change password.
+ */
+function isItemActive(href: string, pathname: string) {
+  if (pathname === href) return true;
+  return href !== "/dashboard" && pathname.startsWith(href + "/");
+}
 
 function getCreditsByPlan(plan: SubscriptionPlan): number {
   if (plan === "free") return 1;
@@ -98,7 +125,7 @@ export function DashboardSidebar() {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (const item of sidebarItems) {
-      if (item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/"))) {
+      if (item.children?.some((child) => isItemActive(child.href, pathname))) {
         initial.add(item.name);
       }
     }
@@ -113,7 +140,7 @@ export function DashboardSidebar() {
     setExpandedItems((prev) => {
       const next = new Set(prev);
       for (const item of sidebarItems) {
-        if (item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/"))) {
+        if (item.children?.some((child) => isItemActive(child.href, pathname))) {
           next.add(item.name);
         }
       }
@@ -162,19 +189,78 @@ export function DashboardSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav data-tour="sidebar-nav" className="flex-1 space-y-1 px-3 py-4">
-        {sidebarItems.map((item) => {
-          const hasChildren = !!item.children;
-          const isExpanded = expandedItems.has(item.name);
-          const isActive = hasChildren
-            ? item.children!.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))
-            : pathname === item.href;
+      <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto px-3 py-4">
+        {sidebarSections.map((section, sectionIndex) => (
+          <div key={section.label} className={cn("space-y-1", sectionIndex > 0 && "mt-6")}>
+            <p className="px-3 pb-1 text-xs font-semibold text-muted-foreground">
+              {section.label}
+            </p>
+            {section.items.map((item) => {
+              const hasChildren = !!item.children;
+              const isExpanded = expandedItems.has(item.name);
+              const isActive = hasChildren
+                ? item.children!.some((c) => isItemActive(c.href, pathname))
+                : isItemActive(item.href, pathname);
 
-          if (hasChildren) {
-            return (
-              <div key={item.name}>
+              if (hasChildren) {
+                return (
+                  <div key={item.name}>
+                    <button
+                      onClick={() => toggleExpand(item.name)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-muted/20 text-foreground"
+                          : "text-sidebar-foreground hover:bg-muted/10 hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                          isExpanded && "rotate-180"
+                        )}
+                      />
+                    </button>
+                    <div
+                      className={cn(
+                        "overflow-hidden transition-all duration-200",
+                        isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                      )}
+                    >
+                      <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+                        {item.children!.map((child) => {
+                          const childActive = isItemActive(child.href, pathname);
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                                childActive
+                                  ? "font-medium text-foreground bg-muted/15"
+                                  : "text-muted-foreground hover:bg-muted/10 hover:text-foreground"
+                              )}
+                            >
+                              <child.icon className="h-4 w-4 shrink-0" />
+                              <span>{child.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
                 <button
-                  onClick={() => toggleExpand(item.name)}
+                  key={item.name}
+                  type="button"
+                  onClick={() => {
+                    router.push(item.href);
+                  }}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
@@ -183,72 +269,20 @@ export function DashboardSidebar() {
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  <span className="flex-1 text-left">{item.name}</span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                      isExpanded && "rotate-180"
-                    )}
-                  />
+                  <span>{item.name}</span>
+                  {item.badge ? (
+                    <Badge className="ml-auto h-5 border-transparent bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary">
+                      {item.badge}
+                    </Badge>
+                  ) : null}
+                  {item.name === "Portfolio Builder" ? (
+                    <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : null}
                 </button>
-                <div
-                  className={cn(
-                    "overflow-hidden transition-all duration-200",
-                    isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-                  )}
-                >
-                  <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
-                    {item.children!.map((child) => {
-                      const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={cn(
-                            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                            childActive
-                              ? "font-medium text-foreground bg-muted/15"
-                              : "text-muted-foreground hover:bg-muted/10 hover:text-foreground"
-                          )}
-                        >
-                          <child.icon className="h-4 w-4 shrink-0" />
-                          <span>{child.name}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <button
-              key={item.name}
-              type="button"
-              onClick={() => {
-                router.push(item.href);
-              }}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-muted/20 text-foreground"
-                  : "text-sidebar-foreground hover:bg-muted/10 hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              <span>{item.name}</span>
-              {item.badge ? (
-                <Badge className="ml-auto h-5 border-transparent bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary">
-                  {item.badge}
-                </Badge>
-              ) : null}
-              {item.name === "Portfolio Builder" ? (
-                <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
-              ) : null}
-            </button>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {session ? (

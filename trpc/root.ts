@@ -2,6 +2,7 @@ import { createTRPCRouter } from "./init";
 import { aiRouter } from "./routers/ai";
 import { coverLetterRouter } from "./routers/coverLetter";
 import { jobHunterRouter } from "./routers/jobHunter";
+import { ownAiRouter } from "./routers/ownAi";
 import { resumeRouter } from "./routers/resume";
 import { userRouter } from "./routers/user";
 
@@ -15,6 +16,7 @@ export const appRouter = createTRPCRouter({
   coverLetter: coverLetterRouter,
   jobHunter: jobHunterRouter,
   ai: aiRouter,
+  ownAi: ownAiRouter,
 });
 
 export type AppRouter = typeof appRouter;

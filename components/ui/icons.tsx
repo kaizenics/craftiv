@@ -31,6 +31,7 @@ import {
   GridIcon,
   HeartCheckIcon,
   Image01Icon,
+  Key01Icon,
   LanguageSquareIcon,
   LaptopIcon,
   Layers01Icon,
@@ -72,6 +73,9 @@ import {
   Undo02Icon,
   Upload01Icon,
   UserGroupIcon,
+  UserCircleIcon,
+  UserAccountIcon,
+  Plug01Icon,
   ValidationIcon,
   ViewOffIcon,
   ZoomInAreaIcon,
@@ -134,6 +138,7 @@ export const Download = createIcon(Download01Icon);
 export const Edit = createIcon(Edit02Icon);
 export const Eye = createIcon(EyeIcon);
 export const EyeOff = createIcon(ViewOffIcon);
+export const KeyRound = createIcon(Key01Icon);
 export const File = createIcon(File01Icon);
 export const FileText = createIcon(File02Icon);
 export const FileUp = createIcon(FileUpIcon);
@@ -185,6 +190,9 @@ export const Underline = createIcon(TextUnderlineIcon);
 export const Undo2 = createIcon(Undo02Icon);
 export const Upload = createIcon(Upload01Icon);
 export const Users = createIcon(UserGroupIcon);
+export const UserCircle = createIcon(UserCircleIcon);
+export const UserCog = createIcon(UserAccountIcon);
+export const Plug = createIcon(Plug01Icon);
 export const X = createIcon(Cancel01Icon);
 export const Alert = createIcon(Alert02Icon);
 export const CircleAlert = createIcon(AlertCircleIcon);

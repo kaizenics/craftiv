@@ -12,11 +12,11 @@ import { db } from "@/db";
 import { coverLetters } from "@/db/schema";
 import {
   buildInsufficientCreditsPayload,
-  consumeCredits,
   COVER_LETTER_AI_SESSION_COST,
   InsufficientCreditsError,
   refundCredits,
 } from "@/lib/credits";
+import { beginAiAction, describeAiCharge } from "@/lib/own-ai-access";
 import {
   createEmptyCoverLetterData,
   isCoverLetterTemplateId,
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     const bucket = Math.floor(Date.now() / DAY_BUCKET_MS);
     const chargeIdempotencyKey = `cl_ai_session:${session.user.id}:${coverLetterId}:${bucket}`;
-    const chargeResult = await consumeCredits({
+    const { ai, charge: chargeResult } = await beginAiAction({
       userId: session.user.id,
       eventType: "cover_letter_ai_session",
       costUnits: COVER_LETTER_AI_SESSION_COST,
@@ -157,23 +157,25 @@ export async function POST(request: NextRequest) {
         bucket,
       },
     });
-    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+    if (chargeResult) {
+      chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
 
-    securityLog("credits_consumed", {
-      requestId: guard.requestId,
-      route: "/api/cover-letter/generate",
-      userIdHash: hashForLogs(session.user.id),
-      eventType: "cover_letter_ai_session",
-      costUnits: COVER_LETTER_AI_SESSION_COST,
-      replayed: chargeResult.replayed,
-      balanceUnits: chargeResult.balanceUnits,
-    });
+      securityLog("credits_consumed", {
+        requestId: guard.requestId,
+        route: "/api/cover-letter/generate",
+        userIdHash: hashForLogs(session.user.id),
+        eventType: "cover_letter_ai_session",
+        costUnits: COVER_LETTER_AI_SESSION_COST,
+        replayed: chargeResult.replayed,
+        balanceUnits: chargeResult.balanceUnits,
+      });
+    }
 
     const { content: aiContent, model } = await callWithFallback({
       messages: [{ role: "user", content: prompt }],
       maxTokens: 2000,
       temperature: 0.7,
-    });
+    }, ai);
 
     console.log(`[CoverLetter Generate] Done - model: ${model}`);
 
@@ -198,12 +200,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       content,
       coverLetterId,
-      creditCharge: {
-        replayed: chargeResult.replayed,
-        chargedCredits: 0.5,
-        balanceCredits: chargeResult.balanceUnits / 100,
-        balanceUnits: chargeResult.balanceUnits,
-      },
+      creditCharge: describeAiCharge(chargeResult),
     });
   } catch (error: unknown) {
     if (chargedRequest) {

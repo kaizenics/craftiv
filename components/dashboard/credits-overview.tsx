@@ -13,6 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 
 type CreditsOverviewProps = {
+  /** Set when AI actions run on the user's own provider key, not credits. */
+  ownAi?: { providerLabel: string; model: string } | null;
   availableCredits: number;
   resumesCreated: number;
   coverLettersCreated: number;
@@ -45,6 +47,7 @@ function pluralize(count: number, singular: string) {
 }
 
 export function CreditsOverview({
+  ownAi,
   availableCredits,
   resumesCreated,
   coverLettersCreated,
@@ -52,7 +55,9 @@ export function CreditsOverview({
 }: CreditsOverviewProps) {
   const state = creditBalanceState(availableCredits);
   const copy = STATE_COPY[state];
-  const needsTopUp = state !== "healthy";
+  // Nothing is drawn from the balance while the user's own AI is on, so a
+  // "running low" nudge to buy more would be wrong.
+  const needsTopUp = state !== "healthy" && !ownAi;
 
   return (
     <section
@@ -94,6 +99,16 @@ export function CreditsOverview({
           {copy.label}
         </span>
       </div>
+
+      {ownAi && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-success-border bg-success-surface p-3 text-sm text-success-surface-foreground">
+          <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Your own AI is on. AI actions run on your {ownAi.providerLabel} key ({ownAi.model})
+            and don&apos;t use credits. Your balance is kept for when you switch back.
+          </span>
+        </div>
+      )}
 
       {needsTopUp && (
         <div

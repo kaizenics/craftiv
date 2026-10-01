@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, type ComponentType } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { NavbarComponent } from "@/components/navbar";
@@ -10,9 +11,14 @@ import { trpc } from "@/trpc/client";
 import {
   ArrowRight,
   CheckCircle2,
+  KeyRound,
   ShieldCheck,
   Sparkles,
 } from "@/components/ui/icons";
+import { AI_PROVIDERS, AI_PROVIDER_IDS } from "@/lib/ai-providers";
+
+const OWN_AI_SETTINGS_PATH = "/dashboard/settings/integrations";
+const OWN_AI_PROVIDER_NAMES = AI_PROVIDER_IDS.map((id) => AI_PROVIDERS[id].label);
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
@@ -301,6 +307,52 @@ export function PricingClient() {
           ))}
         </section>
 
+        <section
+          aria-labelledby="own-ai-heading"
+          className="mx-auto mt-5 max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50/70 p-6"
+        >
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700">
+                <KeyRound className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 id="own-ai-heading" className="text-lg font-semibold text-zinc-900">
+                    Bring your own AI
+                  </h2>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                    Included with any pack
+                  </span>
+                </div>
+                <p className="mt-1 max-w-2xl text-sm text-zinc-600">
+                  Already have an API key? Connect it and use every Craftiv AI feature without
+                  spending credits. You pay your AI provider directly for what you use.
+                </p>
+                <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-zinc-700">
+                  {OWN_AI_PROVIDER_NAMES.map((name) => (
+                    <li key={name} className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <Link
+              href={
+                session?.user
+                  ? OWN_AI_SETTINGS_PATH
+                  : `/sign-in?redirect=${encodeURIComponent(OWN_AI_SETTINGS_PATH)}`
+              }
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+            >
+              {session?.user ? "Connect your AI" : "Sign in to connect"}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
         <section className="mt-10 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-6">
           <h2 className="text-lg font-semibold text-zinc-900">FAQ</h2>
           <div className="mt-4 space-y-4 text-sm text-zinc-700">
@@ -308,6 +360,14 @@ export function PricingClient() {
               <p className="font-semibold text-zinc-900">Can I cancel anytime?</p>
               <p className="mt-1 text-zinc-600">
                 There is nothing to cancel. Credits are one-time purchases and never expire.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-zinc-900">Can I use my own AI API key?</p>
+              <p className="mt-1 text-zinc-600">
+                Yes. Buy any pack once, then connect an OpenAI, Claude, Gemini or OpenRouter key
+                in Settings. AI features then run on your key and cost 0 credits, and you can
+                switch back to credits anytime.
               </p>
             </div>
             <div>
