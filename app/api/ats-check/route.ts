@@ -12,11 +12,11 @@ import { analyzeResumeData, analyzeResumeText, formatResumeDataForAts, type AtsR
 import {
   ATS_CHECK_COST,
   buildInsufficientCreditsPayload,
-  consumeCredits,
   InsufficientCreditsError,
   newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
+import { beginAiAction, describeAiCharge } from "@/lib/own-ai-access";
 import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { assertContentLength } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
@@ -257,30 +257,32 @@ export async function POST(request: NextRequest) {
 
     const prompt = buildAtsPrompt(resumeText, baseline, jobDescription);
     const chargeIdempotencyKey = newChargeIdempotencyKey("ats_check", session.user.id);
-    const chargeResult = await consumeCredits({
+    const { ai, charge: chargeResult } = await beginAiAction({
       userId: session.user.id,
       eventType: "ats_check",
       costUnits: ATS_CHECK_COST,
       idempotencyKey: chargeIdempotencyKey,
       metadata,
     });
-    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+    if (chargeResult) {
+      chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
 
-    securityLog("credits_consumed", {
-      requestId: guard.requestId,
-      route: "/api/ats-check",
-      userIdHash: hashForLogs(session.user.id),
-      eventType: "ats_check",
-      costUnits: ATS_CHECK_COST,
-      replayed: chargeResult.replayed,
-      balanceUnits: chargeResult.balanceUnits,
-    });
+      securityLog("credits_consumed", {
+        requestId: guard.requestId,
+        route: "/api/ats-check",
+        userIdHash: hashForLogs(session.user.id),
+        eventType: "ats_check",
+        costUnits: ATS_CHECK_COST,
+        replayed: chargeResult.replayed,
+        balanceUnits: chargeResult.balanceUnits,
+      });
+    }
 
     const { content } = await callWithFallback({
       messages: [{ role: "user", content: prompt }],
       maxTokens: 4500,
       temperature: 0.2,
-    });
+    }, ai);
 
     const parsed = extractJsonObject(content);
     if (!parsed) {
@@ -303,12 +305,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       report,
-      creditCharge: {
-        chargedCredits: 1,
-        balanceCredits: chargeResult.balanceUnits / 100,
-        balanceUnits: chargeResult.balanceUnits,
-        replayed: chargeResult.replayed,
-      },
+      creditCharge: describeAiCharge(chargeResult),
     });
   } catch (error: unknown) {
     if (chargedRequest) {

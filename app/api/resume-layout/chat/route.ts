@@ -6,12 +6,12 @@ import { generateResumeLayoutResponse } from "@/lib/resume-layout-assistant";
 import type { ResumeLayoutChatRequest } from "@/lib/types/resume-layout-chat";
 import {
   buildInsufficientCreditsPayload,
-  consumeCredits,
   InsufficientCreditsError,
   newChargeIdempotencyKey,
   RESUME_LAYOUT_CHAT_COST,
   refundCredits,
 } from "@/lib/credits";
+import { beginAiAction, describeAiCharge } from "@/lib/own-ai-access";
 import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { parseJsonWithLimit } from "@/lib/security/request";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const requestId = crypto.randomUUID();
     const chargeIdempotencyKey = newChargeIdempotencyKey("resume_layout_chat", session.user.id);
-    const chargeResult = await consumeCredits({
+    const { ai, charge: chargeResult } = await beginAiAction({
       userId: session.user.id,
       eventType: "resume_layout_chat",
       costUnits: RESUME_LAYOUT_CHAT_COST,
@@ -64,33 +64,31 @@ export async function POST(request: NextRequest) {
         requestId,
       },
     });
-    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+    if (chargeResult) {
+      chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
 
-    securityLog("credits_consumed", {
-      requestId: guard.requestId,
-      route: "/api/resume-layout/chat",
-      userIdHash: hashForLogs(session.user.id),
-      eventType: "resume_layout_chat",
-      costUnits: RESUME_LAYOUT_CHAT_COST,
-      replayed: chargeResult.replayed,
-      balanceUnits: chargeResult.balanceUnits,
-    });
+      securityLog("credits_consumed", {
+        requestId: guard.requestId,
+        route: "/api/resume-layout/chat",
+        userIdHash: hashForLogs(session.user.id),
+        eventType: "resume_layout_chat",
+        costUnits: RESUME_LAYOUT_CHAT_COST,
+        replayed: chargeResult.replayed,
+        balanceUnits: chargeResult.balanceUnits,
+      });
+    }
 
     const { reply, meta } = await generateResumeLayoutResponse({
       message,
       history,
+      ai,
     });
 
     return NextResponse.json({
       ok: true,
       reply,
       meta,
-      creditCharge: {
-        replayed: chargeResult.replayed,
-        chargedCredits: RESUME_LAYOUT_CHAT_COST / 100,
-        balanceCredits: chargeResult.balanceUnits / 100,
-        balanceUnits: chargeResult.balanceUnits,
-      },
+      creditCharge: describeAiCharge(chargeResult),
     });
   } catch (error) {
     if (chargedRequest) {

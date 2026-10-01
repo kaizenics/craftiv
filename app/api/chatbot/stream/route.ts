@@ -17,11 +17,12 @@ import {
 import {
   buildInsufficientCreditsPayload,
   CHATBOT_STREAM_COST,
-  consumeCredits,
   InsufficientCreditsError,
   newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
+import { ownAiStream, type OwnAiMessage } from "@/lib/own-ai";
+import { beginAiAction } from "@/lib/own-ai-access";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { parseJsonWithLimit } from "@/lib/security/request";
 import { hashForLogs, securityLog, securityRequestId } from "@/lib/security/logging";
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
     // x-request-id header for log correlation, and keying the charge on it lets
     // a client replay a single key forever and never be charged again.
     const chargeIdempotencyKey = newChargeIdempotencyKey("chatbot_stream", session.user.id);
-    const chargeResult = await consumeCredits({
+    const { ai, charge: chargeResult } = await beginAiAction({
       userId: session.user.id,
       eventType: "chatbot_stream",
       costUnits: CHATBOT_STREAM_COST,
@@ -201,17 +202,19 @@ export async function POST(request: NextRequest) {
         requestId,
       },
     });
-    chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+    if (chargeResult) {
+      chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
 
-    securityLog("credits_consumed", {
-      requestId,
-      route: "/api/chatbot/stream",
-      userIdHash: hashForLogs(session.user.id),
-      eventType: "chatbot_stream",
-      costUnits: CHATBOT_STREAM_COST,
-      replayed: chargeResult.replayed,
-      balanceUnits: chargeResult.balanceUnits,
-    });
+      securityLog("credits_consumed", {
+        requestId,
+        route: "/api/chatbot/stream",
+        userIdHash: hashForLogs(session.user.id),
+        eventType: "chatbot_stream",
+        costUnits: CHATBOT_STREAM_COST,
+        replayed: chargeResult.replayed,
+        balanceUnits: chargeResult.balanceUnits,
+      });
+    }
 
     const stream = new ReadableStream<Uint8Array>({
       start: async (controller) => {
@@ -235,6 +238,7 @@ export async function POST(request: NextRequest) {
             const { reply } = await generateResumeLayoutResponse({
               message,
               history,
+              ai,
             });
             const formatted = formatResumeLayoutResponseForChat(reply);
             send({ type: "start", model: "resume-layout-assistant" });
@@ -259,6 +263,22 @@ export async function POST(request: NextRequest) {
                 : message,
             },
           ];
+
+          // The user's own provider: one model, no fallback list, and no
+          // first-token timeout -- their model may think before it answers.
+          // A failure throws to the catch below, which reports it.
+          if (ai.source === "own") {
+            send({ type: "start", model: ai.model });
+            for await (const token of ownAiStream(ai, {
+              messages: messages as OwnAiMessage[],
+              maxTokens: 900,
+              temperature: 0.7,
+            })) {
+              send({ type: "delta", token });
+            }
+            send({ type: "done", blocked: false, model: ai.model });
+            return;
+          }
 
           const models = getChatbotModels();
           let streamed = false;

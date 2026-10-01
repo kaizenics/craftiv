@@ -19,6 +19,7 @@
     "deploy": "curl -X POST https://api.vercel.com/v1/integrations/deploy/prj_ZNPwkKxqCTXsjwb2Z7y2hDHCwxBo/J7J92EOBNd"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
     "@hookform/resolvers": "^5.2.2",
     "@hugeicons/core-free-icons": "^4.1.1",
     "@hugeicons/react": "^1.1.6",

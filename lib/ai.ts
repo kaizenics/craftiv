@@ -2,6 +2,7 @@
 import { TRPCError } from "@trpc/server";
 
 import type { ResumeDataJSON } from "@/db/schema";
+import { ownAiComplete, type OwnAiConnection } from "@/lib/own-ai";
 
 
 export const openrouter = new OpenAI({
@@ -42,9 +43,23 @@ export interface AiCallParams {
   temperature: number;
 }
 
+/**
+ * Which AI runs a request: Craftiv's own (paid for with credits) or the user's
+ * own provider and key. Resolved per request by lib/own-ai-access.ts.
+ */
+export type AiConnection = { source: "craftiv" } | ({ source: "own" } & OwnAiConnection);
+
+export const CRAFTIV_AI: AiConnection = { source: "craftiv" };
+
 export async function callWithFallback(
   params: AiCallParams,
+  ai: AiConnection = CRAFTIV_AI,
 ): Promise<{ content: string; model: string }> {
+  if (ai.source === "own") {
+    const content = await ownAiComplete(ai, params);
+    return { content, model: ai.model };
+  }
+
   const models = [AI_MODEL, AI_MODEL_FALLBACK];
 
   for (const model of models) {

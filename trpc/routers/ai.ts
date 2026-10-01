@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import { resumes, type ResumeDataJSON } from "@/db/schema";
 import {
+  type AiConnection,
   callWithFallback,
   extractJsonArray,
   extractJsonObject,
@@ -36,12 +37,12 @@ import {
   AI_SPELL_CHECK_COST,
   AI_SUGGESTION_COST,
   CHATBOT_STREAM_COST,
-  consumeCredits,
   InsufficientCreditsError,
   newChargeIdempotencyKey,
   refundCredits,
 } from "@/lib/credits";
 import { PROMPT_INPUT_LIMITS } from "@/lib/constants/prompt-limits";
+import { beginAiAction } from "@/lib/own-ai-access";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 import type { Database } from "@/db";
@@ -189,7 +190,7 @@ async function prechargeAiAction(params: {
   const idempotencyKey = newChargeIdempotencyKey(params.eventType, params.userId);
 
   try {
-    const charge = await consumeCredits({
+    const { ai, charge } = await beginAiAction({
       userId: params.userId,
       eventType: params.eventType,
       costUnits: params.costUnits,
@@ -197,16 +198,18 @@ async function prechargeAiAction(params: {
       metadata: params.metadata,
     });
 
-    securityLog("credits_consumed", {
-      route: "trpc.ai",
-      eventType: params.eventType,
-      userIdHash: hashForLogs(params.userId),
-      costUnits: params.costUnits,
-      replayed: charge.replayed,
-      balanceUnits: charge.balanceUnits,
-    });
+    if (charge) {
+      securityLog("credits_consumed", {
+        route: "trpc.ai",
+        eventType: params.eventType,
+        userIdHash: hashForLogs(params.userId),
+        costUnits: params.costUnits,
+        replayed: charge.replayed,
+        balanceUnits: charge.balanceUnits,
+      });
+    }
 
-    return { idempotencyKey, charge };
+    return { idempotencyKey, ai, charged: charge !== null };
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
       throw new TRPCError({
@@ -240,6 +243,9 @@ async function refundAiAction(params: {
  * Precharges credits for an AI action, runs it, and refunds automatically if it
  * throws. Callers do their rate-limit check and prompt building first, then wrap
  * the model call so a failure never leaves the user charged.
+ *
+ * `run` receives the AI to call. On the user's own AI nothing is charged, so
+ * there is nothing to refund either.
  */
 async function chargeAndRun<T>(
   params: {
@@ -248,12 +254,13 @@ async function chargeAndRun<T>(
     costUnits: number;
     metadata?: Record<string, unknown>;
   },
-  run: () => Promise<T>,
+  run: (ai: AiConnection) => Promise<T>,
 ): Promise<T> {
   const charge = await prechargeAiAction(params);
   try {
-    return await run();
+    return await run(charge.ai);
   } catch (error) {
+    if (!charge.charged) throw error;
     await refundAiAction({
       userId: params.userId,
       eventType: params.eventType,
@@ -343,12 +350,12 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_RESUME_IMPROVER_COST,
           metadata: { mutation: "improveSection", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           const { content: improved } = await callWithFallback({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 2000,
             temperature: 0.45,
-          });
+          }, ai);
 
           const beforeReport = analyzeResumeData(resumeData, input.jobDescription);
           const nextData = cloneResumeData(resumeData);
@@ -396,12 +403,12 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_RESUME_IMPROVER_COST,
           metadata: { mutation: "improveFullResume", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           const { content } = await callWithFallback({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 4000,
             temperature: 0.45,
-          });
+          }, ai);
 
           const improved = extractJsonObject(content);
           if (!improved) {
@@ -449,12 +456,12 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_SPELL_CHECK_COST,
           metadata: { mutation: "spellCheck", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           const { content } = await callWithFallback({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 4000,
             temperature: 0.3,
-          });
+          }, ai);
 
           const parsed = extractJsonArray(content);
           if (!parsed) {
@@ -493,12 +500,12 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_SUGGESTION_COST,
           metadata: { mutation: "generateSuggestion", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           const { content: suggestion } = await callWithFallback({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 1000,
             temperature: 0.7,
-          });
+          }, ai);
           return { suggestion };
         },
       );
@@ -523,7 +530,7 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_KEYWORD_BOOSTER_COST,
           metadata: { mutation: "keywordBooster", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           if (missingKeywords.length === 0) {
             return { keywords: [] };
           }
@@ -537,7 +544,7 @@ export const aiRouter = createTRPCRouter({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 3000,
             temperature: 0.3,
-          });
+          }, ai);
 
           const parsed = extractJsonArray(content);
           if (!parsed) {
@@ -594,12 +601,12 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_ACHIEVEMENT_BUILDER_COST,
           metadata: { mutation: "achievementBuilder", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           const { content: bullets } = await callWithFallback({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 1500,
             temperature: 0.5,
-          });
+          }, ai);
           const beforeReport = analyzeResumeData(data);
           const nextData = cloneResumeData(data);
           nextData.experiences[input.experienceIndex] = {
@@ -638,7 +645,7 @@ export const aiRouter = createTRPCRouter({
           costUnits: CHATBOT_STREAM_COST,
           metadata: { mutation: "chatbotReply" },
         },
-        async () => {
+        async (ai) => {
           const { content } = await callWithFallback({
             messages: [
               { role: "system", content: CHATBOT_SYSTEM_PROMPT },
@@ -647,7 +654,7 @@ export const aiRouter = createTRPCRouter({
             ],
             maxTokens: 900,
             temperature: 0.7,
-          });
+          }, ai);
 
           if (looksLikeCodeOutput(content)) {
             return { reply: CHATBOT_NO_CODE_REPLY, blocked: true };
@@ -682,12 +689,12 @@ export const aiRouter = createTRPCRouter({
           costUnits: AI_COVER_LETTER_COST,
           metadata: { mutation: "coverLetter", resumeId: input.resumeId },
         },
-        async () => {
+        async (ai) => {
           const { content: letter } = await callWithFallback({
             messages: [{ role: "user", content: prompt }],
             maxTokens: 2000,
             temperature: 0.7,
-          });
+          }, ai);
           return { letter };
         },
       );

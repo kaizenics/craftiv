@@ -86,7 +86,7 @@ export class InsufficientCreditsError extends Error {
 
 type CreditEventMetadata = Record<string, unknown> | null | undefined;
 
-type ConsumeCreditsInput = {
+export type ConsumeCreditsInput = {
   userId: string;
   eventType: string;
   costUnits: number;
@@ -110,7 +110,7 @@ type DeductWithFloorInput = {
   metadata?: CreditEventMetadata;
 };
 
-type CreditMutationResult = {
+export type CreditMutationResult = {
   replayed: boolean;
   balanceUnits: number;
   deltaUnits: number;
