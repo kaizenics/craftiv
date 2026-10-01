@@ -365,7 +365,7 @@ export function PricingClient() {
             <div>
               <p className="font-semibold text-zinc-900">Can I use my own AI API key?</p>
               <p className="mt-1 text-zinc-600">
-                Yes. Buy any pack once, then connect an OpenAI, Claude, Gemini or OpenRouter key
+                Yes. Buy any pack once, then connect a key from OpenAI, Claude, Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI and more
                 in Settings. AI features then run on your key and cost 0 credits, and you can
                 switch back to credits anytime.
               </p>
