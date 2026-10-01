@@ -77,7 +77,7 @@ export default function ChangePasswordPage() {
       
       // Redirect to settings after 2 seconds
       setTimeout(() => {
-        router.push("/dashboard/settings");
+        router.push("/dashboard/settings/account");
       }, 2000);
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -89,7 +89,7 @@ export default function ChangePasswordPage() {
     <div className="py-8 max-w-2xl">
       <div className="mb-6">
         <Link 
-          href="/dashboard/settings" 
+          href="/dashboard/settings/account" 
           className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
         >
           <svg 
@@ -105,7 +105,7 @@ export default function ChangePasswordPage() {
               d="M15 19l-7-7 7-7" 
             />
           </svg>
-          Back to Settings
+          Back to Account
         </Link>
       </div>
 
@@ -243,7 +243,7 @@ export default function ChangePasswordPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/dashboard/settings")}
+                onClick={() => router.push("/dashboard/settings/account")}
                 disabled={isLoading}
                 className="flex-1 sm:flex-none"
               >
@@ -257,7 +257,7 @@ export default function ChangePasswordPage() {
       <div className="mt-6 p-4 bg-muted/50 rounded-lg">
         <h3 className="text-sm font-medium text-foreground mb-2">Password Tips</h3>
         <ul className="text-xs text-muted-foreground space-y-1">
-          <li>• Use a unique password that you don't use elsewhere</li>
+          <li>• Use a unique password that you don&apos;t use elsewhere</li>
           <li>• Include a mix of letters, numbers, and symbols</li>
           <li>• Avoid common words or personal information</li>
           <li>• Consider using a password manager</li>
