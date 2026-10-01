@@ -27,9 +27,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ResumeRowActions } from "@/components/dashboard/resume-row-actions";
 import { CoverLetterRowActions } from "@/components/dashboard/cover-letter-row-actions";
+
+/** Placeholder rows shaped like the recent-documents table while it loads. */
+function DocumentRowsSkeleton() {
+  return (
+    <div
+      className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm"
+      aria-busy="true"
+      aria-label="Loading documents"
+    >
+      <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-28" />
+        <span />
+      </div>
+      {Array.from({ length: 3 }, (_, i) => (
+        <div
+          key={i}
+          className="grid gap-4 border-b border-border/70 px-4 py-4 last:border-b-0 sm:px-5 md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px] md:items-center"
+        >
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-20 w-14 shrink-0 rounded-lg md:h-28 md:w-20" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-3/5" />
+              <Skeleton className="h-4 w-2/5" />
+            </div>
+          </div>
+          <Skeleton className="hidden h-10 w-24 rounded-full md:block" />
+          <Skeleton className="hidden h-10 w-32 rounded-full md:block" />
+          <Skeleton className="hidden h-10 w-36 rounded-full md:block" />
+          <Skeleton className="ml-auto hidden h-8 w-8 rounded-full md:block" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -38,6 +75,8 @@ export default function Dashboard() {
   // Replace mock data with real tRPC query
   const { data: resumes = [], isLoading } = trpc.resume.listSummary.useQuery();
   const hasResumes = resumes.length > 0;
+  // Keep the tabbed layout up while loading so the skeleton sits where the rows will.
+  const showRecentDocuments = isLoading || hasResumes;
   const { data: coverLetters = [], isLoading: isCoverLettersLoading } =
     trpc.coverLetter.listSummary.useQuery(undefined, {
       enabled: hasResumes && recentDocumentsTab === "cover-letter",
@@ -87,17 +126,6 @@ export default function Dashboard() {
     },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Spinner className="mx-auto mb-4 size-12 text-muted-foreground" />
-          <p className="text-muted-foreground">Loading your resumes...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <TooltipProvider>
     <PageTour tour="dashboard" />
@@ -109,7 +137,7 @@ export default function Dashboard() {
             Welcome back
           </h1>
           <p className="text-muted-foreground">
-            {hasResumes
+            {showRecentDocuments
               ? "Continue working on your resumes or create a new one."
               : "Get started by creating your first resume."}
           </p>
@@ -205,13 +233,13 @@ export default function Dashboard() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-foreground">
-            {hasResumes
+            {showRecentDocuments
               ? recentDocumentsTab === "resume"
                 ? "Recent Resumes"
                 : "Recent Cover Letters"
               : "My Resumes"}
           </h2>
-          {hasResumes && (
+          {showRecentDocuments && (
             <Link
               href={
                 recentDocumentsTab === "resume"
@@ -225,7 +253,7 @@ export default function Dashboard() {
           )} 
         </div>
 
-        {hasResumes ? (
+        {showRecentDocuments ? (
           <Tabs
             value={recentDocumentsTab}
             onValueChange={(value) => setRecentDocumentsTab(value as "resume" | "cover-letter")}
@@ -237,6 +265,9 @@ export default function Dashboard() {
             </TabsList>
 
             <TabsContent value="resume" className="mt-0">
+              {isLoading ? (
+                <DocumentRowsSkeleton />
+              ) : (
               <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
                 <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-[13px] font-semibold text-foreground/90 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
                   <p className="tracking-tight">Resume</p>
@@ -383,13 +414,12 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+              )}
             </TabsContent>
 
             <TabsContent value="cover-letter" className="mt-0">
               {isCoverLettersLoading ? (
-                <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
-                  Loading recent cover letters...
-                </div>
+                <DocumentRowsSkeleton />
               ) : coverLetters.length > 0 ? (
                 <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
                   <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-[13px] font-semibold text-foreground/90 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
@@ -472,7 +502,7 @@ export default function Dashboard() {
       </div>
 
       {/* Getting Started - Only show if no resumes */}
-      {!hasResumes && (
+      {!showRecentDocuments && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">
             Getting Started
