@@ -36,6 +36,26 @@ const OPENAI_COMPATIBLE_BASE_URLS: Record<Exclude<AiProviderId, "anthropic">, st
   openai: "https://api.openai.com/v1",
   gemini: "https://generativelanguage.googleapis.com/v1beta/openai/",
   openrouter: "https://openrouter.ai/api/v1",
+  groq: "https://api.groq.com/openai/v1",
+  deepseek: "https://api.deepseek.com",
+  mistral: "https://api.mistral.ai/v1",
+  xai: "https://api.x.ai/v1",
+  together: "https://api.together.xyz/v1",
+  fireworks: "https://api.fireworks.ai/inference/v1",
+  cerebras: "https://api.cerebras.ai/v1",
+  perplexity: "https://api.perplexity.ai",
+  huggingface: "https://router.huggingface.co/v1",
+  sambanova: "https://api.sambanova.ai/v1",
+  nebius: "https://api.studio.nebius.com/v1",
+  moonshot: "https://api.moonshot.ai/v1",
+  qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  novita: "https://api.novita.ai/v3/openai",
+  cohere: "https://api.cohere.ai/compatibility/v1",
+  deepinfra: "https://api.deepinfra.com/v1/openai",
+  hyperbolic: "https://api.hyperbolic.xyz/v1",
+  zai: "https://api.z.ai/api/paas/v4",
+  minimax: "https://api.minimax.io/v1",
+  featherless: "https://api.featherless.ai/v1",
 };
 
 /**
@@ -47,8 +67,10 @@ const OPENAI_COMPATIBLE_BASE_URLS: Record<Exclude<AiProviderId, "anthropic">, st
 const REASONING_MAX_OUTPUT_TOKENS = 16_000;
 
 /**
- * OpenRouter checks the key's balance can cover max_tokens before it runs a
- * request, so a 16k ceiling would reject users with a few cents left.
+ * Ceiling for the remaining OpenAI-compatible providers. OpenRouter checks the
+ * key's balance can cover max_tokens before it runs a request, so a 16k ceiling
+ * would reject users with a few cents left; DeepSeek Chat rejects anything over
+ * 8,192.
  */
 const OPENROUTER_MIN_OUTPUT_TOKENS = 8_000;
 

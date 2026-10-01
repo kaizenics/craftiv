@@ -43,9 +43,9 @@ import {
   AI_PROVIDERS,
   MODEL_ID_PATTERN,
   findProviderModel,
+  isAiProviderId,
   type AiProviderId,
 } from "@/lib/ai-providers";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 import type { AppRouter } from "@/trpc/root";
 
@@ -116,7 +116,7 @@ export function OwnAiSettings() {
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Use your own AI</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Connect your OpenAI, Claude, Gemini or OpenRouter API key and use every Craftiv
+              Connect your OpenAI, Claude, Gemini, Grok or other AI provider key and use every Craftiv
               AI feature without spending credits. Included with any credit pack.
             </p>
             {connection && (
@@ -315,31 +315,28 @@ function ConnectForm({
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <fieldset>
-        <legend className="text-sm font-medium text-foreground">1. Choose your AI provider</legend>
-        <div role="radiogroup" className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {AI_PROVIDER_IDS.map((id) => {
-            const selected = provider === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => chooseProvider(id)}
-                className={cn(
-                  "rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                  selected
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-                )}
-              >
+      <div>
+        <label htmlFor="own-ai-provider" className="text-sm font-medium text-foreground">
+          1. Choose your AI provider
+        </label>
+        <Select
+          value={provider ?? undefined}
+          onValueChange={(value) => {
+            if (isAiProviderId(value)) chooseProvider(value);
+          }}
+        >
+          <SelectTrigger id="own-ai-provider" className="mt-2 h-10 w-full rounded-lg bg-background sm:w-80">
+            <SelectValue placeholder="Select a provider" />
+          </SelectTrigger>
+          <SelectContent>
+            {AI_PROVIDER_IDS.map((id) => (
+              <SelectItem key={id} value={id}>
                 {AI_PROVIDERS[id].label}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {info && provider && (
         <>
