@@ -27,6 +27,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { DownloadDialog } from "@/components/resume/download-dialog";
+import { ShareResumeDialog } from "@/components/resume/share-resume-dialog";
 import {
   ResumePreview,
   DesignOptions,
@@ -100,6 +101,7 @@ export default function FinalResumePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTab>("templates");
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [showAuthAlert, setShowAuthAlert] = useState(false);
   const [designOptions, setDesignOptions] =
     useState<DesignOptions>(defaultDesignOptions);
@@ -769,14 +771,27 @@ export default function FinalResumePage() {
           )}
         </div>
 
-        <Button
-          onClick={handleDownloadClick}
-          size="sm"
-          className="bg-primary hover:bg-primary/80 text-xs sm:text-sm"
-        >
-          <span className="hidden sm:inline">Download Resume</span>
-          <span className="sm:hidden">Download</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {session?.user && currentResumeId && (
+            <Button
+              onClick={() => setShowShareDialog(true)}
+              size="sm"
+              variant="outline"
+              className="text-xs sm:text-sm"
+            >
+              Share
+            </Button>
+          )}
+
+          <Button
+            onClick={handleDownloadClick}
+            size="sm"
+            className="bg-primary hover:bg-primary/80 text-xs sm:text-sm"
+          >
+            <span className="hidden sm:inline">Download Resume</span>
+            <span className="sm:hidden">Download</span>
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -989,6 +1004,15 @@ export default function FinalResumePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {currentResumeId && session?.user && (
+        <ShareResumeDialog
+          resumeId={currentResumeId}
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          onBeforeEnable={flushAutosave}
+        />
+      )}
 
       {/* Download Dialog */}
       <DownloadDialog

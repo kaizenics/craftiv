@@ -38,6 +38,9 @@ export const resumes = sqliteTable("resumes", {
     .notNull()
     .default("user"),
   
+  /** Random id for the public /r/<token> link; null until sharing is first enabled. */
+  shareToken: text("share_token").unique(),
+  shareEnabled: integer("share_enabled", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
