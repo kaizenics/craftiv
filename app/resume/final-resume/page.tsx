@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Sheet,
@@ -33,7 +34,7 @@ import {
 } from "@/components/resume/resume-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import { ResumeData, createEmptyResumeData, normalizeSectionOrder } from "@/lib/types/resume";
-import type { ResumeDesign } from "@/lib/schemas/resume-data";
+import { resumeDataSchema, type ResumeDesign } from "@/lib/schemas/resume-data";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
 import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
@@ -72,8 +73,8 @@ type SidebarTab =
   | "versionhistory"
   | "jobtarget";
 
-type ResumeSnapshot = {
-  id: string;
+/** Shape of the snapshots older editor versions kept in localStorage. */
+type LegacyLocalSnapshot = {
   createdAt: string;
   resumeName: string;
   resumeData: ResumeData;
@@ -116,8 +117,8 @@ export default function FinalResumePage() {
   });
   const [jobTargetRole, setJobTargetRole] = useState("");
   const [jobTargetDescription, setJobTargetDescription] = useState("");
-  const [snapshots, setSnapshots] = useState<ResumeSnapshot[]>([]);
-  const [snapshotSavedAt, setSnapshotSavedAt] = useState<string | null>(null);
+  const [snapshotSavedAt, setSnapshotSavedAt] = useState<Date | null>(null);
+  const [busySnapshotId, setBusySnapshotId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const latestSaveRequestRef = useRef(0);
   const hasHydratedRef = useRef(false);
@@ -126,6 +127,15 @@ export default function FinalResumePage() {
 
   const { data: session } = authClient.useSession();
   const updateResume = trpc.resume.update.useMutation();
+  const utils = trpc.useUtils();
+  const snapshotsQuery = trpc.resumeSnapshot.list.useQuery(
+    { resumeId: currentResumeId! },
+    { enabled: !!currentResumeId && !!session?.user },
+  );
+  const createSnapshot = trpc.resumeSnapshot.create.useMutation();
+  const restoreSnapshot = trpc.resumeSnapshot.restore.useMutation();
+  const deleteSnapshot = trpc.resumeSnapshot.delete.useMutation();
+  const importLocalSnapshots = trpc.resumeSnapshot.importLocal.useMutation();
   const { data: preferences } = trpc.user.preferences.useQuery(undefined, {
     retry: false,
   });
@@ -183,7 +193,6 @@ export default function FinalResumePage() {
     let initialResumeName = "Resume_1";
     let initialJobTargetRole = "";
     let initialJobTargetDescription = "";
-    let initialSnapshots: ResumeSnapshot[] = [];
     let savedDesignFromDb: ResumeDesign | undefined;
 
     if (savedResume?.data) {
@@ -273,16 +282,6 @@ export default function FinalResumePage() {
       }
     }
 
-    const savedSnapshots = localStorage.getItem(snapshotStorageKey);
-    if (savedSnapshots) {
-      try {
-        const parsed = JSON.parse(savedSnapshots) as ResumeSnapshot[];
-        initialSnapshots = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        initialSnapshots = [];
-      }
-    }
-
     const timeoutId = setTimeout(() => {
       if (initialResumeData) {
         setResumeData(initialResumeData);
@@ -297,14 +296,13 @@ export default function FinalResumePage() {
       setResumeName(initialResumeName);
       setJobTargetRole(initialJobTargetRole);
       setJobTargetDescription(initialJobTargetDescription);
-      setSnapshots(initialSnapshots);
       lastSavedResumeNameRef.current = initialResumeName.trim() || "Resume_1";
       hasHydratedRef.current = true;
       setIsLoading(false);
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [router, jobTargetStorageKey, snapshotStorageKey, savedResume, showPhoto]);
+  }, [router, jobTargetStorageKey, savedResume, showPhoto]);
 
   // Keep this browser's copy of the design; the server copy is saved with the
   // resume data below.
@@ -377,10 +375,49 @@ export default function FinalResumePage() {
     );
   }, [jobTargetRole, jobTargetDescription, isLoading, jobTargetStorageKey]);
 
+  // Older editors kept snapshots in this browser only. Upload them once, then
+  // drop the local copy.
   useEffect(() => {
-    if (isLoading || !hasHydratedRef.current) return;
-    localStorage.setItem(snapshotStorageKey, JSON.stringify(snapshots));
-  }, [snapshots, isLoading, snapshotStorageKey]);
+    if (isLoading || !currentResumeId || !session?.user) return;
+    const raw = localStorage.getItem(snapshotStorageKey);
+    if (!raw) return;
+
+    let legacy: LegacyLocalSnapshot[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      legacy = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      legacy = [];
+    }
+
+    const uploadable = legacy.slice(0, 20).flatMap((snapshot) => {
+      const data = resumeDataSchema.safeParse({
+        ...snapshot.resumeData,
+        design: { ...snapshot.designOptions, color: snapshot.selectedColor, showPhoto },
+      });
+      const createdAt = new Date(snapshot.createdAt);
+      if (!data.success || Number.isNaN(createdAt.getTime())) return [];
+      return [
+        {
+          name: snapshot.resumeName || "Resume",
+          createdAt: createdAt.toISOString(),
+          data: data.data,
+        },
+      ];
+    });
+
+    importLocalSnapshots.mutate(
+      { resumeId: currentResumeId, snapshots: uploadable },
+      {
+        onSuccess: () => {
+          localStorage.removeItem(snapshotStorageKey);
+          void utils.resumeSnapshot.list.invalidate({ resumeId: currentResumeId });
+        },
+      },
+    );
+    // Runs once per resume load; re-running on mutation identity would re-upload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, currentResumeId, session?.user, snapshotStorageKey]);
 
   // Keep the editor title in sync with the database title when available
   useEffect(() => {
@@ -527,33 +564,93 @@ export default function FinalResumePage() {
     localStorage.setItem("resumeData", JSON.stringify(updated));
   };
 
-  const saveVersionSnapshot = () => {
-    const snapshot: ResumeSnapshot = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      resumeName,
-      resumeData,
-      designOptions,
-      selectedColor,
+  /** Saves any edits still waiting on the autosave debounce. */
+  const flushAutosave = async () => {
+    if (!currentResumeId) return;
+    const dataToSave: ResumeData = {
+      ...resumeData,
+      design: { ...designOptions, color: selectedColor, showPhoto },
     };
-
-    setSnapshots((prev) => [snapshot, ...prev].slice(0, 20));
-    setSnapshotSavedAt(snapshot.createdAt);
+    const serialized = JSON.stringify(dataToSave);
+    if (serialized === lastSavedResumeDataRef.current) return;
+    await updateResume.mutateAsync({
+      id: currentResumeId,
+      data: dataToSave,
+      templateId: resumeData.templateId,
+    });
+    lastSavedResumeDataRef.current = serialized;
   };
 
-  const restoreVersionSnapshot = (snapshot: ResumeSnapshot) => {
-    setResumeData(snapshot.resumeData);
-    setDesignOptions(snapshot.designOptions);
-    setSelectedColor(snapshot.selectedColor);
-    setResumeName(snapshot.resumeName);
-    localStorage.setItem("resumeData", JSON.stringify(snapshot.resumeData));
-    localStorage.setItem("designOptions", JSON.stringify(snapshot.designOptions));
-    localStorage.setItem("selectedColor", snapshot.selectedColor);
-    localStorage.setItem("resumeName", snapshot.resumeName);
+  const saveVersionSnapshot = async () => {
+    if (!currentResumeId) return;
+    try {
+      await flushAutosave();
+      await createSnapshot.mutateAsync({ resumeId: currentResumeId, kind: "manual" });
+      setSnapshotSavedAt(new Date());
+      await utils.resumeSnapshot.list.invalidate({ resumeId: currentResumeId });
+    } catch (error) {
+      console.error("Failed to save snapshot:", error);
+      toast.error("Couldn't save the snapshot. Please try again.");
+    }
   };
 
-  const deleteVersionSnapshot = (snapshotId: string) => {
-    setSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== snapshotId));
+  const restoreVersionSnapshot = async (snapshotId: string) => {
+    if (!currentResumeId) return;
+    setBusySnapshotId(snapshotId);
+    try {
+      // Save pending edits first so the automatic "before restore" copy has them.
+      await flushAutosave();
+      const restored = await restoreSnapshot.mutateAsync({ snapshotId });
+      const { design, ...restoredData } = restored.data as ResumeData;
+      const nextResumeData: ResumeData = {
+        ...createEmptyResumeData(restored.templateId),
+        ...restoredData,
+        templateId: restored.templateId,
+        sectionOrder: normalizeSectionOrder(restoredData.sectionOrder),
+      };
+      const nextDesign: DesignOptions = design
+        ? {
+            fontFamily: design.fontFamily,
+            fontSize: design.fontSize,
+            sectionSpacing: design.sectionSpacing,
+            paragraphSpacing: design.paragraphSpacing,
+            lineSpacing: design.lineSpacing,
+          }
+        : designOptions;
+      const nextColor = design?.color ?? selectedColor;
+
+      // Already saved on the server; don't autosave it straight back.
+      lastSavedResumeDataRef.current = JSON.stringify({
+        ...nextResumeData,
+        design: { ...nextDesign, color: nextColor, showPhoto },
+      });
+      setResumeData(nextResumeData);
+      setDesignOptions(nextDesign);
+      setSelectedColor(nextColor);
+      localStorage.setItem("resumeData", JSON.stringify(nextResumeData));
+      localStorage.setItem("selectedTemplateId", restored.templateId);
+      await utils.resumeSnapshot.list.invalidate({ resumeId: currentResumeId });
+      toast.success("Version restored. Your previous version was saved too.");
+    } catch (error) {
+      console.error("Failed to restore snapshot:", error);
+      toast.error("Couldn't restore that version. Please try again.");
+    } finally {
+      setBusySnapshotId(null);
+    }
+  };
+
+  const deleteVersionSnapshot = async (snapshotId: string) => {
+    if (!currentResumeId) return;
+    setBusySnapshotId(snapshotId);
+    try {
+      await deleteSnapshot.mutateAsync({ snapshotId });
+      await utils.resumeSnapshot.list.invalidate({ resumeId: currentResumeId });
+    } catch (error) {
+      console.error("Failed to delete snapshot:", error);
+      toast.error("Couldn't delete that version. Please try again.");
+    } finally {
+      setBusySnapshotId(null);
+    }
   };
 
   const pushJobTargetToAssistant = () => {
@@ -775,7 +872,10 @@ export default function FinalResumePage() {
 
             {activeTab === "versionhistory" && (
               <VersionHistoryTab
-                snapshots={snapshots}
+                snapshots={snapshotsQuery.data ?? []}
+                isLoading={snapshotsQuery.isLoading}
+                isSaving={createSnapshot.isPending}
+                busySnapshotId={busySnapshotId}
                 snapshotSavedAt={snapshotSavedAt}
                 onSaveSnapshot={saveVersionSnapshot}
                 onRestoreSnapshot={restoreVersionSnapshot}

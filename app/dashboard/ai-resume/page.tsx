@@ -191,6 +191,23 @@ export default function AIAssistantPage() {
     },
   });
 
+  const createSnapshot = trpc.resumeSnapshot.create.useMutation();
+
+  /**
+   * Writes an AI rewrite to the resume, taking a "before AI" snapshot first so
+   * the change can be undone from Version History.
+   */
+  async function saveAiChange(resumeId: string, nextData: NonNullable<typeof data>) {
+    try {
+      await createSnapshot.mutateAsync({ resumeId, kind: "before_ai" });
+    } catch (snapshotError) {
+      // The safety copy is a convenience; don't block applying the change.
+      console.error("Failed to snapshot before AI change:", snapshotError);
+    }
+    await updateResume.mutateAsync({ id: resumeId, data: nextData });
+    void utils.resumeSnapshot.list.invalidate({ resumeId });
+  }
+
   const isGenerating =
     improveSection.isPending ||
     improveFullResume.isPending ||
@@ -392,10 +409,7 @@ export default function AIAssistantPage() {
         return;
       }
       if (goal === "summary") {
-        await updateResume.mutateAsync({
-          id: activeResumeId,
-          data: { ...data, summary: improverResult },
-        });
+        await saveAiChange(activeResumeId, { ...data, summary: improverResult });
       } else if (goal === "experience") {
         const parts =
           improvedExperienceParts && improvedExperienceParts.length > 0
@@ -418,10 +432,7 @@ export default function AIAssistantPage() {
           partIndex += 1;
           return shouldApply && improved ? { ...exp, description: improved } : exp;
         });
-        await updateResume.mutateAsync({
-          id: activeResumeId,
-          data: { ...data, experiences: updated },
-        });
+        await saveAiChange(activeResumeId, { ...data, experiences: updated });
       } else if (fullResumeImproved) {
         if (selectedFullKeys.length === 0) {
           setError("Select at least one output block to apply.");
@@ -455,7 +466,7 @@ export default function AIAssistantPage() {
           });
         }
 
-        await updateResume.mutateAsync({ id: activeResumeId, data: nextData });
+        await saveAiChange(activeResumeId, nextData);
       }
       setImproverApplied(true);
       setStatusMessage("Changes applied to your resume.");
@@ -522,10 +533,7 @@ export default function AIAssistantPage() {
         ...updated[selectedExpIndex],
         description: achievementResult,
       };
-      await updateResume.mutateAsync({
-        id: activeResumeId,
-        data: { ...data, experiences: updated },
-      });
+      await saveAiChange(activeResumeId, { ...data, experiences: updated });
       setAchievementApplied(true);
       setStatusMessage("Bullets applied to your resume.");
     } catch (e) {
