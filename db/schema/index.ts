@@ -12,4 +12,4 @@ export * from "./rate-limits";
 export * from "./job-hunter";
 export * from "./ai-providers";
 export * from "./resume-snapshots";
-export * from "./resume-share-views";
+export * from "./share-views";

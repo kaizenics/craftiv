@@ -4,8 +4,8 @@ import { coverLetterRouter } from "./routers/coverLetter";
 import { jobHunterRouter } from "./routers/jobHunter";
 import { ownAiRouter } from "./routers/ownAi";
 import { resumeRouter } from "./routers/resume";
-import { resumeShareRouter } from "./routers/resumeShare";
 import { resumeSnapshotRouter } from "./routers/resumeSnapshot";
+import { shareRouter } from "./routers/share";
 import { userRouter } from "./routers/user";
 
 /**
@@ -16,7 +16,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   resume: resumeRouter,
   resumeSnapshot: resumeSnapshotRouter,
-  resumeShare: resumeShareRouter,
+  share: shareRouter,
   coverLetter: coverLetterRouter,
   jobHunter: jobHunterRouter,
   ai: aiRouter,
