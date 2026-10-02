@@ -7,8 +7,13 @@ import * as schema from "./schema";
  * Turso Database Client
  * Creates a connection to the Turso database using LibSQL
  */
+const databaseUrl = process.env.TURSO_DATABASE_URL?.trim();
+if (!databaseUrl) {
+  throw new Error("TURSO_DATABASE_URL is not set.");
+}
+
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL!,
+  url: databaseUrl,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
