@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -8,6 +8,7 @@ import {
 } from "../init";
 import { resumes, users, type ResumeDataJSON } from "@/db/schema";
 import type { Database } from "@/db";
+import { RESUME_LIMITS, resumeDataSchema } from "@/lib/schemas/resume-data";
 
 function splitTitleBaseAndIndex(title: string): { base: string; index: number | null } {
   const match = title.match(/^(.*?)(?:_(\d+))?$/);
@@ -72,120 +73,18 @@ async function assertCanCreateResume(db: Database, userId: string) {
   return user;
 }
 
-// Validation schemas
-const contactSchema = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
-  desiredJobTitle: z.string(),
-  phone: z.string(),
-  email: z.string().email().or(z.literal("")),
-});
-
-const experienceSchema = z.object({
-  id: z.string(),
-  jobTitle: z.string(),
-  employer: z.string(),
-  location: z.string(),
-  startDate: z.string(),
-  endDate: z.string(),
-  isCurrentJob: z.boolean(),
-  description: z.string(),
-});
-
-const educationSchema = z.object({
-  id: z.string(),
-  schoolName: z.string(),
-  location: z.string(),
-  degree: z.string(),
-  startDate: z.string(),
-  endDate: z.string(),
-  description: z.string(),
-});
-
-const skillSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  level: z.enum(["Beginner", "Intermediate", "Advanced", "Expert"]),
-  showLevel: z.boolean(),
-});
-
-const languageSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  proficiency: z.enum(["Basic", "Conversational", "Fluent", "Native"]),
-});
-
-const certificationSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  issuer: z.string(),
-  date: z.string(),
-});
-
-const awardSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  issuer: z.string(),
-  date: z.string(),
-});
-
-const websiteSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  url: z.string(),
-});
-
-const referenceSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  position: z.string(),
-  company: z.string(),
-  email: z.string(),
-  phone: z.string(),
-});
-
-const hobbySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-});
-
-const customSectionSchema = z.object({
-  id: z.string(),
-  sectionName: z.string(),
-  description: z.string(),
-});
-
-const finalizeSchema = z.object({
-  languages: z.array(languageSchema),
-  certifications: z.array(certificationSchema),
-  awards: z.array(awardSchema),
-  websites: z.array(websiteSchema),
-  references: z.array(referenceSchema),
-  hobbies: z.array(hobbySchema),
-  customSections: z.array(customSectionSchema),
-});
-
-const resumeDataSchema = z.object({
-  contact: contactSchema,
-  experiences: z.array(experienceSchema),
-  educations: z.array(educationSchema),
-  skills: z.array(skillSchema),
-  summary: z.string(),
-  finalize: finalizeSchema,
-});
-
 const createResumeSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  templateId: z.string().min(1, "Template is required"),
+  title: z.string().min(1, "Title is required").max(RESUME_LIMITS.short),
+  templateId: z.string().min(1, "Template is required").max(RESUME_LIMITS.short),
 });
 
 const updateResumeSchema = z.object({
   id: z.string(),
-  title: z.string().optional(),
-  templateId: z.string().optional(),
+  title: z.string().max(RESUME_LIMITS.short).optional(),
+  templateId: z.string().max(RESUME_LIMITS.short).optional(),
   data: resumeDataSchema.optional(),
   status: z.enum(["draft", "completed"]).optional(),
-  lastEditedSection: z.string().optional(),
+  lastEditedSection: z.string().max(RESUME_LIMITS.short).optional(),
 });
 
 /**
@@ -255,7 +154,7 @@ export const resumeRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createResumeSchema)
     .mutation(async ({ ctx, input }) => {
-      const user = await assertCanCreateResume(ctx.db, ctx.user.id);
+      await assertCanCreateResume(ctx.db, ctx.user.id);
 
       const id = crypto.randomUUID();
       const title = await getUniqueResumeTitle({
@@ -299,7 +198,7 @@ export const resumeRouter = createTRPCRouter({
       await ctx.db
         .update(users)
         .set({
-          resumeCreatedCount: (user.resumeCreatedCount ?? 0) + 1,
+          resumeCreatedCount: sql`coalesce(${users.resumeCreatedCount}, 0) + 1`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.user.id));
@@ -389,7 +288,7 @@ export const resumeRouter = createTRPCRouter({
   duplicate: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const user = await assertCanCreateResume(ctx.db, ctx.user.id);
+      await assertCanCreateResume(ctx.db, ctx.user.id);
 
       const existingResume = await ctx.db.query.resumes.findFirst({
         where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
@@ -416,7 +315,7 @@ export const resumeRouter = createTRPCRouter({
       await ctx.db
         .update(users)
         .set({
-          resumeCreatedCount: (user.resumeCreatedCount ?? 0) + 1,
+          resumeCreatedCount: sql`coalesce(${users.resumeCreatedCount}, 0) + 1`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.user.id));
