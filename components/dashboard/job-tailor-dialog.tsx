@@ -22,6 +22,7 @@ import { AiSuggestionBlock } from "@/components/dashboard/ai-suggestion-block";
 import { AlertCircle, ArrowUpRight, Loader2, Sparkles } from "@/components/ui/icons";
 import { formatCreditValue, JOB_TAILOR_COST } from "@/lib/credit-costs";
 import type { AtsImpact } from "@/lib/ats";
+import { useOwnAiProvider } from "@/lib/use-own-ai-provider";
 
 export type TailorTone = "professional" | "confident" | "enthusiastic";
 
@@ -63,6 +64,7 @@ export function JobTailorDialog({
   onRun,
   onSave,
 }: JobTailorDialogProps) {
+  const ownAiProvider = useOwnAiProvider();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -114,7 +116,9 @@ export function JobTailorDialog({
               ) : (
                 <>
                   <Sparkles className="size-4" aria-hidden="true" />
-                  Tailor — {formatCreditValue(JOB_TAILOR_COST)} credits
+                  {ownAiProvider
+                    ? `Tailor with your ${ownAiProvider} key`
+                    : `Tailor — ${formatCreditValue(JOB_TAILOR_COST)} credits`}
                 </>
               )}
             </Button>

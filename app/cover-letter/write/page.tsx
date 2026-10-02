@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
+import { useOwnAiProvider } from "@/lib/use-own-ai-provider";
 import { useAuth } from "@/components/auth-provider";
 
 type DialogView = "pick" | "upload";
@@ -101,6 +102,7 @@ function WriteCoverLetterPageContent() {
   const [isSwitchingTemplate, setIsSwitchingTemplate] = useState(false);
 
   const utils = trpc.useUtils();
+  const activeOwnAiProvider = useOwnAiProvider();
   const coverLetterQuery = trpc.coverLetter.getById.useQuery(
     { id: coverLetterId! },
     { enabled: !!coverLetterId }
@@ -867,7 +869,9 @@ function WriteCoverLetterPageContent() {
                         Upload your resume and AI writes it for you.
                       </p>
                       <p className="mt-1 text-xs font-medium text-sky-700">
-                        Consumes 0.5 credits per AI session
+                        {activeOwnAiProvider
+                          ? `Uses your ${activeOwnAiProvider} key, no credits`
+                          : "Consumes 0.5 credits per AI session"}
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 shrink-0 text-sky-400 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />

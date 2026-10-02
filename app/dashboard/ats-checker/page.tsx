@@ -1,5 +1,6 @@
 "use client";
 
+import { useOwnAiProvider } from "@/lib/use-own-ai-provider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
@@ -89,6 +90,7 @@ function EmptyReportState() {
 }
 
 export default function AtsCheckerPage() {
+  const ownAiProvider = useOwnAiProvider();
   const [mode, setMode] = useState<InputMode>("saved");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -221,7 +223,7 @@ export default function AtsCheckerPage() {
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-4xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          1 credit per check
+          {ownAiProvider ? `Runs on your ${ownAiProvider} key` : "1 credit per check"}
         </span>
       </header>
 
