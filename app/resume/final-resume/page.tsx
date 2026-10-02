@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { DownloadDialog } from "@/components/resume/download-dialog";
 import { ShareResumeDialog } from "@/components/resume/share-resume-dialog";
+import { TailoredForBanner } from "@/components/resume/tailored-for-banner";
 import {
   ResumePreview,
   DesignOptions,
@@ -793,6 +794,8 @@ export default function FinalResumePage() {
           </Button>
         </div>
       </header>
+
+      {currentResumeId && session?.user && <TailoredForBanner resumeId={currentResumeId} />}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}

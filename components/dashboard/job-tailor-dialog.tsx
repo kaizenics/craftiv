@@ -177,10 +177,17 @@ export function JobTailorDialog({
                 </Button>
               ) : null}
 
-              {savedKinds.length > 0 ? (
+              <Button variant="ghost" asChild>
+                <Link href={`/resume/section/${outcome.tailoredResumeId}`}>
+                  Open resume
+                  <ArrowUpRight className="size-4" aria-hidden="true" />
+                </Link>
+              </Button>
+
+              {outcome.tailoredCoverLetterId ? (
                 <Button variant="ghost" asChild>
-                  <Link href="/dashboard/documents/resume">
-                    Open documents
+                  <Link href={`/cover-letter/write?id=${outcome.tailoredCoverLetterId}`}>
+                    Open cover letter
                     <ArrowUpRight className="size-4" aria-hidden="true" />
                   </Link>
                 </Button>

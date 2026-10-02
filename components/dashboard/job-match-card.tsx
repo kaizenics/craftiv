@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 
 import {
   Select,
@@ -15,6 +16,7 @@ import {
   ArrowUpDown,
   CheckCircle2,
   ChevronDown,
+  FileText,
   RefreshCw,
   Sparkles,
   Target,
@@ -40,6 +42,8 @@ export type JobMatchCardData = {
   scoredAt: Date | string;
   resumeVersionAt: Date | string;
   resumeId: string;
+  tailoredResumeId?: string | null;
+  tailoredCoverLetterId?: string | null;
   pipelineStatus: string;
   posting: {
     title: string;
@@ -294,6 +298,24 @@ export function JobMatchCard({
           <Sparkles className="size-4" aria-hidden="true" />
           {match.pipelineStatus === "tailored" ? "View tailored" : "Tailor"}
         </Button>
+
+        {match.tailoredResumeId ? (
+          <Button variant="outline" size="sm" asChild className="h-9">
+            <Link href={`/resume/section/${match.tailoredResumeId}`}>
+              <FileText className="size-4" aria-hidden="true" />
+              Tailored resume
+            </Link>
+          </Button>
+        ) : null}
+
+        {match.tailoredCoverLetterId ? (
+          <Button variant="outline" size="sm" asChild className="h-9">
+            <Link href={`/cover-letter/write?id=${match.tailoredCoverLetterId}`}>
+              <FileText className="size-4" aria-hidden="true" />
+              Cover letter
+            </Link>
+          </Button>
+        ) : null}
 
         <Button
           variant="outline"
