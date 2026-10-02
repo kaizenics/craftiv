@@ -1,5 +1,7 @@
 // Resume Types and Interfaces
 
+import type { ResumeDesign } from "@/lib/schemas/resume-data";
+
 export interface ContactInfo {
   firstName: string;
   lastName: string;
@@ -95,6 +97,8 @@ export interface FinalizeOptions {
 
 export interface ResumeData {
   templateId: string;
+  /** Saved look of the resume; the editor keeps it in its own state while editing. */
+  design?: ResumeDesign;
   contact: ContactInfo;
   experiences: Experience[];
   educations: Education[];

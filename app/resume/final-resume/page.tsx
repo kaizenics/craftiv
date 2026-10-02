@@ -33,6 +33,7 @@ import {
 } from "@/components/resume/resume-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import { ResumeData, createEmptyResumeData, normalizeSectionOrder } from "@/lib/types/resume";
+import type { ResumeDesign } from "@/lib/schemas/resume-data";
 import { resumeTemplates } from "@/lib/resume-templates";
 import { cn } from "@/lib/utils";
 import { SpellCheckPanel } from "@/components/resume/spell-check-panel";
@@ -121,8 +122,6 @@ export default function FinalResumePage() {
   const latestSaveRequestRef = useRef(0);
   const hasHydratedRef = useRef(false);
   const lastSavedResumeDataRef = useRef("");
-  const lastSavedDesignOptionsRef = useRef("");
-  const lastSavedSelectedColorRef = useRef("");
   const lastSavedResumeNameRef = useRef("");
 
   const { data: session } = authClient.useSession();
@@ -185,12 +184,16 @@ export default function FinalResumePage() {
     let initialJobTargetRole = "";
     let initialJobTargetDescription = "";
     let initialSnapshots: ResumeSnapshot[] = [];
+    let savedDesignFromDb: ResumeDesign | undefined;
 
     if (savedResume?.data) {
       const dbTemplateId = savedResume.templateId || resolvedTemplateId || "celestial";
+      // The design lives in its own editor state, not inside resumeData.
+      const { design, ...savedData } = savedResume.data as Partial<ResumeData>;
+      savedDesignFromDb = design;
       const hydratedFromDb: ResumeData = {
         ...createEmptyResumeData(dbTemplateId),
-        ...(savedResume.data as Partial<ResumeData>),
+        ...savedData,
       };
       hydratedFromDb.sectionOrder = normalizeSectionOrder(
         (savedResume.data as Partial<ResumeData>)?.sectionOrder,
@@ -224,14 +227,23 @@ export default function FinalResumePage() {
       const defaultColor =
         template.id === "boardroom" ? BOARDROOM_FIXED_COLOR : template.primaryColor;
       const isColorLocked = COLOR_LOCKED_TEMPLATE_IDS.has(template.id);
-      const preferredColor =
-        isColorLocked ? defaultColor : savedSelectedColor || defaultColor;
+      const preferredColor = isColorLocked
+        ? defaultColor
+        : savedDesignFromDb?.color || savedSelectedColor || defaultColor;
       initialSelectedColor = preferredColor;
     }
 
-    // Load saved design options if any
+    // Load saved design options: the server copy wins, then this browser's.
     const savedDesign = localStorage.getItem("designOptions");
-    if (savedDesign) {
+    if (savedDesignFromDb) {
+      initialDesignOptions = {
+        fontFamily: savedDesignFromDb.fontFamily,
+        fontSize: savedDesignFromDb.fontSize,
+        sectionSpacing: savedDesignFromDb.sectionSpacing,
+        paragraphSpacing: savedDesignFromDb.paragraphSpacing,
+        lineSpacing: savedDesignFromDb.lineSpacing,
+      };
+    } else if (savedDesign) {
       try {
         const parsedDesign = JSON.parse(savedDesign);
         initialDesignOptions = parsedDesign;
@@ -274,7 +286,11 @@ export default function FinalResumePage() {
     const timeoutId = setTimeout(() => {
       if (initialResumeData) {
         setResumeData(initialResumeData);
-        lastSavedResumeDataRef.current = JSON.stringify(initialResumeData);
+        // Same shape the autosave sends, so opening a resume doesn't re-save it.
+        lastSavedResumeDataRef.current = JSON.stringify({
+          ...initialResumeData,
+          design: { ...initialDesignOptions, color: initialSelectedColor, showPhoto },
+        });
       }
       setSelectedColor(initialSelectedColor);
       setDesignOptions(initialDesignOptions);
@@ -282,51 +298,31 @@ export default function FinalResumePage() {
       setJobTargetRole(initialJobTargetRole);
       setJobTargetDescription(initialJobTargetDescription);
       setSnapshots(initialSnapshots);
-      lastSavedDesignOptionsRef.current = JSON.stringify(initialDesignOptions);
-      lastSavedSelectedColorRef.current = initialSelectedColor;
       lastSavedResumeNameRef.current = initialResumeName.trim() || "Resume_1";
       hasHydratedRef.current = true;
       setIsLoading(false);
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [router, jobTargetStorageKey, snapshotStorageKey, savedResume]);
+  }, [router, jobTargetStorageKey, snapshotStorageKey, savedResume, showPhoto]);
 
-  // Save design options to localStorage and database
+  // Keep this browser's copy of the design; the server copy is saved with the
+  // resume data below.
   useEffect(() => {
-    if (isLoading || !currentResumeId || !hasHydratedRef.current) return;
+    if (isLoading || !hasHydratedRef.current) return;
+    localStorage.setItem("designOptions", JSON.stringify(designOptions));
+  }, [designOptions, isLoading]);
 
-    const serializedDesign = JSON.stringify(designOptions);
-    localStorage.setItem("designOptions", serializedDesign);
-
-    if (serializedDesign === lastSavedDesignOptionsRef.current) return;
-    if (!autoSaveDraftsEnabled) {
-      lastSavedDesignOptionsRef.current = serializedDesign;
-      return;
-    }
-
-    const requestId = latestSaveRequestRef.current + 1;
-    latestSaveRequestRef.current = requestId;
-    // Intentional: show the "saving" indicator immediately on change; the debounced
-    // timeout below flips it back to "saved".
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSaveState("saving");
-
-    const timeoutId = setTimeout(() => {
-      if (latestSaveRequestRef.current !== requestId) return;
-      lastSavedDesignOptionsRef.current = serializedDesign;
-      setSaveState("saved");
-    }, 350);
-
-    return () => clearTimeout(timeoutId);
-  }, [autoSaveDraftsEnabled, designOptions, isLoading, currentResumeId]);
-
-  // Save resume data changes to localStorage and database
+  // Save resume data (with its design) to localStorage and database
   useEffect(() => {
     if (!resumeData || !currentResumeId || !hasHydratedRef.current) return;
-    const serializedResume = JSON.stringify(resumeData);
-    localStorage.setItem("resumeData", serializedResume);
+    localStorage.setItem("resumeData", JSON.stringify(resumeData));
 
+    const dataToSave: ResumeData = {
+      ...resumeData,
+      design: { ...designOptions, color: selectedColor, showPhoto },
+    };
+    const serializedResume = JSON.stringify(dataToSave);
     if (serializedResume === lastSavedResumeDataRef.current) return;
     if (!autoSaveDraftsEnabled) {
       lastSavedResumeDataRef.current = serializedResume;
@@ -337,7 +333,7 @@ export default function FinalResumePage() {
       runServerAutosave(
         {
           id: currentResumeId,
-          data: resumeData,
+          data: dataToSave,
           templateId: resumeData.templateId,
           status: "draft",
         },
@@ -348,35 +344,20 @@ export default function FinalResumePage() {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [autoSaveDraftsEnabled, resumeData, currentResumeId, runServerAutosave]);
+  }, [
+    autoSaveDraftsEnabled,
+    resumeData,
+    designOptions,
+    selectedColor,
+    showPhoto,
+    currentResumeId,
+    runServerAutosave,
+  ]);
 
-  // Save selected color to localStorage and mark draft update
   useEffect(() => {
-    if (isLoading || !currentResumeId || !hasHydratedRef.current) return;
-
+    if (isLoading || !hasHydratedRef.current) return;
     localStorage.setItem("selectedColor", selectedColor);
-
-    if (selectedColor === lastSavedSelectedColorRef.current) return;
-    if (!autoSaveDraftsEnabled) {
-      lastSavedSelectedColorRef.current = selectedColor;
-      return;
-    }
-
-    const requestId = latestSaveRequestRef.current + 1;
-    latestSaveRequestRef.current = requestId;
-    // Intentional: show the "saving" indicator immediately on change; the debounced
-    // timeout below flips it back to "saved".
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSaveState("saving");
-
-    const timeoutId = setTimeout(() => {
-      if (latestSaveRequestRef.current !== requestId) return;
-      lastSavedSelectedColorRef.current = selectedColor;
-      setSaveState("saved");
-    }, 350);
-
-    return () => clearTimeout(timeoutId);
-  }, [autoSaveDraftsEnabled, selectedColor, isLoading, currentResumeId]);
+  }, [selectedColor, isLoading]);
 
   // Save resume name to localStorage when it changes
   useEffect(() => {

@@ -48,12 +48,14 @@ export const resumes = sqliteTable("resumes", {
 
 // Type for the JSON resume data stored in the database
 export interface ResumeDataJSON {
+  templateId?: string;
   contact: {
     firstName: string;
     lastName: string;
     desiredJobTitle: string;
     phone: string;
     email: string;
+    photoUrl?: string;
   };
   experiences: Array<{
     id: string;
@@ -81,6 +83,16 @@ export interface ResumeDataJSON {
     showLevel: boolean;
   }>;
   summary: string;
+  /** See resumeDesignSchema in lib/schemas/resume-data.ts. */
+  design?: {
+    fontFamily: string;
+    fontSize: number;
+    sectionSpacing: number;
+    paragraphSpacing: number;
+    lineSpacing: number;
+    color: string;
+    showPhoto: boolean;
+  };
   sectionOrder?: Array<
     | "summary"
     | "experience"

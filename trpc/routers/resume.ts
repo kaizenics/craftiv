@@ -216,6 +216,7 @@ export const resumeRouter = createTRPCRouter({
       const existingResume = await ctx.db.query.resumes.findFirst({
         columns: {
           id: true,
+          data: true,
         },
         where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
       });
@@ -241,7 +242,12 @@ export const resumeRouter = createTRPCRouter({
         });
       }
       if (input.templateId !== undefined) updateData.templateId = input.templateId;
-      if (input.data !== undefined) updateData.data = input.data;
+      if (input.data !== undefined) {
+        // Only the final editor sends the design. Saves from the section wizard
+        // don't, and must not wipe the one already stored.
+        const design = input.data.design ?? existingResume.data?.design;
+        updateData.data = design ? { ...input.data, design } : input.data;
+      }
       if (input.status !== undefined) updateData.status = input.status;
       if (input.lastEditedSection !== undefined) {
         updateData.lastEditedSection = input.lastEditedSection;

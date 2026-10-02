@@ -11,7 +11,23 @@ export const RESUME_LIMITS = {
   richText: 20_000,
   listItems: 50,
   customSections: 20,
+  /** Cropped profile photos are stored inline as JPEG data URLs. */
+  photoUrl: 1_200_000,
 } as const;
+
+export const RESUME_SECTION_KEYS = [
+  "summary",
+  "experience",
+  "education",
+  "skills",
+  "languages",
+  "certifications",
+  "awards",
+  "websites",
+  "references",
+  "hobbies",
+  "custom",
+] as const;
 
 const short = () => z.string().max(RESUME_LIMITS.short);
 const richText = () => z.string().max(RESUME_LIMITS.richText);
@@ -24,6 +40,13 @@ const contactSchema = z.object({
   desiredJobTitle: short(),
   phone: short(),
   email: z.string().max(RESUME_LIMITS.short).email().or(z.literal("")),
+  photoUrl: z
+    .string()
+    .max(RESUME_LIMITS.photoUrl)
+    .refine((value) => value === "" || /^(data:image\/|https:\/\/)/.test(value), {
+      message: "Photo must be an image data URL or an https URL.",
+    })
+    .optional(),
 });
 
 const experienceSchema = z.object({
@@ -110,7 +133,25 @@ const finalizeSchema = z.object({
   customSections: list(customSectionSchema, RESUME_LIMITS.customSections),
 });
 
+/**
+ * How the resume looks: the editor's design panel, the chosen color, and
+ * whether the photo shows. Stored with the data so a share link or a restored
+ * snapshot renders exactly what the owner saw.
+ */
+export const resumeDesignSchema = z.object({
+  fontFamily: z.string().max(RESUME_LIMITS.short),
+  fontSize: z.number().min(6).max(24),
+  sectionSpacing: z.number().min(0).max(64),
+  paragraphSpacing: z.number().min(0).max(64),
+  lineSpacing: z.number().min(0.8).max(3),
+  color: z.string().max(32),
+  showPhoto: z.boolean(),
+});
+
 export const resumeDataSchema = z.object({
+  templateId: short().optional(),
+  sectionOrder: z.array(z.enum(RESUME_SECTION_KEYS)).max(RESUME_SECTION_KEYS.length).optional(),
+  design: resumeDesignSchema.optional(),
   contact: contactSchema,
   experiences: list(experienceSchema),
   educations: list(educationSchema),
@@ -118,3 +159,5 @@ export const resumeDataSchema = z.object({
   summary: richText(),
   finalize: finalizeSchema,
 });
+
+export type ResumeDesign = z.infer<typeof resumeDesignSchema>;
