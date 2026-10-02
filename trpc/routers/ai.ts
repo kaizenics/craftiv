@@ -261,13 +261,18 @@ async function chargeAndRun<T>(
     return await run(charge.ai);
   } catch (error) {
     if (!charge.charged) throw error;
-    await refundAiAction({
-      userId: params.userId,
-      eventType: params.eventType,
-      costUnits: params.costUnits,
-      idempotencyKey: charge.idempotencyKey,
-      reason: "ai_failure",
-    });
+    try {
+      await refundAiAction({
+        userId: params.userId,
+        eventType: params.eventType,
+        costUnits: params.costUnits,
+        idempotencyKey: charge.idempotencyKey,
+        reason: "ai_failure",
+      });
+    } catch (refundError) {
+      // Surface the AI failure the user can act on, not the refund failure.
+      console.error("[ai] refund after failed AI call also failed:", refundError);
+    }
     throw error;
   }
 }
@@ -465,7 +470,11 @@ export const aiRouter = createTRPCRouter({
 
           const parsed = extractJsonArray(content);
           if (!parsed) {
-            return { issues: [] };
+            // Throwing refunds the charge; an empty list would bill for nothing.
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "AI returned an unexpected format. Please try again.",
+            });
           }
 
           const issues = (parsed as RawSpellIssue[])
@@ -523,6 +532,11 @@ export const aiRouter = createTRPCRouter({
       const analyzerReport = analyzeResumeData(data, input.jobDescription);
       const missingKeywords = analyzerReport.missingKeywords.slice(0, 12);
 
+      // Nothing is missing, so there is nothing to ask the AI and nothing to charge.
+      if (missingKeywords.length === 0) {
+        return { keywords: [] };
+      }
+
       return chargeAndRun(
         {
           userId: ctx.user.id,
@@ -531,10 +545,6 @@ export const aiRouter = createTRPCRouter({
           metadata: { mutation: "keywordBooster", resumeId: input.resumeId },
         },
         async (ai) => {
-          if (missingKeywords.length === 0) {
-            return { keywords: [] };
-          }
-
           const prompt = buildKeywordSuggestionPrompt(
             resumeText,
             input.jobDescription,
@@ -548,7 +558,11 @@ export const aiRouter = createTRPCRouter({
 
           const parsed = extractJsonArray(content);
           if (!parsed) {
-            return { keywords: [] };
+            // Throwing refunds the charge; an empty list would bill for nothing.
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "AI returned an unexpected format. Please try again.",
+            });
           }
 
           const keywords = (parsed as RawKeyword[])
