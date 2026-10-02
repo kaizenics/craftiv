@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { publicErrorMessage } from "@/lib/errors";
 import { headers } from "next/headers";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
@@ -216,13 +217,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Fires when the user closes the tab or stops the request, so upstream
+    // generation stops instead of running (and billing tokens) to the end.
+    const disconnect = new AbortController();
+    request.signal.addEventListener("abort", () => disconnect.abort(), { once: true });
+
     const stream = new ReadableStream<Uint8Array>({
+      cancel: () => disconnect.abort(),
       start: async (controller) => {
         let isClosed = false;
         const closeSafely = () => {
           if (isClosed) return;
           isClosed = true;
-          controller.close();
+          try {
+            controller.close();
+          } catch {
+            // Already cancelled by the client.
+          }
         };
         const send = (payload: unknown) => {
           if (isClosed) return;
@@ -274,6 +285,8 @@ export async function POST(request: NextRequest) {
               maxTokens: 900,
               temperature: 0.7,
             })) {
+              // Leaving the loop closes the provider stream.
+              if (disconnect.signal.aborted) return;
               send({ type: "delta", token });
             }
             send({ type: "done", blocked: false, model: ai.model });
@@ -281,11 +294,12 @@ export async function POST(request: NextRequest) {
           }
 
           const models = getChatbotModels();
-          let streamed = false;
+          let completed = false;
           let sawRateLimit = false;
           let sawUnavailableModel = false;
 
           for (const model of models) {
+            let sentTokens = false;
             try {
               const timeoutController = new AbortController();
               const timeout = setTimeout(() => timeoutController.abort(), 12000);
@@ -297,23 +311,28 @@ export async function POST(request: NextRequest) {
                   temperature: 0.7,
                   max_tokens: 900,
                   stream: true,
-                }, { signal: timeoutController.signal });
+                }, { signal: AbortSignal.any([timeoutController.signal, disconnect.signal]) });
               } finally {
                 clearTimeout(timeout);
               }
 
-              streamed = true;
               send({ type: "start", model });
 
               for await (const chunk of completion) {
                 const token = chunk.choices?.[0]?.delta?.content ?? "";
                 if (!token) continue;
+                sentTokens = true;
                 send({ type: "delta", token });
               }
 
               send({ type: "done", blocked: false, model });
+              completed = true;
               break;
             } catch (modelError) {
+              if (disconnect.signal.aborted) return;
+              // Falling back now would append a second model's answer to this
+              // model's partial one, so fail the request instead.
+              if (sentTokens) throw modelError;
               const status = getErrorStatus(modelError);
               const details = getErrorDetails(modelError);
               if (status === 429) sawRateLimit = true;
@@ -323,7 +342,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          if (!streamed) {
+          if (!completed) {
             if (sawRateLimit) {
               send({
                 type: "error",
@@ -372,7 +391,9 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Unexpected server error";
+          if (disconnect.signal.aborted) return;
+          console.error("[chatbot-stream] stream failed", error);
+          const errorMessage = publicErrorMessage(error, "Something went wrong. Please try again.");
           send({ type: "error", error: errorMessage });
           if (chargedRequest) {
             await refundCredits({
@@ -420,7 +441,8 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-    const errorMessage = error instanceof Error ? error.message : "Unexpected server error";
+    console.error("[chatbot-stream] request failed", error);
+    const errorMessage = publicErrorMessage(error, "Something went wrong. Please try again.");
     return new Response(encoder.encode(sseData({ type: "error", error: errorMessage })), {
       status: 500,
       headers: {
