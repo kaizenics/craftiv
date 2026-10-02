@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
   protectedProcedure,
 } from "../init";
-import { resumes, users, type ResumeDataJSON } from "@/db/schema";
+import { jobMatches, resumes, users, type ResumeDataJSON } from "@/db/schema";
 import type { Database } from "@/db";
 import { RESUME_LIMITS, resumeDataSchema } from "@/lib/schemas/resume-data";
 
@@ -109,7 +109,7 @@ export const resumeRouter = createTRPCRouter({
    * Includes resume data so dashboard thumbnails can render real content.
    */
   listSummary: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.resumes.findMany({
+    const rows = await ctx.db.query.resumes.findMany({
       columns: {
         id: true,
         title: true,
@@ -126,6 +126,30 @@ export const resumeRouter = createTRPCRouter({
       where: and(eq(resumes.userId, ctx.user.id), eq(resumes.origin, "user")),
       orderBy: [desc(resumes.updatedAt)],
     });
+
+    // Resumes saved from Job Hunter keep a link to the job they were tailored for.
+    const tailoredRows =
+      rows.length === 0
+        ? []
+        : await ctx.db.query.jobMatches.findMany({
+            columns: { tailoredResumeId: true },
+            where: and(
+              eq(jobMatches.userId, ctx.user.id),
+              inArray(
+                jobMatches.tailoredResumeId,
+                rows.map((row) => row.id),
+              ),
+            ),
+            with: { posting: { columns: { company: true, title: true } } },
+          });
+    const tailoredFor = new Map(
+      tailoredRows.map((row) => [
+        row.tailoredResumeId,
+        row.posting.company || row.posting.title,
+      ]),
+    );
+
+    return rows.map((row) => ({ ...row, tailoredFor: tailoredFor.get(row.id) ?? null }));
   }),
 
   /**
@@ -216,6 +240,7 @@ export const resumeRouter = createTRPCRouter({
       const existingResume = await ctx.db.query.resumes.findFirst({
         columns: {
           id: true,
+          data: true,
         },
         where: and(eq(resumes.id, input.id), eq(resumes.userId, ctx.user.id)),
       });
@@ -241,7 +266,12 @@ export const resumeRouter = createTRPCRouter({
         });
       }
       if (input.templateId !== undefined) updateData.templateId = input.templateId;
-      if (input.data !== undefined) updateData.data = input.data;
+      if (input.data !== undefined) {
+        // Only the final editor sends the design. Saves from the section wizard
+        // don't, and must not wipe the one already stored.
+        const design = input.data.design ?? existingResume.data?.design;
+        updateData.data = design ? { ...input.data, design } : input.data;
+      }
       if (input.status !== undefined) updateData.status = input.status;
       if (input.lastEditedSection !== undefined) {
         updateData.lastEditedSection = input.lastEditedSection;

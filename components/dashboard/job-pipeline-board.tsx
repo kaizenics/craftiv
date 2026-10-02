@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import type { JobMatchCardData } from "@/components/dashboard/job-match-card";
 import {
@@ -129,6 +130,29 @@ export function JobPipelineBoard({
                       <div className="mt-2 text-[11px] text-muted-foreground">
                         {match.matchedKeywords.length} matched · {match.missingKeywords.length} missing
                       </div>
+
+                      {match.tailoredResumeId || match.tailoredCoverLetterId ? (
+                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium">
+                          {match.tailoredResumeId ? (
+                            <Link
+                              href={`/resume/section/${match.tailoredResumeId}`}
+                              className="text-primary hover:underline"
+                              draggable={false}
+                            >
+                              Tailored resume
+                            </Link>
+                          ) : null}
+                          {match.tailoredCoverLetterId ? (
+                            <Link
+                              href={`/cover-letter/write?id=${match.tailoredCoverLetterId}`}
+                              className="text-primary hover:underline"
+                              draggable={false}
+                            >
+                              Cover letter
+                            </Link>
+                          ) : null}
+                        </div>
+                      ) : null}
 
                       <Select
                         value={match.applicationStatus}

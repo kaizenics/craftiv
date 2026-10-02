@@ -5,20 +5,24 @@ import { auth } from "@/lib/auth";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants/files";
 import { extractTextFromFile, getUploadKind } from "@/lib/file-parsing";
 import { hasImportableContent, parseResumeText } from "@/lib/resume-import/parse-resume-text";
+import {
+  aiParseResumeText,
+  isThinImport,
+  looksLikeLinkedInExport,
+} from "@/lib/resume-import/ai-parse";
 import { enforceApiRouteGuards } from "@/lib/security/guards";
 import { assertContentLength } from "@/lib/security/request";
 
 /**
- * Turns an uploaded PDF or Word resume into resume data.
+ * Turns an uploaded PDF or Word resume into resume data. Always free.
  *
- * Deterministic: the file's text layer is read on the server and structured by
- * lib/resume-import, with no model call and no credit charge. It used to send the
- * text to a model and bill 0.5 credits, so every upload -- including resumes
- * attached in chat and on the cover-letter page -- cost tokens, for a job rules do
- * well on text-based resumes.
+ * The file's text layer is structured by the rule-based parser in
+ * lib/resume-import first, which handles clean resumes well at no cost. Only
+ * when that isn't enough -- a LinkedIn "Save to PDF" export, or a file the rules
+ * found little in -- does it fall back to Craftiv's AI (ai-parse.ts), still with
+ * no credit charge. If the AI fails, the rules' result is used.
  *
- * The rate-limit category is left as it was: loosening abuse limits is a separate
- * decision from dropping the charge.
+ * The ai_heavy rate limit bounds how often an account can reach the AI path.
  */
 
 /** Far beyond any real resume; bounds the parser's work on hostile input. */
@@ -47,6 +51,7 @@ export async function POST(request: NextRequest) {
     assertContentLength(request, 11_000_000);
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const requestedSource = formData.get("source") === "linkedin" ? "linkedin" : "file";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -85,9 +90,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = parseResumeText(extractedText.slice(0, MAX_IMPORT_CHARS), {
-      source: isPDF ? "pdf" : "docx",
-    });
+    const text = extractedText.slice(0, MAX_IMPORT_CHARS);
+    let data = parseResumeText(text, { source: isPDF ? "pdf" : "docx" });
+    let parsedBy: "rules" | "ai" = "rules";
+
+    const isLinkedIn = requestedSource === "linkedin" || looksLikeLinkedInExport(text);
+    if (isLinkedIn || isThinImport(data)) {
+      const aiData = await aiParseResumeText(text);
+      if (aiData && hasImportableContent(aiData)) {
+        data = aiData;
+        parsedBy = "ai";
+      }
+    }
 
     if (!hasImportableContent(data)) {
       return NextResponse.json(
@@ -99,11 +113,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data, parsedBy });
   } catch (error) {
     console.error("[Resume Import] Error:", error);
     return NextResponse.json(
-      { error: (error instanceof Error ? error.message : "") || "An unexpected error occurred" },
+      { error: "Something went wrong while reading your resume. Please try again." },
       { status: 500 },
     );
   }

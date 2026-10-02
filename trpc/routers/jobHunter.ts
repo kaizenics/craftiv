@@ -481,6 +481,8 @@ export const jobHunterRouter = createTRPCRouter({
         strengths: row.report.strengths.slice(0, 4),
         topActions: row.report.topActions.slice(0, 3),
         resumeId: row.resumeId,
+        tailoredResumeId: row.tailoredResumeId,
+        tailoredCoverLetterId: row.tailoredCoverLetterId,
         // Lets the UI label a score computed against an older resume rather
         // than silently presenting it as current.
         scoredAt: row.scoredAt,
@@ -490,6 +492,22 @@ export const jobHunterRouter = createTRPCRouter({
         createdAt: row.createdAt,
         posting: row.posting,
       }));
+    }),
+
+  /** The job a resume was tailored for, if it came out of Job Hunter. */
+  tailoredFor: protectedProcedure
+    .input(z.object({ resumeId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const match = await ctx.db.query.jobMatches.findFirst({
+        columns: { id: true },
+        where: and(
+          eq(jobMatches.userId, ctx.user.id),
+          eq(jobMatches.tailoredResumeId, input.resumeId),
+        ),
+        with: { posting: { columns: { title: true, company: true } } },
+      });
+      if (!match) return null;
+      return { matchId: match.id, title: match.posting.title, company: match.posting.company };
     }),
 
   getMatch: protectedProcedure

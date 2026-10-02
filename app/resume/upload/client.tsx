@@ -18,6 +18,7 @@ import { authClient } from "@/lib/auth-client";
 import { NavbarComponent } from "@/components/navbar";
 
 type UploadState = "idle" | "dragging" | "scanning" | "success" | "error";
+type ImportSource = "file" | "linkedin";
 
 const ACCEPTED_EXTENSIONS = [".pdf", ".docx"];
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -30,9 +31,14 @@ export default function ResumeUploadPageClient() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [source, setSource] = useState<ImportSource>("file");
+  const [parsedBy, setParsedBy] = useState<"rules" | "ai">("rules");
 
   const validateFile = (file: File): string | null => {
     const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    if (source === "linkedin" && ext !== ".pdf") {
+      return "LinkedIn exports your profile as a PDF. Upload that PDF file.";
+    }
     if (!ACCEPTED_EXTENSIONS.includes(ext)) {
       return "Only PDF and DOCX files are accepted.";
     }
@@ -52,7 +58,9 @@ export default function ResumeUploadPageClient() {
     setSelectedFile(file);
     setErrorMessage("");
     setUploadState("idle");
-  }, []);
+    // validateFile reads the current source.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,6 +111,7 @@ export default function ResumeUploadPageClient() {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
+      formData.append("source", source);
 
       const response = await fetch("/api/resume/parse", {
         method: "POST",
@@ -119,8 +128,9 @@ export default function ResumeUploadPageClient() {
         throw new Error(errorData.message || errorData.error || "Failed to parse resume");
       }
 
-      const { data } = await response.json();
+      const { data, parsedBy: method } = await response.json();
 
+      setParsedBy(method === "ai" ? "ai" : "rules");
       setUploadState("success");
 
       localStorage.setItem("uploadedResumeData", JSON.stringify(data));
@@ -152,6 +162,12 @@ export default function ResumeUploadPageClient() {
   };
 
   const isProcessing = uploadState === "scanning";
+
+  const switchSource = (next: ImportSource) => {
+    if (next === source || isProcessing) return;
+    setSource(next);
+    handleReset();
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -194,6 +210,48 @@ export default function ResumeUploadPageClient() {
           </motion.p>
         </div>
 
+        {/* Source */}
+        <div
+          role="tablist"
+          aria-label="Import from"
+          className="mx-auto mb-4 flex w-fit rounded-xl border border-zinc-200 bg-zinc-50 p-1 text-sm"
+        >
+          {(
+            [
+              { id: "file", label: "Resume file" },
+              { id: "linkedin", label: "LinkedIn profile" },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="tab"
+              aria-selected={source === option.id}
+              onClick={() => switchSource(option.id)}
+              disabled={isProcessing}
+              className={`rounded-lg px-4 py-1.5 font-medium transition-colors ${
+                source === option.id
+                  ? "bg-white text-zinc-900 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-900"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {source === "linkedin" && (
+          <ol className="mb-4 list-decimal space-y-1 rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-9 pr-4 text-sm text-zinc-600">
+            <li>Open your profile on LinkedIn.</li>
+            <li>
+              Click <span className="font-medium text-zinc-900">Resources</span> (or{" "}
+              <span className="font-medium text-zinc-900">More</span>), then{" "}
+              <span className="font-medium text-zinc-900">Save to PDF</span>.
+            </li>
+            <li>Upload the downloaded PDF here.</li>
+          </ol>
+        )}
+
         {/* Drop Zone */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -220,7 +278,7 @@ export default function ResumeUploadPageClient() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.docx"
+              accept={source === "linkedin" ? ".pdf" : ".pdf,.docx"}
               onChange={handleFileSelect}
               className="hidden"
               disabled={isProcessing}
@@ -245,18 +303,22 @@ export default function ResumeUploadPageClient() {
                   <div>
                     <p className="text-lg font-semibold text-zinc-900">
                       {uploadState === "dragging"
-                        ? "Drop your resume here"
-                        : "Drag & drop your resume"}
+                        ? "Drop your file here"
+                        : source === "linkedin"
+                          ? "Drag & drop your LinkedIn PDF"
+                          : "Drag & drop your resume"}
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
                       or click to browse files
                     </p>
                   </div>
                   <p className="text-xs text-zinc-400">
-                    Supports PDF and DOCX up to 10MB
+                    {source === "linkedin"
+                      ? "The PDF from LinkedIn's Save to PDF, up to 10MB"
+                      : "Supports PDF and DOCX up to 10MB"}
                   </p>
                   <p className="text-xs text-zinc-400">
-                    Read straight from your file &mdash; free, no credits used.
+                    Free &mdash; no credits used, even when our AI helps read it.
                   </p>
                 </motion.div>
               )}
@@ -305,10 +367,14 @@ export default function ResumeUploadPageClient() {
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-zinc-900">
-                      Reading your resume...
+                      {source === "linkedin"
+                        ? "Reading your LinkedIn profile with AI..."
+                        : "Reading your resume..."}
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
-                      This may take a few seconds. Please keep this tab open.
+                      {source === "linkedin"
+                        ? "This can take up to 20 seconds. Please keep this tab open."
+                        : "Usually a few seconds, up to 20 if the layout needs our AI. Please keep this tab open."}
                     </p>
                   </div>
                   <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-600">
@@ -333,6 +399,9 @@ export default function ResumeUploadPageClient() {
                       Resume imported!
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
+                      {parsedBy === "ai"
+                        ? "Our AI organised it for you. "
+                        : ""}
                       Redirecting to template selection. Check each section
                       afterwards &mdash; unusual layouts can put content in the wrong place.
                     </p>

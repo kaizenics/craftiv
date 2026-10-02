@@ -25,9 +25,11 @@ interface ResumeCardProps {
   updatedAt: string;
   template: string;
   data?: ResumeDataJSON | null;
+  /** Company (or job title) this resume was tailored for in Job Hunter. */
+  tailoredFor?: string | null;
 }
 
-export function ResumeCard({ id, title, updatedAt, template, data }: ResumeCardProps) {
+export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor }: ResumeCardProps) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -102,6 +104,11 @@ export function ResumeCard({ id, title, updatedAt, template, data }: ResumeCardP
           <p className="text-xs text-muted-foreground">
             Template: {template}
           </p>
+          {tailoredFor ? (
+            <span className="inline-block max-w-full truncate rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+              Tailored for {tailoredFor}
+            </span>
+          ) : null}
         </div>
 
         {/* Actions */}

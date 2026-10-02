@@ -212,6 +212,7 @@ export default function DocumentsPage() {
                       updatedAt={new Date(resume.updatedAt).toLocaleDateString()}
                       template={resume.templateId}
                       data={resume.data}
+                      tailoredFor={resume.tailoredFor}
                     />
                   ) : (
                   <div
@@ -227,6 +228,7 @@ export default function DocumentsPage() {
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {resume.templateId} • Updated {new Date(resume.updatedAt).toLocaleDateString()}
+                        {resume.tailoredFor ? ` • Tailored for ${resume.tailoredFor}` : ""}
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>

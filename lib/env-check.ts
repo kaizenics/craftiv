@@ -1,17 +1,14 @@
 /**
  * Startup check for server environment variables, run once from
- * instrumentation.ts. Missing required values fail the boot in production
- * instead of surfacing later as a confusing runtime error on some request.
+ * instrumentation.ts. Failing the boot takes the whole site down, so only the
+ * variables nothing can run without are required; everything else is logged.
  */
-const REQUIRED = [
-  "TURSO_DATABASE_URL",
-  "BETTER_AUTH_SECRET",
-  "AI_KEY_ENCRYPTION_KEY",
-  "OPENROUTER_API_KEY",
-] as const;
+const REQUIRED = ["TURSO_DATABASE_URL", "BETTER_AUTH_SECRET"] as const;
 
 /** Features that switch off or break without these, but the app still runs. */
 const RECOMMENDED = [
+  "AI_KEY_ENCRYPTION_KEY",
+  "OPENROUTER_API_KEY",
   "BETTER_AUTH_URL",
   "POLAR_WEBHOOK_SECRET",
   "POLAR_PRODUCT_ID_ACTIVE",

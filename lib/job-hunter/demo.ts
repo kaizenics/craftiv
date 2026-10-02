@@ -160,6 +160,8 @@ export function buildDemoMatches(now: Date = new Date()): DemoMatch[] {
       strengths: seed.strengths,
       topActions: seed.topActions,
       resumeId: DEMO_RESUME_ID,
+      tailoredResumeId: null,
+      tailoredCoverLetterId: null,
       scoredAt: created,
       resumeVersionAt: created,
       notes: "",

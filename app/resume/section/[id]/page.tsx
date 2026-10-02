@@ -14,6 +14,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { StepIndicator } from "@/components/resume/step-indicator";
+import { TailoredForBanner } from "@/components/resume/tailored-for-banner";
 import { ResumePreview } from "@/components/resume/resume-preview";
 import { PinchZoomContainer } from "@/components/resume/pinch-zoom-container";
 import {
@@ -390,6 +391,8 @@ export default function ResumeSectionDynamicPage() {
           </Button>
         </div>
       </header>
+
+      <TailoredForBanner resumeId={resumeId} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main Content - Form Section */}
