@@ -17,9 +17,8 @@ export function SharedCoverLetterView({ token, data }: { token: string; data: Co
 
   return (
     <SharedPageShell>
-      <div className="mx-auto w-full max-w-[816px] rounded-sm bg-white shadow-xl">
-        <CoverLetterPreview data={data} />
-      </div>
+      {/* The preview draws its own page and shadow; wrapping it adds side margins. */}
+      <CoverLetterPreview data={data} />
     </SharedPageShell>
   );
 }
