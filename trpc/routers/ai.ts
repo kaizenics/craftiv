@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resumeDataSchema } from "@/lib/schemas/resume-data";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -423,10 +424,22 @@ export const aiRouter = createTRPCRouter({
             });
           }
 
+          // Keep only the sections the resume actually has, then check the
+          // merged result has the right shape before it reaches the editor.
+          // A bad shape throws, which refunds the charge.
+          const improvedSections = Object.fromEntries(
+            Object.entries(improved).filter(([key]) => key in resumeDataSchema.shape),
+          );
           const nextData = {
             ...cloneResumeData(data),
-            ...improved,
+            ...improvedSections,
           } as ResumeDataJSON;
+          if (!resumeDataSchema.safeParse(nextData).success) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "AI returned invalid format. Please try again.",
+            });
+          }
           const beforeReport = analyzeResumeData(data, input.jobDescription);
           const afterReport = analyzeResumeData(nextData, input.jobDescription);
           const atsImpact = buildAtsImpact(beforeReport, afterReport);
@@ -434,7 +447,7 @@ export const aiRouter = createTRPCRouter({
             atsImpact.changedSections = getChangedContentSections(data, nextData);
           }
 
-          return { improved, atsImpact };
+          return { improved: improvedSections, atsImpact };
         },
       );
     }),

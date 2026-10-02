@@ -225,13 +225,9 @@ export const userRouter = createTRPCRouter({
         return { checkoutUrl };
       } catch (error) {
         console.error("Failed to create Polar checkout:", error);
-        const details =
-          error instanceof Error
-            ? error.message
-            : "Unknown checkout error";
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: `Unable to start checkout right now. ${details}`,
+          message: "Unable to start checkout right now. Please try again in a moment.",
         });
       }
     }),
@@ -332,28 +328,30 @@ export const userRouter = createTRPCRouter({
   /**
    * Delete user account and all associated data
    */
-  deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
-    await ctx.db.delete(coverLetters).where(eq(coverLetters.userId, ctx.user.id));
+  deleteAccount: protectedProcedure
+    .input(z.object({ confirmEmail: z.string().max(320) }))
+    .mutation(async ({ ctx, input }) => {
+      // Typing the address is the confirmation step: it works for password,
+      // OTP and Google accounts alike, and a stray click or forged request
+      // can't supply it.
+      if (input.confirmEmail.trim().toLowerCase() !== ctx.user.email.trim().toLowerCase()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The email you typed doesn't match your account.",
+        });
+      }
 
-    // Delete user's resumes first (cascade should handle this, but being explicit)
-    await ctx.db.delete(resumes).where(
-      eq(resumes.userId, ctx.user.id)
-    );
+      // One transaction, so a failure part-way never leaves a half-deleted account.
+      await ctx.db.transaction(async (tx) => {
+        await tx.delete(coverLetters).where(eq(coverLetters.userId, ctx.user.id));
+        // Cascade should handle the rest, but being explicit
+        await tx.delete(resumes).where(eq(resumes.userId, ctx.user.id));
+        await tx.delete(accounts).where(eq(accounts.userId, ctx.user.id));
+        await tx.delete(userAiProviders).where(eq(userAiProviders.userId, ctx.user.id));
+        await tx.delete(sessions).where(eq(sessions.userId, ctx.user.id));
+        await tx.delete(users).where(eq(users.id, ctx.user.id));
+      });
 
-    // Delete user's accounts (OAuth connections)
-    await ctx.db.delete(accounts).where(eq(accounts.userId, ctx.user.id));
-
-    // Delete the user's own AI provider key
-    await ctx.db.delete(userAiProviders).where(eq(userAiProviders.userId, ctx.user.id));
-
-    // Delete user's sessions
-    await ctx.db.delete(sessions).where(
-      eq(sessions.userId, ctx.user.id)
-    );
-
-    // Finally, delete the user
-    await ctx.db.delete(users).where(eq(users.id, ctx.user.id));
-
-    return { success: true };
-  }),
+      return { success: true };
+    }),
 });

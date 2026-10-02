@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { publicErrorMessage } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
@@ -108,10 +109,10 @@ export async function POST(request: NextRequest) {
     console.error("[resume-layout-chat] unexpected error", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unexpected error while generating layout recommendation.",
+        error: publicErrorMessage(
+          error,
+          "Unexpected error while generating layout recommendation.",
+        ),
       },
       { status: 500 },
     );

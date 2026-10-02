@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -23,10 +24,15 @@ import { trpc } from "@/trpc/client";
 export default function AccountSettings() {
   const router = useRouter();
   const { data: providers } = trpc.user.getProviders.useQuery();
+  const { data: session } = authClient.useSession();
+  const accountEmail = session?.user?.email ?? "";
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const emailConfirmed =
+    !!accountEmail && confirmEmail.trim().toLowerCase() === accountEmail.toLowerCase();
 
   // Google accounts have no Craftiv password to change.
   const isOAuthUser = !!providers?.some((p) => p.providerId === "google");
@@ -35,7 +41,7 @@ export default function AccountSettings() {
     setIsDeleting(true);
 
     try {
-      await deleteAccountMutation.mutateAsync();
+      await deleteAccountMutation.mutateAsync({ confirmEmail });
 
       // Account is already deleted at this point; sign-out may fail if session no longer resolves.
       try {
@@ -107,7 +113,13 @@ export default function AccountSettings() {
             <p className="text-sm text-muted-foreground">
               Permanently delete your account and everything in it.
             </p>
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialog
+              open={deleteDialogOpen}
+              onOpenChange={(open) => {
+                setDeleteDialogOpen(open);
+                if (!open) setConfirmEmail("");
+              }}
+            >
               <AlertDialogTrigger asChild>
                 <Button type="button" variant="destructive">
                   Delete account
@@ -132,6 +144,19 @@ export default function AccountSettings() {
                       <li>Your login credentials</li>
                     </ul>
                   </div>
+                  <div className="space-y-2 pt-3">
+                    <label htmlFor="confirm-delete-email" className="text-sm font-medium text-foreground">
+                      Type <span className="font-semibold">{accountEmail}</span> to confirm
+                    </label>
+                    <Input
+                      id="confirm-delete-email"
+                      type="email"
+                      autoComplete="off"
+                      value={confirmEmail}
+                      onChange={(e) => setConfirmEmail(e.target.value)}
+                      disabled={isDeleting}
+                    />
+                  </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
@@ -140,7 +165,7 @@ export default function AccountSettings() {
                       e.preventDefault();
                       onDeleteAccount();
                     }}
-                    disabled={isDeleting}
+                    disabled={isDeleting || !emailConfirmed}
                     className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
                   >
                     {isDeleting ? "Deleting..." : "Yes, delete my account"}

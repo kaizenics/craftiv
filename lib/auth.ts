@@ -57,6 +57,9 @@ const trustedOrigins = Array.from(
   )
 );
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
@@ -133,12 +136,12 @@ export const auth = betterAuth({
       },
     },
   },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    },
-  },
+  // Only register Google when it is configured; empty credentials would let the
+  // sign-in start and then fail at Google with a confusing error.
+  socialProviders:
+    googleClientId && googleClientSecret
+      ? { google: { clientId: googleClientId, clientSecret: googleClientSecret } }
+      : {},
   plugins: [
     nextCookies(),
     emailOTP({

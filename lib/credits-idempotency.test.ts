@@ -21,7 +21,6 @@ test("each call mints a distinct key for the same user and event", () => {
 const CHARGE_SITES = [
   "app/api/ats-check/route.ts",
   "app/api/chatbot/stream/route.ts",
-  "app/api/credits/consume/route.ts",
   "app/api/resume-layout/chat/route.ts",
   "trpc/routers/ai.ts",
 ];

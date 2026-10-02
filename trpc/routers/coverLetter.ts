@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
@@ -12,33 +12,33 @@ import {
 } from "@/lib/types/cover-letter";
 
 const contactSchema = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
-  email: z.string(),
-  phone: z.string(),
-  address: z.string(),
-  city: z.string(),
+  firstName: z.string().max(200),
+  lastName: z.string().max(200),
+  email: z.string().max(200),
+  phone: z.string().max(200),
+  address: z.string().max(200),
+  city: z.string().max(200),
 });
 
 const employerSchema = z.object({
-  hiringManagerName: z.string(),
-  companyName: z.string(),
-  companyAddress: z.string(),
-  jobTitle: z.string(),
+  hiringManagerName: z.string().max(200),
+  companyName: z.string().max(200),
+  companyAddress: z.string().max(200),
+  jobTitle: z.string().max(200),
 });
 
 const coverLetterDataSchema = z.object({
   contact: contactSchema,
   employer: employerSchema,
-  content: z.string(),
-  date: z.string(),
+  content: z.string().max(20_000),
+  date: z.string().max(200),
   templateId: z.enum(coverLetterTemplateIds).optional(),
 });
 
 const updateCoverLetterSchema = z.object({
   id: z.string(),
   data: coverLetterDataSchema.optional(),
-  title: z.string().min(1).optional(),
+  title: z.string().min(1).max(200).optional(),
 });
 
 async function assertCanCreateCoverLetter(db: Database, userId: string) {
@@ -117,7 +117,7 @@ export const coverLetterRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const user = await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
+      await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
       const id = crypto.randomUUID();
       const data = normalizeCoverLetterData(input.data as Partial<CoverLetterData>);
 
@@ -140,7 +140,7 @@ export const coverLetterRouter = createTRPCRouter({
       await ctx.db
         .update(users)
         .set({
-          coverLetterCreatedCount: (user.coverLetterCreatedCount ?? 0) + 1,
+          coverLetterCreatedCount: sql`coalesce(${users.coverLetterCreatedCount}, 0) + 1`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.user.id));
@@ -206,7 +206,7 @@ export const coverLetterRouter = createTRPCRouter({
   duplicate: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const user = await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
+      await assertCanCreateCoverLetter(ctx.db, ctx.user.id);
       const existing = await ctx.db.query.coverLetters.findFirst({
         where: and(eq(coverLetters.id, input.id), eq(coverLetters.userId, ctx.user.id)),
       });
@@ -229,7 +229,7 @@ export const coverLetterRouter = createTRPCRouter({
       await ctx.db
         .update(users)
         .set({
-          coverLetterCreatedCount: (user.coverLetterCreatedCount ?? 0) + 1,
+          coverLetterCreatedCount: sql`coalesce(${users.coverLetterCreatedCount}, 0) + 1`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.user.id));
