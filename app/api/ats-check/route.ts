@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage, UserFacingError } from "@/lib/errors";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 
@@ -286,7 +287,7 @@ export async function POST(request: NextRequest) {
 
     const parsed = extractJsonObject(content);
     if (!parsed) {
-      throw new Error("AI returned an invalid response. Please try again.");
+      throw new UserFacingError("AI returned an invalid response. Please try again.");
     }
 
     const report = {
@@ -324,7 +325,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[ATS Check] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "An unexpected error occurred" },
+      { error: publicErrorMessage(error, "Something went wrong while checking your resume. Please try again.") },
       { status: 500 },
     );
   }

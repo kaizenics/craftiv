@@ -2,6 +2,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { isUserFacingError } from "@/lib/errors";
+
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -33,8 +35,14 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
+    // Unexpected failures (database, SDK, env) keep their real message in the
+    // server log only; the client gets a generic one.
+    const message = isUserFacingError(error)
+      ? shape.message
+      : "Something went wrong. Please try again.";
     return {
       ...shape,
+      message,
       data: {
         ...shape.data,
         zodError:

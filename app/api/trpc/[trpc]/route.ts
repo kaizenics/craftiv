@@ -63,12 +63,11 @@ const handler = async (req: Request) => {
     req: effectiveRequest,
     router: appRouter,
     createContext: createTRPCContext,
-    onError:
-      process.env.NODE_ENV === "development"
-        ? ({ path, error }) => {
-            console.error(`tRPC failed on ${path ?? "<no-path>"}: ${error.message}`);
-          }
-        : undefined,
+    onError: ({ path, error }) => {
+      // Expected client errors (bad input, not found, auth) are not worth a log line.
+      if (error.code !== "INTERNAL_SERVER_ERROR") return;
+      console.error(`tRPC failed on ${path ?? "<no-path>"} [${requestId}]:`, error.cause ?? error);
+    },
   });
 };
 

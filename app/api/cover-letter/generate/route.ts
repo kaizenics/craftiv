@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage, UserFacingError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
@@ -41,7 +42,7 @@ async function resolveCoverLetterId(params: {
       where: and(eq(coverLetters.id, requestedId), eq(coverLetters.userId, params.userId)),
     });
     if (!existing) {
-      throw new Error("Cover letter not found.");
+      throw new UserFacingError("Cover letter not found.");
     }
     return requestedId;
   }
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
 
     if (!content) {
       console.error("[CoverLetter Generate] Invalid JSON from AI:", aiContent.slice(0, 500));
-      throw new Error("AI returned an unexpected format. Please try again.");
+      throw new UserFacingError("AI returned an unexpected format. Please try again.");
     }
 
     return NextResponse.json({
@@ -228,7 +229,7 @@ export async function POST(request: NextRequest) {
       });
     }
     console.error("[CoverLetter Generate] Error:", error);
-    const message = error instanceof Error ? error.message : "An unexpected error occurred";
+    const message = publicErrorMessage(error, "Something went wrong while writing your cover letter. Please try again.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
