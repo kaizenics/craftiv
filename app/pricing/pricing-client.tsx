@@ -11,14 +11,32 @@ import { trpc } from "@/trpc/client";
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
   KeyRound,
   ShieldCheck,
   Sparkles,
 } from "@/components/ui/icons";
-import { AI_PROVIDERS, AI_PROVIDER_IDS } from "@/lib/ai-providers";
-
 const OWN_AI_SETTINGS_PATH = "/dashboard/settings/integrations";
-const OWN_AI_PROVIDER_NAMES = AI_PROVIDER_IDS.map((id) => AI_PROVIDERS[id].label);
+
+const FAQ_ITEMS = [
+  {
+    question: "Can I cancel anytime?",
+    answer: "There is nothing to cancel. Credits are one-time purchases and never expire.",
+  },
+  {
+    question: "Can I use my own AI API key?",
+    answer:
+      "Yes. Buy any pack once, then connect a key from your AI provider in Settings. AI features then run on your key and cost 0 credits, and you can switch back to credits anytime.",
+  },
+  {
+    question: "What payment provider do you use?",
+    answer: "We use Polar for secure checkout and payment processing.",
+  },
+  {
+    question: "Are taxes included?",
+    answer: "Taxes and invoicing are handled based on your billing location.",
+  },
+];
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
@@ -52,6 +70,7 @@ export function PricingClient() {
   const { isLoading: isAuthLoading } = useAuth();
   const { data: session } = authClient.useSession();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const createCheckout = trpc.user.createCheckout.useMutation();
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
@@ -153,7 +172,7 @@ export function PricingClient() {
       <NavbarComponent />
       <main className="min-h-screen bg-white px-4 pt-32 pb-12 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
-        <div className="border-b border-zinc-200 pb-8 text-center">
+        <div className="pb-8 text-center">
           <h1 className="font-display text-4xl font-bold tracking-tight text-zinc-900">
             Our Pricing
           </h1>
@@ -329,14 +348,6 @@ export function PricingClient() {
                   Already have an API key? Connect it and use every Craftiv AI feature without
                   spending credits. You pay your AI provider directly for what you use.
                 </p>
-                <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-zinc-700">
-                  {OWN_AI_PROVIDER_NAMES.map((name) => (
-                    <li key={name} className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                      {name}
-                    </li>
-                  ))}
-                </ul>
               </div>
             </div>
             <Link
@@ -353,35 +364,45 @@ export function PricingClient() {
           </div>
         </section>
 
-        <section className="mt-10 rounded-2xl border border-zinc-200 bg-zinc-50/60 p-6">
-          <h2 className="text-lg font-semibold text-zinc-900">FAQ</h2>
-          <div className="mt-4 space-y-4 text-sm text-zinc-700">
-            <div>
-              <p className="font-semibold text-zinc-900">Can I cancel anytime?</p>
-              <p className="mt-1 text-zinc-600">
-                There is nothing to cancel. Credits are one-time purchases and never expire.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-zinc-900">Can I use my own AI API key?</p>
-              <p className="mt-1 text-zinc-600">
-                Yes. Buy any pack once, then connect a key from OpenAI, Claude, Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI and more
-                in Settings. AI features then run on your key and cost 0 credits, and you can
-                switch back to credits anytime.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-zinc-900">What payment provider do you use?</p>
-              <p className="mt-1 text-zinc-600">
-                We use Polar for secure checkout and payment processing.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-zinc-900">Are taxes included?</p>
-              <p className="mt-1 text-zinc-600">
-                Taxes and invoicing are handled based on your billing location.
-              </p>
-            </div>
+        <section aria-labelledby="faq-heading" className="mx-auto mt-16 max-w-3xl">
+          <h2
+            id="faq-heading"
+            className="text-center text-2xl font-semibold tracking-tight text-zinc-900"
+          >
+            Frequently asked questions
+          </h2>
+          <div className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white">
+            {FAQ_ITEMS.map((item, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div key={item.question} className="px-5">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-answer-${index}`}
+                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                    className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-semibold text-zinc-900 transition-colors hover:text-primary"
+                  >
+                    {item.question}
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-300 ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  <div
+                    id={`faq-answer-${index}`}
+                    className={`grid transition-all duration-300 ease-out ${
+                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <p className="pb-4 text-sm leading-relaxed text-zinc-600">{item.answer}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
         </div>

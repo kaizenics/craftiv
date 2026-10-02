@@ -50,6 +50,7 @@ function ResumeTemplateCard({ template }: { template: typeof templates[0] }) {
           <TemplateLivePreview
             templateId={template.id}
             color={template.primaryColor}
+            showPhoto
           />
         </div>
         
