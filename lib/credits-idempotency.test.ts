@@ -48,16 +48,21 @@ test("no charge key is assembled from request input", () => {
 /**
  * Resume import was a charge site until it moved to the deterministic parser in
  * lib/resume-import. It is free by design -- it runs on every upload, including
- * chat attachments and cover-letter uploads -- so a model call or a charge
- * creeping back into it is the regression to catch.
+ * chat attachments and cover-letter uploads. It may now fall back to Craftiv's AI
+ * for LinkedIn exports and messy files (lib/resume-import/ai-parse.ts), but that
+ * path must stay free too: a charge creeping back into either file is the
+ * regression to catch.
  */
-test("resume import neither charges credits nor calls a model", () => {
-  const source = readFileSync("app/api/resume/parse/route.ts", "utf8");
-
-  for (const forbidden of ["consumeCredits", "callWithFallback", "@/lib/ai", "@/lib/credits"]) {
-    assert.ok(!source.includes(forbidden), `resume import must stay free, but references ${forbidden}`);
+test("resume import never charges credits", () => {
+  for (const path of ["app/api/resume/parse/route.ts", "lib/resume-import/ai-parse.ts"]) {
+    const source = readFileSync(path, "utf8");
+    for (const forbidden of ["consumeCredits", "beginAiAction", "@/lib/credits", "@/lib/own-ai-access"]) {
+      assert.ok(!source.includes(forbidden), `${path}: resume import must stay free, but references ${forbidden}`);
+    }
   }
-  assert.ok(source.includes("parseResumeText("), "resume import should use the deterministic parser");
+
+  const route = readFileSync("app/api/resume/parse/route.ts", "utf8");
+  assert.ok(route.includes("parseResumeText("), "the free rule-based parser must still run first");
 });
 
 test("the cover-letter day session is the only exempt charge key", () => {
