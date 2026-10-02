@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { siteConfig } from "@/lib/seo";
+import { publicErrorMessage } from "@/lib/errors";
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
@@ -18,6 +20,20 @@ interface PdfRequestBody {
   requestId?: string;
 }
 
+
+/**
+ * The one app origin the PDF renderer may fetch assets from. It comes from
+ * config, not the request: request.url is built from the Host header, which a
+ * caller can spoof to point the renderer at an internal host.
+ */
+function pdfAssetOrigin(request: Request): string {
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.BETTER_AUTH_URL?.trim();
+  if (configured) return configured;
+  // Local development has no configured URL; localhost is all there is to reach.
+  if (process.env.NODE_ENV === "development") return new URL(request.url).origin;
+  return siteConfig.url;
+}
 export interface PdfRouteConfig {
   /** Route path, used for guards and logging. */
   route: string;
@@ -75,7 +91,7 @@ export async function handlePdfRoute(
       viewport: { width: 794, height: 1123 },
     });
 
-    await hardenPdfPage(page, new URL(request.url).origin);
+    await hardenPdfPage(page, pdfAssetOrigin(request));
     await page.setContent(sanitizedHtml, { waitUntil: "networkidle", timeout: 12_000 });
     await page.evaluate(async () => {
       if ("fonts" in document) {
@@ -102,8 +118,11 @@ export async function handlePdfRoute(
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: `Failed to generate PDF. ${message}` }, { status: 500 });
+    console.error("[pdf] generation failed", error);
+    return NextResponse.json(
+      { error: publicErrorMessage(error, "Failed to generate PDF. Please try again.") },
+      { status: 500 },
+    );
   } finally {
     if (browser) {
       await browser.close();
