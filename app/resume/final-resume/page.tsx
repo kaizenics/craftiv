@@ -27,7 +27,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { DownloadDialog } from "@/components/resume/download-dialog";
-import { ShareResumeDialog } from "@/components/resume/share-resume-dialog";
+import { ShareLinkDialog } from "@/components/share/share-link-dialog";
 import { TailoredForBanner } from "@/components/resume/tailored-for-banner";
 import {
   ResumePreview,
@@ -1009,8 +1009,9 @@ export default function FinalResumePage() {
       </AlertDialog>
 
       {currentResumeId && session?.user && (
-        <ShareResumeDialog
-          resumeId={currentResumeId}
+        <ShareLinkDialog
+          kind="resume"
+          id={currentResumeId}
           open={showShareDialog}
           onOpenChange={setShowShareDialog}
           onBeforeEnable={flushAutosave}

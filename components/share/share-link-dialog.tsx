@@ -16,38 +16,47 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/trpc/client";
 
-function shareUrl(token: string) {
-  return `${window.location.origin}/r/${token}`;
-}
+export type ShareableKind = "resume" | "coverLetter";
 
-export function ShareResumeDialog({
-  resumeId,
+const KIND_COPY: Record<ShareableKind, { path: string; noun: string }> = {
+  resume: { path: "r", noun: "resume" },
+  coverLetter: { path: "c", noun: "cover letter" },
+};
+
+/** Share dialog for a resume (/r/<token>) or cover letter (/c/<token>). */
+export function ShareLinkDialog({
+  kind,
+  id,
   open,
   onOpenChange,
   onBeforeEnable,
 }: {
-  resumeId: string;
+  kind: ShareableKind;
+  id: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Saves pending edits so the shared page shows the latest version. */
   onBeforeEnable?: () => Promise<void>;
 }) {
   const utils = trpc.useUtils();
-  const share = trpc.resumeShare.get.useQuery({ resumeId }, { enabled: open });
-  const setEnabled = trpc.resumeShare.setEnabled.useMutation();
-  const regenerate = trpc.resumeShare.regenerate.useMutation();
+  const target = { kind, id };
+  const { path, noun } = KIND_COPY[kind];
+  const shareUrl = (token: string) => `${window.location.origin}/${path}/${token}`;
+  const share = trpc.share.get.useQuery(target, { enabled: open });
+  const setEnabled = trpc.share.setEnabled.useMutation();
+  const regenerate = trpc.share.regenerate.useMutation();
   const [confirmingRegenerate, setConfirmingRegenerate] = useState(false);
 
   const enabled = share.data?.enabled ?? false;
   const token = share.data?.token ?? null;
   const isBusy = setEnabled.isPending || regenerate.isPending;
 
-  const refresh = () => utils.resumeShare.get.invalidate({ resumeId });
+  const refresh = () => utils.share.get.invalidate(target);
 
   const handleToggle = async (next: boolean) => {
     try {
       if (next) await onBeforeEnable?.();
-      await setEnabled.mutateAsync({ resumeId, enabled: next });
+      await setEnabled.mutateAsync({ ...target, enabled: next });
       await refresh();
       toast.success(next ? "Share link is live." : "Share link turned off.");
     } catch (error) {
@@ -68,7 +77,7 @@ export function ShareResumeDialog({
 
   const handleRegenerate = async () => {
     try {
-      await regenerate.mutateAsync({ resumeId });
+      await regenerate.mutateAsync(target);
       await refresh();
       setConfirmingRegenerate(false);
       toast.success("New link created. The old one no longer works.");
@@ -88,9 +97,9 @@ export function ShareResumeDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share your resume</DialogTitle>
+          <DialogTitle>Share your {noun}</DialogTitle>
           <DialogDescription>
-            Anyone with the link can view this resume. It updates as you edit and is hidden
+            Anyone with the link can view this {noun}. It updates as you edit and is hidden
             from search engines.
           </DialogDescription>
         </DialogHeader>

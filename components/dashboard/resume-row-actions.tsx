@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DownloadDialog } from "@/components/resume/download-dialog";
 import { trpc } from "@/trpc/client";
+import { ShareButton } from "@/components/share/share-button";
 import type { ResumeDataJSON } from "@/db/schema";
 import { DEFAULT_SECTION_ORDER, normalizeSectionOrder, type ResumeData } from "@/lib/types/resume";
 
@@ -145,6 +146,7 @@ export function ResumeRowActions({ resume }: { resume: ResumeListItem }) {
             <TooltipContent>Download</TooltipContent>
           </Tooltip>
         </button>
+        <ShareButton kind="resume" id={resume.id} />
         <button
           type="button"
           onClick={() => {

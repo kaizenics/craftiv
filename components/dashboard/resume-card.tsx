@@ -1,6 +1,7 @@
 "use client";
 
-import { MoreVertical, Trash2, Edit, Copy, Pencil } from "@/components/ui/icons";
+import { MoreVertical, Trash2, Edit, Copy, Pencil, Link2 } from "@/components/ui/icons";
+import { ShareLinkDialog } from "@/components/share/share-link-dialog";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor }
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newTitle, setNewTitle] = useState(title);
   
@@ -136,6 +138,17 @@ export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor }
                   }} 
                 />
                 <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-lg">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowShareDialog(true);
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/10"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Share link
+                  </button>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -187,6 +200,13 @@ export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor }
       </div>
 
       {/* Rename Dialog */}
+      <ShareLinkDialog
+        kind="resume"
+        id={id}
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+      />
+
       <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>

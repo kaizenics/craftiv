@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Copy, Mail, MoreVertical, Pencil, Plus, Trash2 } from "@/components/ui/icons";
+import { Copy, Link2, Mail, MoreVertical, Pencil, Plus, Trash2 } from "@/components/ui/icons";
+import { ShareLinkDialog } from "@/components/share/share-link-dialog";
 import Link from "next/link";
 import { CoverLetterCardPreview } from "@/components/dashboard/cover-letter-card-preview";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
 
   const [showMenu, setShowMenu] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
 
@@ -129,6 +131,17 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setShowShareDialog(true);
+                      setShowMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/10"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Share link
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setNewTitle(letter.title);
                       setShowRenameDialog(true);
                       setShowMenu(false);
@@ -166,6 +179,13 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
           </div>
         </div>
       </div>
+
+      <ShareLinkDialog
+        kind="coverLetter"
+        id={letter.id}
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+      />
 
       <AlertDialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>

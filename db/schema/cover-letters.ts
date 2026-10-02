@@ -23,6 +23,9 @@ export const coverLetters = sqliteTable("cover_letters", {
   origin: text("origin", { enum: ["user", "job_hunter"] })
     .notNull()
     .default("user"),
+  /** Random id for the public /c/<token> link; null until sharing is first enabled. */
+  shareToken: text("share_token").unique(),
+  shareEnabled: integer("share_enabled", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

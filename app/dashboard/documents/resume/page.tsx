@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileText, Search, Filter, Grid, List, Plus, SortAsc, Check } from "@/components/ui/icons";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCard } from "@/components/dashboard/resume-card";
+import { ShareButton } from "@/components/share/share-button";
 import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,6 +232,7 @@ export default function DocumentsPage() {
                         {resume.tailoredFor ? ` • Tailored for ${resume.tailoredFor}` : ""}
                       </p>
                     </div>
+                    <ShareButton kind="resume" id={resume.id} />
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/resume/section/${resume.id}`}>Edit</Link>
                     </Button>
