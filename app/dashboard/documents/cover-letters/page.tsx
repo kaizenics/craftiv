@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/trpc/client";
+import { PublicBadge } from "@/components/share/public-badge";
 import { Spinner } from "@/components/ui/spinner";
 import type { CoverLetterData } from "@/lib/types/cover-letter";
 
@@ -28,6 +29,7 @@ type CoverLetterListItem = {
   title: string;
   updatedAt: Date;
   data: CoverLetterData;
+  shareEnabled: boolean;
 };
 
 function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
@@ -98,6 +100,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-foreground line-clamp-2">{letter.title}</p>
+            {letter.shareEnabled ? <PublicBadge className="mt-1.5" /> : null}
             <p className="mt-2 text-xs text-muted-foreground">
               Updated {format(new Date(letter.updatedAt), "MMM d, yyyy")}
             </p>

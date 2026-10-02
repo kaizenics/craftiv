@@ -51,7 +51,13 @@ export function ShareLinkDialog({
   const token = share.data?.token ?? null;
   const isBusy = setEnabled.isPending || regenerate.isPending;
 
-  const refresh = () => utils.share.get.invalidate(target);
+  const refresh = () =>
+    Promise.all([
+      utils.share.get.invalidate(target),
+      kind === "resume"
+        ? utils.resume.listSummary.invalidate()
+        : utils.coverLetter.listSummary.invalidate(),
+    ]);
 
   const handleToggle = async (next: boolean) => {
     try {

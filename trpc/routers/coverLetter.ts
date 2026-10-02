@@ -81,6 +81,7 @@ export const coverLetterRouter = createTRPCRouter({
         createdAt: true,
         updatedAt: true,
         data: true,
+        shareEnabled: true,
       },
       // Job Hunter output stays out of the library until the user saves it.
       where: and(eq(coverLetters.userId, ctx.user.id), eq(coverLetters.origin, "user")),

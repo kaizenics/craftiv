@@ -30,6 +30,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResumeRowActions } from "@/components/dashboard/resume-row-actions";
 import { CoverLetterRowActions } from "@/components/dashboard/cover-letter-row-actions";
+import { PublicBadge } from "@/components/share/public-badge";
 
 /** Placeholder rows shaped like the recent-documents table while it loads. */
 function DocumentRowsSkeleton() {
@@ -332,6 +333,7 @@ export default function Dashboard() {
                             >
                               {resume.title}
                             </button>
+                            {resume.shareEnabled ? <PublicBadge className="mt-1" /> : null}
                             <p className="mt-1 text-sm text-muted-foreground">
                               Created{" "}
                               {new Date(resume.createdAt).toLocaleDateString(undefined, {
@@ -454,6 +456,7 @@ export default function Dashboard() {
                             >
                               {letter.title}
                             </button>
+                            {letter.shareEnabled ? <PublicBadge className="mt-1" /> : null}
                             <p className="mt-1 text-sm text-muted-foreground">
                               Created{" "}
                               {new Date(letter.createdAt).toLocaleDateString(undefined, {

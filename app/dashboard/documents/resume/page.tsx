@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileText, Search, Filter, Grid, List, Plus, SortAsc, Check } from "@/components/ui/icons";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCard } from "@/components/dashboard/resume-card";
+import { PublicBadge } from "@/components/share/public-badge";
 import { ShareButton } from "@/components/share/share-button";
 import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
 import { Button } from "@/components/ui/button";
@@ -214,6 +215,7 @@ export default function DocumentsPage() {
                       template={resume.templateId}
                       data={resume.data}
                       tailoredFor={resume.tailoredFor}
+                      isPublic={resume.shareEnabled}
                     />
                   ) : (
                   <div
@@ -224,8 +226,9 @@ export default function DocumentsPage() {
                       <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">
-                        {resume.title}
+                      <h3 className="flex items-center gap-2 font-medium text-foreground">
+                        <span className="truncate">{resume.title}</span>
+                        {resume.shareEnabled ? <PublicBadge /> : null}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {resume.templateId} • Updated {new Date(resume.updatedAt).toLocaleDateString()}

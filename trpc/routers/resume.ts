@@ -117,6 +117,7 @@ export const resumeRouter = createTRPCRouter({
         data: true,
         status: true,
         lastEditedSection: true,
+        shareEnabled: true,
         createdAt: true,
         updatedAt: true,
       },

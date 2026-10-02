@@ -19,6 +19,7 @@ import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { ResumeCardPreview } from "./resume-card-preview";
 import type { ResumeDataJSON } from "@/db/schema";
+import { PublicBadge } from "@/components/share/public-badge";
 
 interface ResumeCardProps {
   id: string;
@@ -28,9 +29,10 @@ interface ResumeCardProps {
   data?: ResumeDataJSON | null;
   /** Company (or job title) this resume was tailored for in Job Hunter. */
   tailoredFor?: string | null;
+  isPublic?: boolean;
 }
 
-export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor }: ResumeCardProps) {
+export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor, isPublic }: ResumeCardProps) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -106,6 +108,7 @@ export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor }
           <p className="text-xs text-muted-foreground">
             Template: {template}
           </p>
+          {isPublic ? <PublicBadge /> : null}
           {tailoredFor ? (
             <span className="inline-block max-w-full truncate rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
               Tailored for {tailoredFor}

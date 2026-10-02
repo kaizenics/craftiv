@@ -33,6 +33,7 @@ export type CoverLetterListItem = {
   title: string;
   createdAt: Date | string;
   updatedAt: Date | string;
+  shareEnabled?: boolean;
 };
 
 export function CoverLetterRowActions({ letter }: { letter: CoverLetterListItem }) {
