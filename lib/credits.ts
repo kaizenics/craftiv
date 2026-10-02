@@ -372,3 +372,18 @@ export async function refundCredits(input: {
     metadata: input.metadata,
   });
 }
+
+/**
+ * Session charges (one key covers many calls) replay as "already paid" once
+ * charged. After a session has been refunded that replay would make every
+ * later call free, so step to a fresh key for each refunded one.
+ */
+export async function resolveSessionChargeKey(baseKey: string): Promise<string> {
+  let key = baseKey;
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    const refunded = await getReplayByIdempotencyKey(`refund:${key}`);
+    if (!refunded) return key;
+    key = `${baseKey}:after-refund-${attempt}`;
+  }
+  return `${baseKey}:${randomUUID()}`;
+}

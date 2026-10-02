@@ -15,6 +15,7 @@ import {
   COVER_LETTER_AI_SESSION_COST,
   InsufficientCreditsError,
   refundCredits,
+  resolveSessionChargeKey,
 } from "@/lib/credits";
 import { beginAiAction, describeAiCharge } from "@/lib/own-ai-access";
 import {
@@ -145,7 +146,9 @@ export async function POST(request: NextRequest) {
     });
 
     const bucket = Math.floor(Date.now() / DAY_BUCKET_MS);
-    const chargeIdempotencyKey = `cl_ai_session:${session.user.id}:${coverLetterId}:${bucket}`;
+    const chargeIdempotencyKey = await resolveSessionChargeKey(
+      `cl_ai_session:${session.user.id}:${coverLetterId}:${bucket}`,
+    );
     const { ai, charge: chargeResult } = await beginAiAction({
       userId: session.user.id,
       eventType: "cover_letter_ai_session",
@@ -158,7 +161,11 @@ export async function POST(request: NextRequest) {
       },
     });
     if (chargeResult) {
-      chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+      // A replayed charge was paid by an earlier call that already delivered a
+      // letter, so a failure now must not refund it.
+      if (!chargeResult.replayed) {
+        chargedRequest = { userId: session.user.id, idempotencyKey: chargeIdempotencyKey };
+      }
 
       securityLog("credits_consumed", {
         requestId: guard.requestId,
