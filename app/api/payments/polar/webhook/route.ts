@@ -1,15 +1,11 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks.js";
 
 import { db } from "@/db";
 import { processedTransactions, users } from "@/db/schema";
 import { getProductPlanMap, type InternalPlan } from "@/lib/polar";
-import {
-  addCredits,
-  CREDIT_UNITS_PER_CREDIT,
-  deductCreditsWithFloor,
-} from "@/lib/credits";
+import { addCredits, deductCreditsWithFloor } from "@/lib/credits";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { securityLog, securityRequestId } from "@/lib/security/logging";
 
@@ -44,7 +40,15 @@ type OrderLike = {
   customer?: { externalId?: string | null; email?: string | null } | null;
 };
 
+/**
+ * The product ID is what Polar actually charged for, so it wins. Checkout
+ * metadata is only a fallback for products missing from the plan map.
+ */
 function resolvePlanFromOrder(order: OrderLike): InternalPlan | null {
+  const productId = order.productId?.trim();
+  const planFromProduct = productId ? getProductPlanMap().get(productId) : undefined;
+  if (planFromProduct) return planFromProduct;
+
   const internalPlanRaw = order.metadata?.internal_plan;
   if (
     internalPlanRaw === "active" ||
@@ -53,10 +57,7 @@ function resolvePlanFromOrder(order: OrderLike): InternalPlan | null {
   ) {
     return internalPlanRaw;
   }
-
-  const productId = order.productId?.trim();
-  if (!productId) return null;
-  return getProductPlanMap().get(productId) ?? null;
+  return null;
 }
 
 /**
@@ -88,7 +89,7 @@ async function refundOrder(params: {
   orderId: string;
   now: Date;
 }) {
-  const refundResult = await deductCreditsWithFloor({
+  await deductCreditsWithFloor({
     userId: params.userId,
     eventType: "purchase_refund",
     maxUnitsToDeduct: getCreditsForPlan(params.plan),
@@ -96,14 +97,24 @@ async function refundOrder(params: {
     metadata: { provider: PROVIDER, transactionId: params.orderId, plan: params.plan },
   });
 
-  const stillPaid = refundResult.balanceUnits > CREDIT_UNITS_PER_CREDIT;
+  // The user stays paid while any other order of theirs is still standing.
+  // creditBalance is deliberately not written here: deductCreditsWithFloor has
+  // already committed it, and writing it again could erase a concurrent spend.
+  const otherPaidOrder = await db.query.processedTransactions.findFirst({
+    where: and(
+      eq(processedTransactions.userId, params.userId),
+      eq(processedTransactions.status, "completed"),
+      ne(processedTransactions.transactionId, params.orderId),
+    ),
+    orderBy: desc(processedTransactions.createdAt),
+    columns: { plan: true },
+  });
 
   await db
     .update(users)
     .set({
-      plan: stillPaid ? params.plan : "free",
-      isPaid: stillPaid,
-      creditBalance: refundResult.balanceUnits,
+      plan: otherPaidOrder ? (otherPaidOrder.plan as InternalPlan) : "free",
+      isPaid: Boolean(otherPaidOrder),
       updatedAt: params.now,
     })
     .where(eq(users.id, params.userId));
@@ -195,19 +206,11 @@ export async function POST(request: Request) {
     return Response.json({ received: true, duplicate: true });
   }
 
-  await db.insert(processedTransactions).values({
-    id: randomUUID(),
-    userId,
-    provider: PROVIDER,
-    transactionId: orderId,
-    plan,
-    status: event.type === "order.refunded" ? "refunded" : "completed",
-    createdAt: now,
-    updatedAt: now,
-  });
-
+  // Fulfil first, record the order last. Every step is idempotent, so if any of
+  // them fails Polar's retry finds no row and redoes the whole thing, instead
+  // of seeing a "duplicate" for an order whose credits were never granted.
   if (event.type === "order.paid") {
-    const purchaseResult = await addCredits({
+    await addCredits({
       userId,
       eventType: "purchase",
       addUnits: getCreditsForPlan(plan),
@@ -215,20 +218,31 @@ export async function POST(request: Request) {
       metadata: { provider: PROVIDER, transactionId: orderId, plan },
     });
 
+    // creditBalance is already committed by addCredits; writing it again here
+    // could overwrite a spend that landed in between.
     await db
       .update(users)
-      .set({
-        plan,
-        isPaid: true,
-        creditBalance: purchaseResult.balanceUnits,
-        updatedAt: now,
-      })
+      .set({ plan, isPaid: true, updatedAt: now })
       .where(eq(users.id, userId));
   }
 
   if (event.type === "order.refunded") {
     await refundOrder({ userId, plan, orderId, now });
   }
+
+  await db
+    .insert(processedTransactions)
+    .values({
+      id: randomUUID(),
+      userId,
+      provider: PROVIDER,
+      transactionId: orderId,
+      plan,
+      status: event.type === "order.refunded" ? "refunded" : "completed",
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: processedTransactions.transactionId });
 
   return Response.json({ received: true });
 }
