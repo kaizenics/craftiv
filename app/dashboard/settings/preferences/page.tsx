@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsSkeleton } from "@/components/dashboard/settings-skeleton";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,11 @@ const PREFERENCE_ROWS: { key: keyof UserPreferences; label: string; description:
 export default function PreferencesSettings() {
   const utils = trpc.useUtils();
   const { data: saved } = trpc.user.preferences.useQuery();
-  const [preferences, setPreferences] = useState<UserPreferences>({ ...DEFAULT_USER_PREFERENCES });
+  const [preferences, setPreferences] = useState<UserPreferences>(
+    () => saved ?? { ...DEFAULT_USER_PREFERENCES },
+  );
   const [receiveEmails, setReceiveEmails] = useState(true);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(!!saved);
 
   const updatePreferences = trpc.user.updatePreferences.useMutation({
     onSuccess: async (next) => {
@@ -55,6 +58,12 @@ export default function PreferencesSettings() {
       return () => window.clearTimeout(timer);
     }
   }, [hasLoaded, saved]);
+
+  if (!hasLoaded) {
+    return (
+      <SettingsSkeleton title="Preferences" subtitle="How Craftiv behaves while you work" sections={2} />
+    );
+  }
 
   return (
     <div className="py-8">

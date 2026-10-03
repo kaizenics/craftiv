@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsSkeleton } from "@/components/dashboard/settings-skeleton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -64,24 +65,32 @@ const GoogleIcon = () => (
   </svg>
 );
 
+function splitFullName(fullName: string) {
+  const parts = fullName.trim().split(" ");
+  return parts.length > 1
+    ? { firstName: parts[0], lastName: parts.slice(1).join(" ") }
+    : { firstName: fullName.trim(), lastName: "" };
+}
+
 export default function ProfileSettings() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const utils = trpc.useUtils();
-  const { data: userProfile } = trpc.user.me.useQuery(undefined, {
+  const { data: userProfile, isLoading: profileLoading } = trpc.user.me.useQuery(undefined, {
     enabled: !!session?.user,
   });
-  const { data: providers } = trpc.user.getProviders.useQuery();
-  const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
+  const { data: providers, isLoading: providersLoading } = trpc.user.getProviders.useQuery();
+  const { data: subscription, isLoading: subscriptionLoading } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
   });
   const { data: ownAi } = trpc.ownAi.get.useQuery(undefined, {
     enabled: !!session?.user,
   });
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [hasLoadedProfile, setHasLoadedProfile] = useState(false);
+  const initialName = splitFullName(userProfile?.name ?? "");
+  const [firstName, setFirstName] = useState(initialName.firstName);
+  const [lastName, setLastName] = useState(initialName.lastName);
+  const [email, setEmail] = useState(userProfile?.email ?? "");
+  const [hasLoadedProfile, setHasLoadedProfile] = useState(!!userProfile);
   const [saving, setSaving] = useState(false);
   const [noticeDialogOpen, setNoticeDialogOpen] = useState(false);
   const [noticeDialogTitle, setNoticeDialogTitle] = useState("Notice");
@@ -98,24 +107,19 @@ export default function ProfileSettings() {
   const isOAuthUser = !!providers?.some((p) => p.providerId === "google");
 
   useEffect(() => {
-    if ((userProfile || session?.user) && !hasLoadedProfile) {
+    // The saved profile wins; the session is only a fallback if it fails to load.
+    if (!profileLoading && (userProfile || session?.user) && !hasLoadedProfile) {
       const timer = window.setTimeout(() => {
-        const fullName = userProfile?.name || session?.user?.name || "";
-        const nameParts = fullName.trim().split(" ");
-        if (nameParts.length > 1) {
-          setFirstName(nameParts[0]);
-          setLastName(nameParts.slice(1).join(" "));
-        } else {
-          setFirstName(fullName);
-          setLastName("");
-        }
+        const name = splitFullName(userProfile?.name || session?.user?.name || "");
+        setFirstName(name.firstName);
+        setLastName(name.lastName);
         setEmail(userProfile?.email || session?.user?.email || "");
         setHasLoadedProfile(true);
       }, 0);
 
       return () => window.clearTimeout(timer);
     }
-  }, [hasLoadedProfile, session, userProfile]);
+  }, [hasLoadedProfile, profileLoading, session, userProfile]);
 
   const onSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -161,6 +165,13 @@ export default function ProfileSettings() {
           model: ownAi.connection.model,
         }
       : null;
+
+  // Wait for the saved name, sign-in method and credits before showing the form.
+  if (!hasLoadedProfile || providersLoading || subscriptionLoading) {
+    return (
+      <SettingsSkeleton title="Profile" subtitle="Your personal details and credits" sections={2} />
+    );
+  }
 
   return (
     <div className="py-8">

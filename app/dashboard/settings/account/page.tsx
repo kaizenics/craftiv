@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsSkeleton } from "@/components/dashboard/settings-skeleton";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,7 @@ import { trpc } from "@/trpc/client";
 
 export default function AccountSettings() {
   const router = useRouter();
-  const { data: providers } = trpc.user.getProviders.useQuery();
+  const { data: providers, isLoading: providersLoading } = trpc.user.getProviders.useQuery();
   const { data: session } = authClient.useSession();
   const accountEmail = session?.user?.email ?? "";
   const deleteAccountMutation = trpc.user.deleteAccount.useMutation();
@@ -73,6 +74,13 @@ export default function AccountSettings() {
       setIsSigningOut(false);
     }
   };
+
+  // Until we know how the user signs in, we can't tell whether to show Password.
+  if (providersLoading) {
+    return (
+      <SettingsSkeleton title="Account" subtitle="Sign-in and account management" sections={3} />
+    );
+  }
 
   return (
     <div className="py-8">
