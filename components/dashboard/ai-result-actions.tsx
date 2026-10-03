@@ -17,7 +17,8 @@ type AiResultActionsProps = {
   copied: boolean;
   onRegenerate: () => void;
   isGenerating: boolean;
-  credits: string;
+  /** Cost of a regenerate; null when it runs on the user's own AI key. */
+  credits: string | null;
   /** Shown under the buttons when apply is blocked by an empty selection. */
   blockedReason?: string | null;
 };
@@ -73,7 +74,8 @@ export function AiResultActions({
         {/* Regenerate spends another credit, so the cost is on the button. */}
         <Button variant="outline" onClick={onRegenerate} disabled={isGenerating}>
           <RefreshCw className={cn(isGenerating && "animate-spin")} aria-hidden="true" />
-          Regenerate &middot; {credits} credits
+          Regenerate
+          {credits ? ` · ${credits} credits` : ""}
         </Button>
       </div>
 

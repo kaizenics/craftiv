@@ -1,5 +1,6 @@
 "use client";
 
+import { useOwnAiProvider } from "@/lib/use-own-ai-provider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
@@ -184,6 +185,9 @@ export default function AIAssistantPage() {
   const keywordBooster = trpc.ai.keywordBooster.useMutation();
   const achievementBuilder = trpc.ai.achievementBuilder.useMutation();
   const utils = trpc.useUtils();
+  // On the user's own AI key these tools are free, so prices are hidden.
+  const ownAiProvider = useOwnAiProvider();
+  const costLabel = (credits: string) => (ownAiProvider ? "" : ` · ${credits} credits`);
   const updateResume = trpc.resume.update.useMutation({
     onSuccess: () => {
       utils.resume.getById.invalidate({ id: activeResumeId! });
@@ -786,8 +790,8 @@ export default function AIAssistantPage() {
                   ) : (
                     <>
                       <Sparkles aria-hidden="true" />
-                      {improverResult ? "Regenerate" : "Improve resume"} &middot;{" "}
-                      {activeToolMeta.credits} credits
+                      {improverResult ? "Regenerate" : "Improve resume"}
+                      {costLabel(activeToolMeta.credits)}
                     </>
                   )}
                 </Button>
@@ -881,7 +885,7 @@ export default function AIAssistantPage() {
                       copied={copied}
                       onRegenerate={handleImproverGenerate}
                       isGenerating={isGenerating}
-                      credits={activeToolMeta.credits}
+                      credits={ownAiProvider ? null : activeToolMeta.credits}
                       blockedReason={
                         improverSelectionEmpty
                           ? "Tick at least one block above to apply it."
@@ -962,7 +966,7 @@ export default function AIAssistantPage() {
                   ) : (
                     <>
                       <Target aria-hidden="true" />
-                      Find missing keywords &middot; 0.25 credits
+                      Find missing keywords{costLabel("0.25")}
                     </>
                   )}
                 </Button>
@@ -1149,7 +1153,7 @@ export default function AIAssistantPage() {
                       ) : (
                         <>
                           <Trophy aria-hidden="true" />
-                          Build achievement bullets &middot; 0.25 credits
+                          Build achievement bullets{costLabel("0.25")}
                         </>
                       )}
                     </Button>
@@ -1195,7 +1199,7 @@ export default function AIAssistantPage() {
                       copied={copied}
                       onRegenerate={handleAchievementGenerate}
                       isGenerating={isGenerating}
-                      credits="0.25"
+                      credits={ownAiProvider ? null : "0.25"}
                     />
                   </>
                 ) : data?.experiences?.[selectedExpIndex]?.description ? (

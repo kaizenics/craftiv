@@ -401,7 +401,7 @@ export default function AtsCheckerPage() {
               ) : (
                 <>
                   <ScanSearch aria-hidden="true" />
-                  Run ATS check &middot; 1 credit
+                  Run ATS check{ownAiProvider ? "" : " · 1 credit"}
                 </>
               )}
             </Button>
