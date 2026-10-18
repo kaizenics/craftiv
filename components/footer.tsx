@@ -4,7 +4,7 @@ import Link from "next/link";
 
 const navigation = {
   product: [
-    { name: "Features", href: "/" },
+    { name: "Features", href: "/#features" },
     { name: "Pricing", href: "/pricing" },
     { name: "Templates", href: "/resume/templates" },
   ],
@@ -36,7 +36,7 @@ export function Footer() {
                   Craftiv
                 </Link>
                 <p className="mt-4 max-w-xs text-sm text-white/80 leading-relaxed">
-                 Build professional resumes that get you noticed by hiring managers. Simple, powerful tools to accelerate your career success.
+                  Find roles that fit, tailor every application, and keep track of each one until the offer.
                 </p>
               </div>
             </div>
