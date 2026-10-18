@@ -1,13 +1,13 @@
 
 import { Hero } from "@/components/hero";
 import { NavbarComponent } from "@/components/navbar";
-import { About } from "@/components/about";
-import { Works } from "@/components/works";
+import { HowItWorks } from "@/components/how-it-works";
+import { Documents } from "@/components/documents";
+import { PricingTeaser } from "@/components/pricing-teaser";
 import { FAQ } from "@/components/faq";
 import { Footer } from "@/components/footer";
-import { Testimonials } from "@/components/testimonials";
-import { CompanyMarquee } from "@/components/company-marquee";
 import { FeatureDemo } from "@/components/feature-demo";
+import { SmoothScroll } from "@/components/smooth-scroll";
 import {
   organizationJsonLd,
   softwareApplicationJsonLd,
@@ -17,9 +17,9 @@ import {
 } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
-  title: "AI Resume Builder, ATS Checker & Job Hunter | Craftiv",
+  title: "Job Matching, ATS Checker & AI Resume Builder | Craftiv",
   description:
-    "Find relevant jobs, check your resume against ATS requirements, and improve every application with Craftiv's AI resume assistant and ATS-friendly templates.",
+    "Find jobs that match your resume, tailor every application with AI, and track each one from saved to offer. Free job search tools with an ATS checker and resume builder.",
   titleAbsolute: true,
 });
 
@@ -39,15 +39,16 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
       />
+      <SmoothScroll>
       <NavbarComponent />
       <Hero />
-      <CompanyMarquee />
       <FeatureDemo />
-      <About />
-      <Works />
-      <Testimonials />
+      <HowItWorks />
+      <Documents />
+      <PricingTeaser />
       <FAQ />
       <Footer />
+      </SmoothScroll>
     </>
   );
 }
