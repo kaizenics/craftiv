@@ -8,7 +8,7 @@ import { siteConfig } from "@/lib/seo";
 export const ogSize = { width: 1200, height: 630 } as const;
 export const ogContentType = "image/png";
 export const ogAlt =
-  "Craftiv — AI Resume Builder and ATS-Friendly Resume Templates";
+  "Craftiv: job matching, ATS checker and AI resume builder";
 
 const domain = siteConfig.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
@@ -58,11 +58,11 @@ export function OgCard(): ReactElement {
             maxWidth: 960,
           }}
         >
-          AI Resume Builder & ATS-Friendly Templates
+          Find your next job, faster.
         </div>
         <div style={{ fontSize: 34, opacity: 0.9, maxWidth: 900, lineHeight: 1.3 }}>
-          Build, optimize, and download job-ready resumes and cover letters in
-          minutes.
+          Match roles to your resume, tailor each application, and track it
+          to the offer.
         </div>
       </div>
 

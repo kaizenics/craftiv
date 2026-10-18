@@ -27,6 +27,8 @@ import {
   useElementSize,
 } from "@/components/feature-demo-cursor";
 import { cn } from "@/lib/utils";
+import { BlurFade } from "@/components/ui/blur-fade";
+import { BlurInText } from "@/components/ui/blur-in-text";
 
 type FeatureId = "hunter" | "ats" | "assistant";
 
@@ -481,13 +483,14 @@ export function FeatureDemo() {
   return (
     <section id="features" className="relative bg-white py-20 font-sans dark:bg-zinc-950 lg:py-28">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl"><h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl lg:text-5xl">One workspace for the whole job search</h2><p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg">Find better-fit roles, check every application, and improve your resume with focused AI help.</p></div>
+        <div className="max-w-3xl"><h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl lg:text-5xl"><BlurInText text="One workspace for the whole job search" /></h2><p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg"><BlurInText text="Find better-fit roles, check every application, and improve your resume with focused AI help." delay={0.4} stagger={0.01} /></p></div>
         {/* The bottom of the card dissolves into the page. This is a mask rather
             than a white overlay on top: an overlay cannot fade the side borders,
             which kept running to the bottom edge and stopping dead. Masking the
             element fades its borders and content together, and because it fades
             to transparent it needs no colour of its own -- the page background
             shows through, correct in light and dark alike. */}
+        <BlurFade delay={0.2}>
         <div className="mt-10 overflow-hidden rounded-t-2xl border-x border-t border-zinc-200 bg-zinc-50 [-webkit-mask-image:linear-gradient(to_bottom,#000_calc(100%-13rem),transparent_100%)] [mask-image:linear-gradient(to_bottom,#000_calc(100%-13rem),transparent_100%)] dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex min-h-14 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-950 sm:px-4">
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2 scrollbar-none" role="tablist" aria-label="Craftiv product tour">{features.map((feature) => { const Icon = feature.icon; const selected = feature.id === active; return <button key={feature.id} type="button" role="tab" aria-selected={selected} onClick={() => selectFeature(feature.id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition active:translate-y-px sm:text-sm", selected ? "bg-primary text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100")}><Icon className="size-4" />{feature.name}</button>; })}</div>
@@ -509,6 +512,7 @@ export function FeatureDemo() {
             </motion.div>
           </div>
         </div>
+        </BlurFade>
       </div>
     </section>
   );

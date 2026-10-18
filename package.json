@@ -57,6 +57,7 @@
     "gsap": "^3.14.2",
     "input-otp": "^1.4.2",
     "isomorphic-dompurify": "^3.23.0",
+    "lenis": "1.3.25",
     "lucide-react": "^0.562.0",
     "mammoth": "^1.12.0",
     "motion": "^12.23.26",

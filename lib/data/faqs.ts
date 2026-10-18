@@ -10,33 +10,38 @@ export interface Faq {
 
 export const homeFaqs: Faq[] = [
   {
-    question: "How long does it take to create a resume?",
+    question: "Where do the jobs come from?",
     answer:
-      "Most users complete their resume in under 10 minutes. Our intuitive builder guides you through each section, and AI-powered suggestions help you write compelling content quickly.",
+      "Saved searches pull remote roles from Remotive automatically. For any other site, such as LinkedIn, Indeed or a company careers page, use the job clipper: a browser bookmark that copies the posting into Craftiv in one click on desktop. You can also paste a job description directly.",
   },
   {
     question: "Is Craftiv free to use?",
     answer:
-      "Yes. You can start with a free credit, then buy one-time credit packs when you need more optimizations. There is no monthly subscription and credits do not expire.",
+      "Searching, match scoring, the application tracker, the job clipper, the resume and cover letter builders, and PDF or Word downloads are all free. Credits are only used for AI features such as ATS checks, tailoring and AI writing. New accounts get 1 free credit after confirming their email.",
   },
   {
-    question: "Are the resumes ATS-friendly?",
+    question: "How is the match score calculated?",
     answer:
-      "Absolutely. Every template is designed to pass through Applicant Tracking Systems. We use clean formatting, proper heading structures, and standard fonts to ensure your resume gets seen by recruiters.",
+      "Craftiv compares the job description with your resume and checks which skills and keywords appear in both. It runs on fixed rules rather than AI, which is why it is free and gives the same result every time. Each job shows its score and the keywords you are missing.",
   },
   {
-    question: "Can I edit my resume after downloading?",
+    question: "Will tailoring change my work history?",
     answer:
-      "Yes! Your resumes are saved to your account and can be edited anytime. You can also download in multiple formats including PDF, DOCX, and plain text.",
+      "No. Tailoring rewrites your summary and the descriptions under each role. Employers, dates and contact details are copied over unchanged. If the rewrite does not raise your ATS score, nothing is saved and your credits are refunded.",
   },
   {
-    question: "Do you offer templates for different industries?",
+    question: "Do credits expire?",
     answer:
-      "We have professionally designed templates tailored for various industries including tech, finance, healthcare, creative fields, and more. Each template is customizable to match your personal brand.",
+      "No. Credits are one-time packs with no subscription, and they never expire.",
   },
   {
-    question: "How does the AI resume optimization work?",
+    question: "Can I use my own AI key?",
     answer:
-      "Our AI analyzes your experience and the job description you're targeting. It suggests improvements to your bullet points, identifies missing keywords, and helps you quantify your achievements for maximum impact.",
+      "Yes. After your first credit pack, you can connect your own OpenAI, Anthropic, Gemini or OpenRouter key in settings. AI features then run on your key and use no credits.",
+  },
+  {
+    question: "Can I send my resume as a link?",
+    answer:
+      "Yes. Any resume or cover letter can get a public link that you can turn off or regenerate at any time. Craftiv shows how many times it was viewed and when it was last opened.",
   },
 ];
