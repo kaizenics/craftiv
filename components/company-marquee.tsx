@@ -17,10 +17,10 @@ export function CompanyMarquee() {
   const items = [...logos, ...logos];
 
   return (
-    <section className="border-zinc-200 bg-zinc-50 py-6 sm:py-10">
+    <div className="bg-zinc-50 py-6 sm:py-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-3 px-4 sm:flex-row sm:items-center sm:gap-5 sm:px-6 lg:px-8">
-        <p className="shrink-0 text-center text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 sm:text-left sm:text-lg">
-          Optimized for job platforms
+        <p className="shrink-0 text-center text-sm font-medium text-zinc-600 sm:text-left sm:text-base">
+          Clip jobs from any board, like
         </p>
         <div className="relative w-full overflow-hidden">
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-zinc-50 to-transparent sm:w-12" />
@@ -47,6 +47,12 @@ export function CompanyMarquee() {
           animation: marquee 28s linear infinite;
         }
 
+        @media (prefers-reduced-motion: reduce) {
+          .marquee-track {
+            animation: none;
+          }
+        }
+
         @keyframes marquee {
           0% {
             transform: translateX(0);
@@ -56,6 +62,6 @@ export function CompanyMarquee() {
           }
         }
       `}</style>
-    </section>
+    </div>
   );
 }
