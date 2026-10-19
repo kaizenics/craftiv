@@ -34,6 +34,17 @@ export const AI_COVER_LETTER_COST = 50;
  */
 export const JOB_TAILOR_COST = 75;
 
+/**
+ * The one-time credit packs, in credit units. The payment webhook grants exactly
+ * these amounts, and the landing page prices from the same list, so what a page
+ * promises and what a purchase credits cannot drift apart.
+ */
+export const CREDIT_PACKS = [
+  { plan: "active", name: "Active", price: 1.95, creditUnits: 500 },
+  { plan: "plus", name: "Plus", price: 3.95, creditUnits: 1200 },
+  { plan: "pro", name: "Pro", price: 7.2, creditUnits: 2500 },
+] as const;
+
 export function toCreditUnits(credits: number): number {
   return Math.round(credits * CREDIT_UNITS_PER_CREDIT);
 }

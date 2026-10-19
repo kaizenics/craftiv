@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { processedTransactions, users } from "@/db/schema";
 import { getProductPlanMap, type InternalPlan } from "@/lib/polar";
 import { addCredits, deductCreditsWithFloor } from "@/lib/credits";
+import { CREDIT_PACKS } from "@/lib/credit-costs";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { securityLog, securityRequestId } from "@/lib/security/logging";
 
@@ -28,9 +29,9 @@ function isSupportedEvent(eventType: string): eventType is SupportedEvent {
 
 /** The credits each pack grants, in credit units (100 units = 1 credit). */
 function getCreditsForPlan(plan: InternalPlan): number {
-  if (plan === "active") return 500;
-  if (plan === "plus") return 1200;
-  return 2500;
+  const pack = CREDIT_PACKS.find((candidate) => candidate.plan === plan);
+  if (!pack) throw new Error(`No credit pack for plan: ${plan}`);
+  return pack.creditUnits;
 }
 
 type OrderLike = {
