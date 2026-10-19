@@ -63,6 +63,7 @@
     "motion": "^12.23.26",
     "next": "^16.3.3",
     "next-themes": "^0.4.6",
+    "ogl": "1.0.11",
     "openai": "^6.32.0",
     "pdfjs-dist": "^6.2.108",
     "playwright": "^1.58.2",

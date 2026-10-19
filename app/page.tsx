@@ -3,7 +3,7 @@ import { Hero } from "@/components/hero";
 import { NavbarComponent } from "@/components/navbar";
 import { HowItWorks } from "@/components/how-it-works";
 import { Documents } from "@/components/documents";
-import { PricingTeaser } from "@/components/pricing-teaser";
+import { ShareShowcase } from "@/components/share-showcase";
 import { FAQ } from "@/components/faq";
 import { Footer } from "@/components/footer";
 import { FeatureDemo } from "@/components/feature-demo";
@@ -45,7 +45,7 @@ export default function Home() {
       <FeatureDemo />
       <HowItWorks />
       <Documents />
-      <PricingTeaser />
+      <ShareShowcase />
       <FAQ />
       <Footer />
       </SmoothScroll>
