@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import FlexCarousel from "@/components/ui/flex-carousel";
 import { templates } from "@/lib/data/templates";
 import { coverLetterTemplates } from "@/lib/cover-letter-templates";
-import { TemplateLivePreview } from "@/components/resume/template-live-preview";
 import { BlurInText } from "@/components/ui/blur-in-text";
 import { BlurFade } from "@/components/ui/blur-fade";
+
+const templateSlides = templates.map((template) => ({
+  src: `/resume-templates/${template.id}.jpg`,
+  alt: `${template.name} resume template`,
+  title: template.name,
+}));
+
 
 const facts = [
   {
@@ -63,27 +63,20 @@ export function Documents() {
           ))}
         </dl>
 
-        <BlurFade className="mt-14" delay={0.2}>
-        <Carousel opts={{ align: "start", loop: true }} className="w-full">
-          <CarouselContent className="-ml-4">
-            {templates.slice(0, 8).map((template) => (
-              <CarouselItem key={template.id} className="basis-1/2 pl-4 sm:basis-1/3 lg:basis-1/4">
-                <div className="relative aspect-3/4 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-                  <div className="absolute inset-0">
-                    <TemplateLivePreview templateId={template.id} color={template.primaryColor} showPhoto />
-                  </div>
-                </div>
-                <p className="mt-3 text-sm font-medium text-zinc-900">{template.name}</p>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <div className="mt-8 flex gap-2">
-            <CarouselPrevious className="static translate-y-0 border-zinc-200 bg-white hover:bg-zinc-50" />
-            <CarouselNext className="static translate-y-0 border-zinc-200 bg-white hover:bg-zinc-50" />
-          </div>
-        </Carousel>
-        </BlurFade>
       </div>
+
+      {/* Previews are captures of the live templates (public/resume-templates); the carousel renders them in WebGL, full-bleed so bent cards run off the screen edges. */}
+        <BlurFade className="mt-10 h-[460px] w-full text-zinc-900 sm:h-[640px]" delay={0.2}>
+          <FlexCarousel
+            items={templateSlides}
+            fit="natural"
+            cardHeight={0.62}
+            radius={10}
+            captureWheel={false}
+            autoplay
+            interval={3}
+          />
+        </BlurFade>
     </section>
   );
 }
