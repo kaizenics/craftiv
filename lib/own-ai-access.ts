@@ -15,12 +15,13 @@ import { OwnAiError } from "@/lib/own-ai";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 
 /**
- * Own AI is unlocked by buying any credit pack. A refund that leaves no paid
- * order behind clears `isPaid`, which locks it again -- the same flag the plan
- * badge reads, so the two can never disagree.
+ * Own AI is part of the free tier: any account can connect its own key, with or
+ * without a purchase. Kept as one function so the rule stays in one place if it
+ * ever changes again.
  */
 export function isOwnAiUnlocked(user: { isPaid: boolean | null } | undefined): boolean {
-  return !!user?.isPaid;
+  void user;
+  return true;
 }
 
 /**

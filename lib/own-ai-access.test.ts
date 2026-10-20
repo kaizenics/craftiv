@@ -95,14 +95,14 @@ describe("beginAiAction", () => {
     expect(consumeCredits).toHaveBeenCalledOnce();
   });
 
-  it("charges credits when the account has not bought a pack (or was refunded)", async () => {
+  it("runs on the user's key even when the account has never bought a pack", async () => {
     findConnection.mockResolvedValue(savedConnection());
     findUser.mockResolvedValue({ isPaid: false });
 
     const { ai } = await beginAiAction(CHARGE);
 
-    expect(ai.source).toBe("craftiv");
-    expect(consumeCredits).toHaveBeenCalledOnce();
+    expect(ai.source).toBe("own");
+    expect(consumeCredits).not.toHaveBeenCalled();
   });
 
   it("errors rather than quietly charging credits when the saved key is unreadable", async () => {

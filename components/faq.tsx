@@ -8,19 +8,31 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { homeFaqs as faqs } from "@/lib/data/faqs";
+import { homeFaqs, type Faq } from "@/lib/data/faqs";
 
-export function FAQ() {
+export function FAQ({
+  faqs = homeFaqs,
+  title = "Questions, answered",
+  subtitle = "How Craftiv finds jobs, scores them and what you pay for.",
+  id = "faq",
+  divider = true,
+}: {
+  faqs?: Faq[];
+  title?: string;
+  subtitle?: string;
+  id?: string;
+  divider?: boolean;
+} = {}) {
   return (
-    <section id="faq" className="scroll-mt-24 border-t border-zinc-200 bg-white py-24 font-sans lg:py-32">
+    <section id={id} className={`scroll-mt-24 ${divider ? "border-t border-zinc-200" : ""} bg-white py-24 font-sans lg:py-32`}>
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-12 lg:gap-16 lg:px-8">
         <div className="lg:col-span-4">
           <BlurFade className="lg:sticky lg:top-32">
             <h2 className="font-display text-4xl font-semibold tracking-tight text-balance text-zinc-900 sm:text-5xl">
-              <BlurInText text="Questions, answered" />
+              <BlurInText text={title} />
             </h2>
             <p className="mt-5 max-w-sm text-base leading-relaxed text-zinc-600">
-              <BlurInText text="How Craftiv finds jobs, scores them and what you pay for." delay={0.4} stagger={0.01} />
+              <BlurInText text={subtitle} delay={0.4} stagger={0.01} />
             </p>
             <p className="mt-8 text-sm text-zinc-600">
               Still unsure?{" "}

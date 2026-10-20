@@ -37,11 +37,32 @@ export const homeFaqs: Faq[] = [
   {
     question: "Can I use my own AI key?",
     answer:
-      "Yes. After your first credit pack, you can connect your own OpenAI, Anthropic, Gemini or OpenRouter key in settings. AI features then run on your key and use no credits.",
+      "Yes, on every account including free. Connect your own OpenAI, Anthropic, Gemini or OpenRouter key in settings. AI features then run on your key and use no credits.",
   },
   {
     question: "Can I send my resume as a link?",
     answer:
       "Yes. Any resume or cover letter can get a public link that you can turn off or regenerate at any time. Craftiv shows how many times it was viewed and when it was last opened.",
+  },
+];
+
+// Shown on /pricing.
+export const pricingFaqs: Faq[] = [
+  {
+    question: "Can I cancel anytime?",
+    answer: "There is nothing to cancel. Credits are one-time purchases and never expire.",
+  },
+  {
+    question: "Can I use my own AI API key?",
+    answer:
+      "Yes, on every account including free. Connect a key from your AI provider in Settings. AI features then run on your key and cost 0 credits, and you can switch back to credits anytime.",
+  },
+  {
+    question: "What payment provider do you use?",
+    answer: "We use Polar for secure checkout and payment processing.",
+  },
+  {
+    question: "Are taxes included?",
+    answer: "Taxes and invoicing are handled based on your billing location.",
   },
 ];
