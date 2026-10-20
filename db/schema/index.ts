@@ -13,3 +13,4 @@ export * from "./job-hunter";
 export * from "./ai-providers";
 export * from "./resume-snapshots";
 export * from "./share-views";
+export * from "./crawl-slots";
