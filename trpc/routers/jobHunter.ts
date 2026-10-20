@@ -631,7 +631,7 @@ export const jobHunterRouter = createTRPCRouter({
   stats: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db.query.jobMatches.findMany({
       where: eq(jobMatches.userId, ctx.user.id),
-      columns: { applicationStatus: true, score: true },
+      columns: { applicationStatus: true, score: true, tailoredResumeId: true },
     });
 
     const byStatus = Object.fromEntries(
@@ -646,6 +646,7 @@ export const jobHunterRouter = createTRPCRouter({
       total: rows.length,
       byStatus,
       bestScore: rows.reduce((best, row) => Math.max(best, row.score), 0),
+      tailored: rows.filter((row) => row.tailoredResumeId).length,
     };
   }),
 
