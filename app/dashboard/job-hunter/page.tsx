@@ -21,6 +21,8 @@ import {
   type TailorTone,
 } from "@/components/dashboard/job-tailor-dialog";
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
+import { InterviewPrepDialog, type InterviewQuestion } from "@/components/dashboard/interview-prep-dialog";
+import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
 import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
 import { buildDemoHunts, buildDemoMatches, isDemoId } from "@/lib/job-hunter/demo";
 import { cn } from "@/lib/utils";
@@ -214,6 +216,14 @@ export default function JobHunterPage() {
 
   const compareResumes = trpc.jobHunter.compareResumes.useMutation({
     onSuccess: (result) => setComparisonResult(result as ResumeComparisonResult),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const [applyMatchId, setApplyMatchId] = useState<string | null>(null);
+  const [prepMatchId, setPrepMatchId] = useState<string | null>(null);
+  const [prepQuestions, setPrepQuestions] = useState<InterviewQuestion[] | null>(null);
+  const interviewPrep = trpc.jobHunter.interviewPrep.useMutation({
+    onSuccess: (result) => setPrepQuestions(result.questions),
     onError: (error) => toast.error(error.message),
   });
 
@@ -516,6 +526,15 @@ export default function JobHunterPage() {
     if (!match) return "this job";
     return [match.posting.title, match.posting.company].filter(Boolean).join(" at ") || "this job";
   }, [matches, tailorMatchId]);
+
+  // Search results can sit outside the top-50 list, so look in both.
+  const findMatch = (id: string | null) =>
+    id ? (matches.find((item) => item.id === id) ?? searchMatchesQuery.data?.find((item) => item.id === id) ?? null) : null;
+  const jobLabelFor = (id: string | null) => {
+    const match = findMatch(id);
+    return (match && [match.posting.title, match.posting.company].filter(Boolean).join(" at ")) || "this job";
+  };
+  const applyMatch = findMatch(applyMatchId);
 
   const comparisonMatch = matches.find((match) => match.id === compareMatchId) ?? null;
   const activeFilterCount = [
@@ -1104,6 +1123,15 @@ export default function JobHunterPage() {
                         setSavedKinds([]);
                         setTailorMatchId(match.id);
                       }}
+                      onApply={() => {
+                        if (refuseDemo(match.id)) return;
+                        setApplyMatchId(match.id);
+                      }}
+                      onInterviewPrep={() => {
+                        if (refuseDemo(match.id)) return;
+                        setPrepQuestions(null);
+                        setPrepMatchId(match.id);
+                      }}
                       onCompare={() => {
                         if (refuseDemo(match.id)) return;
                         setComparisonResult(null);
@@ -1191,6 +1219,47 @@ export default function JobHunterPage() {
           if (!tailorMatchId || refuseDemo(tailorMatchId)) return;
           setSavingKind(kind);
           saveToDocuments.mutate({ matchId: tailorMatchId, kind });
+        }}
+      />
+
+      <InterviewPrepDialog
+        open={prepMatchId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPrepMatchId(null);
+        }}
+        jobLabel={jobLabelFor(prepMatchId)}
+        pending={interviewPrep.isPending}
+        questions={prepQuestions}
+        onRun={() => {
+          if (!prepMatchId || refuseDemo(prepMatchId)) return;
+          interviewPrep.mutate({ matchId: prepMatchId });
+        }}
+      />
+
+      <ApplyAssistDialog
+        key={applyMatchId ?? "none"}
+        matchId={applyMatchId}
+        jobLabel={jobLabelFor(applyMatchId)}
+        alreadyApplied={applyMatch?.applicationStatus === "applied"}
+        onOpenChange={(open) => {
+          if (!open) setApplyMatchId(null);
+        }}
+        onTailor={() => {
+          const id = applyMatchId;
+          setApplyMatchId(null);
+          if (!id || refuseDemo(id)) return;
+          setTailorOutcome(null);
+          setSavedKinds([]);
+          setTailorMatchId(id);
+        }}
+        onApplied={() => {
+          const match = applyMatch;
+          if (!match || refuseDemo(match.id)) return;
+          // Only move forward: a job already interviewing or beyond keeps its stage.
+          if (match.applicationStatus === "new" || match.applicationStatus === "saved") {
+            updateMatch.mutate({ matchId: match.id, applicationStatus: "applied" });
+            toast.success("Marked as applied.");
+          }
         }}
       />
 

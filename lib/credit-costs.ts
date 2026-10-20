@@ -34,6 +34,9 @@ export const AI_COVER_LETTER_COST = 50;
  */
 export const JOB_TAILOR_COST = 75;
 
+/** Interview prep for one job: likely questions with answers drawn from the resume. */
+export const INTERVIEW_PREP_COST = 50;
+
 /**
  * The one-time credit packs, in credit units. The payment webhook grants exactly
  * these amounts, and the landing page prices from the same list, so what a page
@@ -82,6 +85,12 @@ export const CREDIT_ACTIONS: {
     label: "Tailor for a job",
     detail: "Resume rewrite plus a matching cover letter",
     costUnits: JOB_TAILOR_COST,
+  },
+  {
+    id: "interview_prep",
+    label: "Interview prep",
+    detail: "Likely questions and answers for one job",
+    costUnits: INTERVIEW_PREP_COST,
   },
   {
     id: "ai_resume_improver",

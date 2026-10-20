@@ -21,6 +21,7 @@ import {
   Mail,
   ArrowUpRight,
   Target,
+  CheckCircle2,
   UserCircle,
   UserCog,
   Plug,
@@ -65,6 +66,11 @@ const appItems: SidebarItem[] = [
     href: "/dashboard/job-hunter",
     icon: Target,
     badge: "Beta",
+  },
+  {
+    name: "Applications",
+    href: "/dashboard/applications",
+    icon: CheckCircle2,
   },
   {
     name: "ATS Checker",
