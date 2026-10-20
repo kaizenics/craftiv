@@ -6,37 +6,28 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { NavbarComponent } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { FAQ } from "@/components/faq";
+import { pricingFaqs } from "@/lib/data/faqs";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 import {
   ArrowRight,
   CheckCircle2,
-  ChevronDown,
-  KeyRound,
   ShieldCheck,
   Sparkles,
 } from "@/components/ui/icons";
-const OWN_AI_SETTINGS_PATH = "/dashboard/settings/integrations";
 
-const FAQ_ITEMS = [
-  {
-    question: "Can I cancel anytime?",
-    answer: "There is nothing to cancel. Credits are one-time purchases and never expire.",
-  },
-  {
-    question: "Can I use my own AI API key?",
-    answer:
-      "Yes. Buy any pack once, then connect a key from your AI provider in Settings. AI features then run on your key and cost 0 credits, and you can switch back to credits anytime.",
-  },
-  {
-    question: "What payment provider do you use?",
-    answer: "We use Polar for secure checkout and payment processing.",
-  },
-  {
-    question: "Are taxes included?",
-    answer: "Taxes and invoicing are handled based on your billing location.",
-  },
+// Everything here costs nothing; only AI features spend credits.
+const FREE_FEATURES = [
+  "1 free credit when you confirm your email",
+  "Saved job searches with daily or weekly matches",
+  "Match score and missing keywords for every job",
+  "Application tracker from saved to offer",
+  "Resume and cover letter builder",
+  "Unlimited PDF and Word downloads",
+  "Use your own AI key for every AI feature, 0 credits",
 ];
+
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
@@ -70,7 +61,6 @@ export function PricingClient() {
   const { isLoading: isAuthLoading } = useAuth();
   const { data: session } = authClient.useSession();
   const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<string | null>(null);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const createCheckout = trpc.user.createCheckout.useMutation();
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session?.user,
@@ -182,14 +172,50 @@ export function PricingClient() {
           </p>
         </div>
 
-        <section className="mx-auto mt-10 grid max-w-5xl items-stretch gap-5 md:grid-cols-3">
+        <section className="mx-auto mt-10 grid max-w-6xl items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <article className="relative flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 text-zinc-900">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+              <p className="text-sm font-semibold text-zinc-600">Free</p>
+            </div>
+            <p className="mt-4 min-h-10 text-sm text-zinc-600">Everything you need to search, match and track jobs.</p>
+            <div className="mt-4">
+              <p aria-hidden className="invisible text-sm font-semibold">$0</p>
+              <p className="text-4xl font-bold">{PRICING.currencySymbol}0</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <p className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-bold uppercase tracking-wide text-primary">
+                  Free forever
+                </p>
+              </div>
+            </div>
+            <ul className="mt-6">
+              {FREE_FEATURES.map((feature) => (
+                <li key={feature} className="mb-2.5 flex items-start gap-2.5 text-sm text-zinc-700 last:mb-0">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-auto pt-6">
+              <Link
+                href={session?.user ? "/dashboard/job-hunter" : "/sign-up"}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+              >
+                {session?.user ? "Open Job Hunter" : "Start free"}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </article>
+
           {plans.map((plan) => (
             <article
               key={plan.name}
-              className={`relative flex h-full flex-col rounded-2xl border p-6 transition-all hover:-translate-y-0.5 ${
+              className={`relative flex h-full flex-col rounded-2xl border p-6 ${
                 plan.featured
                   ? "border bg-primary text-white shadow-lg shadow-primary/25"
-                  : "border-zinc-200 bg-zinc-50/70 text-zinc-900 hover:border-zinc-300"
+                  : "border-zinc-200 bg-zinc-50/70 text-zinc-900"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -236,7 +262,7 @@ export function PricingClient() {
               </div>
 
               <p
-                className={`mt-4 text-sm ${
+                className={`mt-4 min-h-10 text-sm ${
                   plan.featured ? "text-zinc-200" : "text-zinc-600"
                 }`}
               >
@@ -244,15 +270,15 @@ export function PricingClient() {
               </p>
 
               <div className="mt-4">
-                {plan.originalPrice ? (
-                  <p
-                    className={`text-sm font-semibold line-through ${
-                      plan.featured ? "text-zinc-300" : "text-zinc-400"
-                    }`}
-                  >
-                    {`${PRICING.currencySymbol}${formatPrice(plan.originalPrice)}`}
-                  </p>
-                ) : null}
+                {/* Every card reserves the strike-through row, so prices and badges line up across cards. */}
+                <p
+                  aria-hidden={!plan.originalPrice}
+                  className={`text-sm font-semibold line-through ${plan.originalPrice ? "" : "invisible"} ${
+                    plan.featured ? "text-zinc-300" : "text-zinc-400"
+                  }`}
+                >
+                  {`${PRICING.currencySymbol}${formatPrice(plan.originalPrice ?? plan.price)}`}
+                </p>
                 <p className="text-4xl font-bold">
                   {`${PRICING.currencySymbol}${formatPrice(plan.price)}`}
                 </p>
@@ -326,86 +352,9 @@ export function PricingClient() {
           ))}
         </section>
 
-        <section
-          aria-labelledby="own-ai-heading"
-          className="mx-auto mt-5 max-w-5xl rounded-2xl border border-zinc-200 bg-zinc-50/70 p-6"
-        >
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700">
-                <KeyRound className="h-4 w-4" />
-              </span>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 id="own-ai-heading" className="text-lg font-semibold text-zinc-900">
-                    Bring your own AI
-                  </h2>
-                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                    Included with any pack
-                  </span>
-                </div>
-                <p className="mt-1 max-w-2xl text-sm text-zinc-600">
-                  Already have an API key? Connect it and use every Craftiv AI feature without
-                  spending credits. You pay your AI provider directly for what you use.
-                </p>
-              </div>
-            </div>
-            <Link
-              href={
-                session?.user
-                  ? OWN_AI_SETTINGS_PATH
-                  : `/sign-in?redirect=${encodeURIComponent(OWN_AI_SETTINGS_PATH)}`
-              }
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
-            >
-              {session?.user ? "Connect your AI" : "Sign in to connect"}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </section>
 
-        <section aria-labelledby="faq-heading" className="mx-auto mt-16 max-w-3xl">
-          <h2
-            id="faq-heading"
-            className="text-center text-2xl font-semibold tracking-tight text-zinc-900"
-          >
-            Frequently asked questions
-          </h2>
-          <div className="mt-6 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white">
-            {FAQ_ITEMS.map((item, index) => {
-              const isOpen = openFaq === index;
-              return (
-                <div key={item.question} className="px-5">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls={`faq-answer-${index}`}
-                    onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-semibold text-zinc-900 transition-colors hover:text-primary"
-                  >
-                    {item.question}
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-300 ${
-                        isOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  <div
-                    id={`faq-answer-${index}`}
-                    className={`grid transition-all duration-300 ease-out ${
-                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                    }`}
-                  >
-                    <div className="overflow-hidden">
-                      <p className="pb-4 text-sm leading-relaxed text-zinc-600">{item.answer}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
         </div>
+        <FAQ faqs={pricingFaqs} divider={false} subtitle="Credits, payment and using your own AI key." />
       </main>
       <Footer />
     </>
