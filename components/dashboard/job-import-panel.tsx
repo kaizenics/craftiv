@@ -40,6 +40,8 @@ type JobImportPanelProps = {
   disabled: boolean;
   pending: boolean;
   searchPending: boolean;
+  /** Live progress while search results are being fetched, e.g. "Scoring 2 of 5". */
+  searchStatus?: string | null;
   platformSearchAvailable: boolean;
   error: string | null;
   /** Shown when the pasted URL belongs to a source that cannot be searched. */
@@ -60,6 +62,7 @@ export function JobImportPanel({
   disabled,
   pending,
   searchPending,
+  searchStatus,
   platformSearchAvailable,
   error,
   restrictionNote,
@@ -426,7 +429,7 @@ export function JobImportPanel({
         {modePending ? (
           <>
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            {mode === "search" ? "Searching..." : mode === "bulk" ? "Importing..." : "Scoring..."}
+            {mode === "search" ? (searchStatus ?? "Searching...") : mode === "bulk" ? "Importing..." : "Scoring..."}
           </>
         ) : (
           <>

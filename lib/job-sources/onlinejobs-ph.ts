@@ -195,27 +195,7 @@ export const onlineJobsPhAdapter: JobSourceAdapter = {
       );
     }
 
-    const wanted = Math.min(query.limit, MAX_DETAIL_FETCHES);
-    const hits: ReturnType<typeof parseSearchResults> = [];
-
-    for (let page = 1; page <= MAX_SEARCH_PAGES && hits.length < wanted; page += 1) {
-      const listUrl = new URL(buildSearchUrl(query.query, page));
-      const html = await politeFetchText(listUrl, {
-        source: "onlinejobs_ph",
-        crawlDelaySeconds: CRAWL_DELAY_SECONDS,
-        signal,
-      });
-
-      const found = parseSearchResults(html);
-      if (found.length === 0) break; // No more results, or the layout moved.
-
-      for (const hit of found) {
-        if (hits.length >= wanted) break;
-        if (!hits.some((existing) => existing.externalId === hit.externalId)) {
-          hits.push(hit);
-        }
-      }
-    }
+    const hits = await listSearchHits(query.query, query.limit, signal);
 
     const jobs: NormalizedJob[] = [];
 
@@ -289,6 +269,53 @@ export const onlineJobsPhAdapter: JobSourceAdapter = {
   },
 };
 
+/** Reads the search result pages only (no job pages), bounded like a full search. */
+async function listSearchHits(keyword: string, limit: number, signal?: AbortSignal) {
+  const wanted = Math.min(limit, MAX_DETAIL_FETCHES);
+  const hits: ReturnType<typeof parseSearchResults> = [];
+
+  for (let page = 1; page <= MAX_SEARCH_PAGES && hits.length < wanted; page += 1) {
+    const listUrl = new URL(buildSearchUrl(keyword, page));
+    const html = await politeFetchText(listUrl, {
+      source: "onlinejobs_ph",
+      crawlDelaySeconds: CRAWL_DELAY_SECONDS,
+      signal,
+    });
+
+    const found = parseSearchResults(html);
+    if (found.length === 0) break; // No more results, or the layout moved.
+
+    for (const hit of found) {
+      if (hits.length >= wanted) break;
+      if (!hits.some((existing) => existing.externalId === hit.externalId)) {
+        hits.push(hit);
+      }
+    }
+  }
+
+  return hits;
+}
+
+/**
+ * The first half of a search: which jobs match, without fetching each one. Lets
+ * the caller fetch job pages one at a time and show each as it lands.
+ */
+export async function searchOnlineJobsListings(
+  keyword: string,
+  limit: number,
+  signal?: AbortSignal,
+): Promise<{ url: string; title: string; sourceKey: string }[]> {
+  if (!scrapeEnabled()) {
+    throw new JobSourceError("onlinejobs_ph", "PERMANENT", "OnlineJobs.ph search is disabled.");
+  }
+  const hits = await listSearchHits(keyword, limit, signal);
+  return hits.map((hit) => ({
+    url: hit.url,
+    title: hit.titleHint,
+    sourceKey: buildSourceKey("onlinejobs_ph", hit.externalId),
+  }));
+}
+
 /**
  * Fetches a single public job page the user explicitly pasted.
  *
@@ -298,6 +325,7 @@ export const onlineJobsPhAdapter: JobSourceAdapter = {
 export async function fetchOnlineJobsPosting(
   rawUrl: string,
   signal?: AbortSignal,
+  provenance: JobProvenance = "url_import",
 ): Promise<NormalizedJob> {
   if (!scrapeEnabled()) {
     throw new JobSourceError(
@@ -321,5 +349,5 @@ export async function fetchOnlineJobsPosting(
     );
   }
 
-  return fetchJobDetail(url, identity, signal, "url_import");
+  return fetchJobDetail(url, identity, signal, provenance);
 }
