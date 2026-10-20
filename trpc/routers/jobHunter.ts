@@ -5,7 +5,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { coverLetters, huntRuns, jobHunts, jobMatches, jobPostings, resumes } from "@/db/schema";
+import { coverLetters, huntRuns, interviewPreps, jobHunts, jobMatches, jobPostings, resumes } from "@/db/schema";
 import { isPollableSource } from "@/lib/job-sources";
 import { computeNextRunAt } from "@/lib/job-hunter/schedule";
 import { runHunt } from "@/lib/job-hunter/runner";
@@ -960,7 +960,10 @@ export const jobHunterRouter = createTRPCRouter({
           jobDescription: posting.description,
           ai,
         });
-        return { questions };
+        // Saved before returning, so a paid set is never lost if the page closes.
+        const prepId = randomUUID();
+        await ctx.db.insert(interviewPreps).values({ id: prepId, userId: ctx.user.id, matchId: match.id, questions });
+        return { prepId, matchId: match.id };
       } catch (error) {
         if (charged) {
           await refundCredits({
@@ -977,6 +980,64 @@ export const jobHunterRouter = createTRPCRouter({
           message: "Could not prepare interview questions. Your credits were refunded.",
         });
       }
+    }),
+
+  /** Which of the user's jobs already have an interview prep, so buttons can say "View prep". */
+  preppedMatchIds: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .selectDistinct({ matchId: interviewPreps.matchId })
+      .from(interviewPreps)
+      .where(eq(interviewPreps.userId, ctx.user.id));
+    return rows.map((row) => row.matchId);
+  }),
+
+  /** Every saved prep set for one job, newest first, with the job's details. */
+  getInterviewPreps: protectedProcedure
+    .input(z.object({ matchId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+      const posting = await ctx.db.query.jobPostings.findFirst({
+        columns: { title: true, company: true, applyUrl: true, url: true },
+        where: and(eq(jobPostings.id, match.jobPostingId), eq(jobPostings.userId, ctx.user.id)),
+      });
+      const sets = await ctx.db.query.interviewPreps.findMany({
+        columns: { id: true, questions: true, notes: true, createdAt: true },
+        where: and(eq(interviewPreps.userId, ctx.user.id), eq(interviewPreps.matchId, match.id)),
+        orderBy: [desc(interviewPreps.createdAt)],
+      });
+      return {
+        job: {
+          title: posting?.title ?? "This job",
+          company: posting?.company ?? "",
+          score: match.score,
+          applicationStatus: match.applicationStatus,
+        },
+        sets,
+      };
+    }),
+
+  /** Saves the user's own answer for one question of a prep set. */
+  saveInterviewNote: protectedProcedure
+    .input(
+      z.object({
+        prepId: z.string().min(1),
+        index: z.number().int().min(0).max(20),
+        note: z.string().max(4000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const prep = await ctx.db.query.interviewPreps.findFirst({
+        columns: { id: true, notes: true },
+        where: and(eq(interviewPreps.id, input.prepId), eq(interviewPreps.userId, ctx.user.id)),
+      });
+      if (!prep) throw new TRPCError({ code: "NOT_FOUND", message: "That prep was not found." });
+      const notes = { ...prep.notes, [String(input.index)]: input.note };
+      if (!input.note.trim()) delete notes[String(input.index)];
+      await ctx.db
+        .update(interviewPreps)
+        .set({ notes, updatedAt: new Date() })
+        .where(eq(interviewPreps.id, prep.id));
+      return { ok: true };
     }),
 
   /**

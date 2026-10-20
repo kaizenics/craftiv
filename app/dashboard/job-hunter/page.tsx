@@ -21,7 +21,8 @@ import {
   type TailorTone,
 } from "@/components/dashboard/job-tailor-dialog";
 import { HuntManager, type HuntDraft, type HuntSummary } from "@/components/dashboard/hunt-manager";
-import { InterviewPrepDialog, type InterviewQuestion } from "@/components/dashboard/interview-prep-dialog";
+import { InterviewPrepDialog, interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
+import { useRouter } from "next/navigation";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
 import { readClipFromHash, type ClippedJob } from "@/lib/job-hunter/clip";
 import { buildDemoHunts, buildDemoMatches, isDemoId } from "@/lib/job-hunter/demo";
@@ -221,11 +222,10 @@ export default function JobHunterPage() {
 
   const [applyMatchId, setApplyMatchId] = useState<string | null>(null);
   const [prepMatchId, setPrepMatchId] = useState<string | null>(null);
-  const [prepQuestions, setPrepQuestions] = useState<InterviewQuestion[] | null>(null);
-  const interviewPrep = trpc.jobHunter.interviewPrep.useMutation({
-    onSuccess: (result) => setPrepQuestions(result.questions),
-    onError: (error) => toast.error(error.message),
-  });
+  const router = useRouter();
+  // Jobs that already have a saved prep open it for free instead of paying again.
+  const preppedQuery = trpc.jobHunter.preppedMatchIds.useQuery();
+  const preppedIds = useMemo(() => new Set(preppedQuery.data ?? []), [preppedQuery.data]);
 
   const updateMatch = trpc.jobHunter.updateMatch.useMutation({
     onSuccess: refresh,
@@ -1127,10 +1127,11 @@ export default function JobHunterPage() {
                         if (refuseDemo(match.id)) return;
                         setApplyMatchId(match.id);
                       }}
+                      hasInterviewPrep={preppedIds.has(match.id)}
                       onInterviewPrep={() => {
                         if (refuseDemo(match.id)) return;
-                        setPrepQuestions(null);
-                        setPrepMatchId(match.id);
+                        if (preppedIds.has(match.id)) router.push(interviewPrepHref(match.id));
+                        else setPrepMatchId(match.id);
                       }}
                       onCompare={() => {
                         if (refuseDemo(match.id)) return;
@@ -1223,16 +1224,10 @@ export default function JobHunterPage() {
       />
 
       <InterviewPrepDialog
-        open={prepMatchId !== null}
+        matchId={prepMatchId}
+        jobLabel={jobLabelFor(prepMatchId)}
         onOpenChange={(open) => {
           if (!open) setPrepMatchId(null);
-        }}
-        jobLabel={jobLabelFor(prepMatchId)}
-        pending={interviewPrep.isPending}
-        questions={prepQuestions}
-        onRun={() => {
-          if (!prepMatchId || refuseDemo(prepMatchId)) return;
-          interviewPrep.mutate({ matchId: prepMatchId });
         }}
       />
 
