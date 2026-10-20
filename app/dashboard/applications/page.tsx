@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowUpRight, FileText, Target, Users } from "@/components/ui/icons";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
-import { InterviewPrepDialog, type InterviewQuestion } from "@/components/dashboard/interview-prep-dialog";
+import { InterviewPrepDialog, interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
 import { bandStyle } from "@/lib/ats-display";
 import { APPLICATION_STATUS_LABELS, type ApplicationStatus } from "@/lib/types/job-hunter";
 import { trpc } from "@/trpc/client";
@@ -33,16 +33,13 @@ export default function ApplicationsPage() {
   const [tab, setTab] = useState(TABS[0].id);
   const [applyMatchId, setApplyMatchId] = useState<string | null>(null);
   const [prepMatchId, setPrepMatchId] = useState<string | null>(null);
-  const [prepQuestions, setPrepQuestions] = useState<InterviewQuestion[] | null>(null);
+  const preppedQuery = trpc.jobHunter.preppedMatchIds.useQuery();
+  const preppedIds = useMemo(() => new Set(preppedQuery.data ?? []), [preppedQuery.data]);
 
   const refresh = () =>
     Promise.all([utils.jobHunter.listMatches.invalidate(), utils.jobHunter.stats.invalidate()]);
   const updateMatch = trpc.jobHunter.updateMatch.useMutation({
     onSuccess: refresh,
-    onError: (error) => toast.error(error.message),
-  });
-  const interviewPrep = trpc.jobHunter.interviewPrep.useMutation({
-    onSuccess: (result) => setPrepQuestions(result.questions),
     onError: (error) => toast.error(error.message),
   });
 
@@ -131,18 +128,19 @@ export default function ApplicationsPage() {
                     Apply
                     <ArrowUpRight className="size-4" aria-hidden="true" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9"
-                    onClick={() => {
-                      setPrepQuestions(null);
-                      setPrepMatchId(match.id);
-                    }}
-                  >
-                    <Users className="size-4" aria-hidden="true" />
-                    Interview prep
-                  </Button>
+                  {preppedIds.has(match.id) ? (
+                    <Button size="sm" variant="outline" className="h-9" asChild>
+                      <Link href={interviewPrepHref(match.id)}>
+                        <Users className="size-4" aria-hidden="true" />
+                        View prep
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="h-9" onClick={() => setPrepMatchId(match.id)}>
+                      <Users className="size-4" aria-hidden="true" />
+                      Interview prep
+                    </Button>
+                  )}
                   {match.tailoredCoverLetterId ? (
                     <Button size="sm" variant="ghost" className="h-9" asChild>
                       <Link href={`/cover-letter/write?id=${match.tailoredCoverLetterId}`}>
@@ -180,15 +178,10 @@ export default function ApplicationsPage() {
       />
 
       <InterviewPrepDialog
-        open={prepMatchId !== null}
+        matchId={prepMatchId}
+        jobLabel={labelFor(prepMatchId)}
         onOpenChange={(open) => {
           if (!open) setPrepMatchId(null);
-        }}
-        jobLabel={labelFor(prepMatchId)}
-        pending={interviewPrep.isPending}
-        questions={prepQuestions}
-        onRun={() => {
-          if (prepMatchId) interviewPrep.mutate({ matchId: prepMatchId });
         }}
       />
     </div>

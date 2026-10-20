@@ -72,6 +72,8 @@ type JobMatchCardProps = {
   onRescore: () => void;
   onTailor: () => void;
   onApply: () => void;
+  /** A saved prep exists, so the button opens it instead of generating a new one. */
+  hasInterviewPrep?: boolean;
   onInterviewPrep: () => void;
   onCompare: () => void;
   onDelete: () => void;
@@ -88,6 +90,7 @@ export function JobMatchCard({
   onTailor,
   onApply,
   onInterviewPrep,
+  hasInterviewPrep = false,
   onCompare,
   onDelete,
 }: JobMatchCardProps) {
@@ -353,7 +356,7 @@ export function JobMatchCard({
 
         <Button variant="outline" size="sm" onClick={onInterviewPrep} disabled={busy} className="h-9">
           <Users className="size-4" aria-hidden="true" />
-          Interview prep
+          {hasInterviewPrep ? "View prep" : "Interview prep"}
         </Button>
 
         <Button
