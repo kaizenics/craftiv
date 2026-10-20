@@ -18,7 +18,7 @@ import { isOwnAiUnlocked } from "@/lib/own-ai-access";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { hashForLogs, securityLog } from "@/lib/security/logging";
 
-const LOCKED_MESSAGE = "Using your own AI is included with any credit pack. Buy one to unlock it.";
+const LOCKED_MESSAGE = "Using your own AI is not available on this account.";
 
 async function assertUnlocked(db: Database, userId: string) {
   const user = await db.query.users.findFirst({
