@@ -237,17 +237,63 @@ export default function JobHunterPage() {
     onSettled: () => setBusyMatchId(null),
   });
 
-  const searchSource = trpc.jobHunter.searchSource.useMutation({
-    onSuccess: async (result) => {
-      await refresh();
+  const searchSource = trpc.jobHunter.searchSource.useMutation();
+  const importSearchHit = trpc.jobHunter.importSearchHit.useMutation();
+  const [searchStatus, setSearchStatus] = useState<string | null>(null);
+  // While set, the list shows only the jobs from the last platform search, so a
+  // fresh "Virtual Assistant" search is not buried under older, higher-scoring jobs.
+  const [searchResults, setSearchResults] = useState<{ query: string; matchIds: string[] } | null>(null);
+
+  // Two steps so results stream in: get the matching jobs, then import them one
+  // at a time and refresh after each, so every job shows up as soon as it is scored.
+  const runPlatformSearch = async (query: string) => {
+    if (!activeResumeId) return;
+    setSearchStatus("Searching...");
+    setSearchResults({ query, matchIds: [] });
+    setStatusFilter("all");
+    setJobsPage(1);
+    try {
+      const { hits } = await searchSource.mutateAsync({ resumeId: activeResumeId, query, limit: 10 });
+      if (hits.length === 0) {
+        toast.success("No jobs found for that search.");
+        return;
+      }
+      let added = 0;
+      let already = 0;
+      let failed = 0;
+      for (const [index, hit] of hits.entries()) {
+        setSearchStatus(`Scoring ${index + 1} of ${hits.length}...`);
+        try {
+          const result = await importSearchHit.mutateAsync({ resumeId: activeResumeId, url: hit.url });
+          if (result.cached) already += 1;
+          else if (!result.skipped) added += 1;
+          const matchId = result.matchId;
+          if (matchId) {
+            setSearchResults((current) =>
+              current && current.query === query ? { ...current, matchIds: [...current.matchIds, matchId] } : current,
+            );
+          }
+          await refresh();
+        } catch (error) {
+          // One unreadable job is skipped; a board that says stop, or is busy, ends the run.
+          const code = (error as { data?: { code?: string } }).data?.code;
+          if (code !== "TOO_MANY_REQUESTS") {
+            failed += 1;
+            continue;
+          }
+          toast.error(error instanceof Error ? error.message : "Could not read that job.");
+          break;
+        }
+      }
       toast.success(
-        result.found === 0
-          ? "No jobs found for that search."
-          : `Found ${result.found} — ${result.imported} new, ${result.deduped} already saved.`,
+        `Found ${hits.length}: ${added} new, ${already} already saved` + (failed ? `, ${failed} could not be read.` : "."),
       );
-    },
-    onError: (error) => toast.error(error.message),
-  });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Search failed.");
+    } finally {
+      setSearchStatus(null);
+    }
+  };
 
   const tailor = trpc.jobHunter.tailor.useMutation({
     onSuccess: async (result) => {
@@ -375,6 +421,12 @@ export default function JobHunterPage() {
   }
 
   const realMatches = useMemo(() => matchesQuery.data ?? [], [matchesQuery.data]);
+  // Search results are fetched by id, so a new low-scoring job is never cut off by the top-50 list.
+  const searchMatchIds = searchResults?.matchIds ?? [];
+  const searchMatchesQuery = trpc.jobHunter.listMatches.useQuery(
+    { ids: searchMatchIds, limit: 20 },
+    { enabled: searchMatchIds.length > 0, placeholderData: (previous) => previous },
+  );
 
   /**
    * Sample jobs stand in for an empty pipeline while the Job Hunter tour is
@@ -409,7 +461,10 @@ export default function JobHunterPage() {
   const filteredMatches = useMemo(() => {
     const query = jobSearch.trim().toLowerCase();
     const scoreFloor = minimumScore === "all" ? 0 : Number(minimumScore);
-    const filtered = matches.filter((match) => {
+    const fromSearch = searchResults ? new Set(searchResults.matchIds) : null;
+    const pool = fromSearch ? (searchMatchesQuery.data ?? []) : matches;
+    const filtered = pool.filter((match) => {
+      if (fromSearch && !fromSearch.has(match.id)) return false;
       const searchable = [
         match.posting.title,
         match.posting.company,
@@ -435,7 +490,7 @@ export default function JobHunterPage() {
       if (sortBy === "company") return a.posting.company.localeCompare(b.posting.company);
       return b.score - a.score;
     });
-  }, [jobSearch, matches, minimumScore, resumeFilter, sortBy, sourceFilter]);
+  }, [jobSearch, matches, minimumScore, resumeFilter, searchMatchesQuery.data, searchResults, sortBy, sourceFilter]);
   const visibleMatches =
     statusFilter === "all"
       ? filteredMatches
@@ -572,7 +627,8 @@ export default function JobHunterPage() {
             <JobImportPanel
               disabled={!activeResumeId}
               pending={importJob.isPending || bulkImportJobs.isPending}
-              searchPending={searchSource.isPending}
+              searchPending={searchStatus !== null}
+              searchStatus={searchStatus}
               platformSearchAvailable={onlineJobsPollable}
               error={importError}
               restrictionNote={restrictionNote}
@@ -581,10 +637,7 @@ export default function JobHunterPage() {
               onDetectUrl={handleDetectUrl}
               onSubmit={handleImport}
               onBulkSubmit={handleBulkImport}
-              onPlatformSearch={(query) => {
-                if (!activeResumeId) return;
-                searchSource.mutate({ resumeId: activeResumeId, query, limit: 5 });
-              }}
+              onPlatformSearch={(query) => void runPlatformSearch(query)}
             />
           </aside>
 
@@ -600,7 +653,8 @@ export default function JobHunterPage() {
                 embedded
                 disabled={!activeResumeId}
                 pending={importJob.isPending || bulkImportJobs.isPending}
-                searchPending={searchSource.isPending}
+                searchPending={searchStatus !== null}
+              searchStatus={searchStatus}
                 platformSearchAvailable={onlineJobsPollable}
                 error={importError}
                 restrictionNote={restrictionNote}
@@ -609,10 +663,7 @@ export default function JobHunterPage() {
                 onDetectUrl={handleDetectUrl}
                 onSubmit={handleImport}
                 onBulkSubmit={handleBulkImport}
-                onPlatformSearch={(query) => {
-                  if (!activeResumeId) return;
-                  searchSource.mutate({ resumeId: activeResumeId, query, limit: 5 });
-                }}
+                onPlatformSearch={(query) => void runPlatformSearch(query)}
               />
             </DrawerContent>
           </Drawer>
@@ -737,11 +788,27 @@ export default function JobHunterPage() {
                   boardFullscreen && "hidden",
                 )}
               >
+                {searchResults ? (
+                  <p className="text-sm text-muted-foreground">
+                    {searchStatus
+                      ? `Results for "${searchResults.query}" appear here as they are scored`
+                      : `${filteredMatches.length} ${filteredMatches.length === 1 ? "result" : "results"} for "${searchResults.query}"`}
+                    {" · "}
+                    <button
+                      type="button"
+                      onClick={() => setSearchResults(null)}
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      Show all jobs
+                    </button>
+                  </p>
+                ) : (
                 <p className="text-sm text-muted-foreground">
                   {filteredMatches.length === matches.length
                     ? `${matches.length} ${matches.length === 1 ? "job" : "jobs"} in your pipeline`
                     : `${filteredMatches.length} of ${matches.length} jobs`}
                 </p>
+                )}
                 <div className="flex rounded-lg border border-border bg-muted/30 p-0.5" aria-label="Pipeline layout">
                   <Button
                     type="button"

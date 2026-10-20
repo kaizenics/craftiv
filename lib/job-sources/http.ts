@@ -1,4 +1,5 @@
 import { JobSourceError } from "./types";
+import { reserveCrawlSlot } from "./crawl-clock";
 import type { JobSourceId } from "@/lib/types/job-hunter";
 
 /**
@@ -19,14 +20,17 @@ const MAX_RESPONSE_BYTES = 1_500_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
- * Last request time per host, so the crawl delay holds across concurrent
- * callers in this process.
- *
- * Process-local, which is honest about its limit: at two replicas each would
- * keep its own clock and the effective rate would double. The scheduled path
- * runs single-flight behind the hunt_runs claim, so that is not reachable
- * today -- but if this is ever called outside that claim, move the gate to the
- * DB-backed limiter in lib/security/rate-limit.ts, which is cross-replica.
+ * The longest a request will queue for its turn. Past this the host is busy
+ * with other users' requests, and it is kinder to say so than to hang the
+ * request for minutes.
+ */
+const MAX_QUEUE_WAIT_MS = 60_000;
+
+/**
+ * Per-process fallback clock, used only when the shared database clock
+ * (crawl-clock.ts) is unavailable. Process-local, so on its own it would let
+ * each replica keep its own pace; the shared clock is what makes the delay hold
+ * across servers.
  */
 const lastRequestAt = new Map<string, number>();
 const pending = new Map<string, Promise<void>>();
@@ -35,10 +39,23 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-/** Serialises per host so two concurrent callers cannot both skip the delay. */
-async function waitForTurn(host: string, crawlDelaySeconds: number) {
+/**
+ * Waits for this request's turn on `host`. The shared database clock orders
+ * requests across every replica and user, first come first served; the
+ * per-process queue below is the fallback.
+ */
+async function waitForTurn(host: string, crawlDelaySeconds: number, source: JobSourceId) {
   const delayMs = Math.max(0, crawlDelaySeconds * 1000);
   if (delayMs === 0) return;
+
+  const sharedWaitMs = await reserveCrawlSlot(host, delayMs);
+  if (sharedWaitMs !== null) {
+    if (sharedWaitMs > MAX_QUEUE_WAIT_MS) {
+      throw new JobSourceError(source, "TRANSIENT", "The job board is busy right now. Try again in a minute.");
+    }
+    if (sharedWaitMs > 0) await sleep(sharedWaitMs);
+    return;
+  }
 
   const previous = pending.get(host) ?? Promise.resolve();
 
@@ -79,7 +96,7 @@ export async function politeFetchText(
     throw new JobSourceError(options.source, "PERMANENT", "Only https URLs are fetched.");
   }
 
-  await waitForTurn(url.hostname, options.crawlDelaySeconds);
+  await waitForTurn(url.hostname, options.crawlDelaySeconds, options.source);
 
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const signal = options.signal

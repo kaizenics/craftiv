@@ -3,9 +3,7 @@
 
 import { useState } from "react";
 import {
-  ArrowRight,
   BadgeInfo,
-  FileText,
   ScanSearch,
   Sparkles,
   SpellCheck,
@@ -14,15 +12,10 @@ import { useRouter } from "next/navigation";
 import { CreateResumeCard } from "@/components/dashboard/create-resume-card";
 import { ResumeCardPreview } from "@/components/dashboard/resume-card-preview";
 import { CoverLetterCardPreview } from "@/components/dashboard/cover-letter-card-preview";
+import { ActionPlan } from "@/components/dashboard/action-plan";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { TipsCard } from "@/components/dashboard/tips-card";
 import { PageTour } from "@/components/onboarding/page-tour";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/trpc/client";
@@ -83,49 +76,6 @@ export default function Dashboard() {
       enabled: hasResumes && recentDocumentsTab === "cover-letter",
     });
 
-  const checklistItems = [
-    {
-      title: "Build your resume",
-      label: "Step 1",
-      detail: "Pick a template and complete each section with clear, role-relevant achievements.",
-      cta: "Start building",
-      href: "/resume/templates",
-      icon: FileText,
-    },
-    {
-      title: "Make it ATS-friendly",
-      label: "Step 2",
-      detail: "Improve keywords, structure, and formatting so ATS systems can parse it correctly.",
-      cta: "Optimize for ATS",
-      href: "/resume/upload",
-      icon: ScanSearch,
-    },
-    {
-      title: "Check and improve",
-      label: "Step 3",
-      detail: "Review weak bullets, tighten wording, and increase overall impact before applying.",
-      cta: "Run quality check",
-      href: "/dashboard/ats-checker",
-      premiumFeature: "ATS Checker" as const,
-      icon: SpellCheck,
-    },
-    {
-      title: "Write a cover letter",
-      label: "Step 4",
-      detail: "Generate a tailored cover letter that aligns with the role and your resume.",
-      cta: "Create letter",
-      href: "/cover-letter/write",
-      icon: Sparkles,
-    },
-    {
-      title: "Track your job applications",
-      label: "Step 5",
-      detail: "Keep your documents organized so each application is ready to send quickly.",
-      cta: "Manage applications",
-      href: "/dashboard/documents/resume",
-      icon: BadgeInfo,
-    },
-  ];
 
   return (
     <TooltipProvider>
@@ -145,82 +95,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Action Plan - Show for all users, including new accounts */}
-      <div data-tour="action-plan" className="w-full">
-        <div className="relative overflow-hidden rounded-3xl border border-sky-200/60 bg-sky-50 to-white p-4 sm:p-6">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -top-16 -right-12 h-44 w-44 rounded-full bg-sky-200/50 blur-3xl"
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -bottom-20 left-8 h-52 w-52 rounded-full bg-cyan-200/40 blur-3xl"
-            />
-
-            <div className="relative mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700/80">Action Plan</p>
-                <h3 className="font-display text-lg font-semibold text-slate-900 sm:text-xl">
-                  Land interviews faster
-                </h3>
-              </div>
-              <span className="inline-flex items-center rounded-full border border-sky-300/70 bg-white/90 px-3 py-1 text-xs font-medium text-sky-800 shadow-sm">
-                5-step workflow
-              </span>
-            </div>
-
-            <Accordion type="single" collapsible className="relative space-y-3">
-              {checklistItems.map((item, index) => (
-                <AccordionItem
-                  key={item.title}
-                  value={`item-${index}`}
-                  className="overflow-hidden rounded-2xl border border-sky-200/70 bg-white/90 shadow-[0_10px_30px_-20px_rgba(2,132,199,0.65)] backdrop-blur-sm transition-colors data-[state=open]:bg-white"
-                >
-                  <AccordionTrigger className="py-4 text-md text-foreground hover:no-underline sm:px-5 [&>svg]:text-sky-700/70">
-                    <span className="flex items-center gap-3 sm:gap-4">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-200 bg-sky-100/80 text-sky-700">
-                        <item.icon className="h-5 w-5" />
-                      </span>
-                      <span className="space-y-0.5 text-left">
-                        <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700/80">
-                          {item.label}
-                        </span>
-                        <span className="block text-base font-semibold leading-tight text-slate-900">
-                          {item.title}
-                        </span>
-                      </span>
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-0 pt-0 sm:px-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (item.premiumFeature) {
-                          router.push(item.href);
-                          return;
-                        }
-                        router.push(item.href);
-                      }}
-                      className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-sky-50 to-white px-4 py-3 text-left transition-all hover:border-sky-300 hover:from-sky-100 hover:to-cyan-50"
-                    >
-                      <div className="space-y-2">
-                        <p className="text-sm leading-relaxed text-slate-700 sm:text-[15px]">
-                          {item.detail}
-                        </p>
-                        <span className="inline-flex items-center text-xs font-semibold uppercase tracking-[0.12em] text-sky-800">
-                          {item.cta}
-                        </span>
-                      </div>
-                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-600 text-white transition-transform group-hover:translate-x-0.5">
-                        <ArrowRight className="h-4 w-4" />
-                      </span>
-                    </button>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-        </div>
-      </div>
+      <ActionPlan resumeCount={resumes.length} resumesLoading={isLoading} />
 
       {/* Quick Actions */}
       <div data-tour="quick-actions">

@@ -31,7 +31,11 @@ import {
   safeParseUrl,
   type NormalizedJob,
 } from "@/lib/job-sources";
-import { fetchOnlineJobsPosting, onlineJobsPhAdapter } from "@/lib/job-sources/onlinejobs-ph";
+import {
+  fetchOnlineJobsPosting,
+  onlineJobsPhAdapter,
+  searchOnlineJobsListings,
+} from "@/lib/job-sources/onlinejobs-ph";
 import { JobSourceError } from "@/lib/job-sources/types";
 import {
   APPLICATION_STATUSES,
@@ -233,6 +237,9 @@ function toTrpcError(error: unknown): TRPCError {
           "OnlineJobs.ph refused the request. Paste the job description instead, or try later.",
       });
     }
+    if (error.code === "TRANSIENT") {
+      return new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message });
+    }
     return new TRPCError({ code: "BAD_REQUEST", message: error.message });
   }
 
@@ -316,6 +323,61 @@ async function importJobForResume(
     source: job.source,
     attribution: adapter.capabilities.attribution,
   };
+}
+
+function assertOnlineJobsSearchEnabled() {
+  if (!onlineJobsPhAdapter.capabilities.pollable || !onlineJobsPhAdapter.search) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: onlineJobsPhAdapter.capabilities.restrictionNote ?? "Searching this source is not enabled.",
+    });
+  }
+}
+
+type Listing = { url: string; title: string; sourceKey: string };
+
+/**
+ * Per-user cache of search result lists, so repeating a search skips the board.
+ * Keyed by user: OnlineJobs content is never shared between users (see job_postings).
+ * shortcut: process-local, so a different replica misses and refetches; move to a
+ * per-user DB table if repeat searches across replicas become common.
+ */
+const LISTING_CACHE_TTL_MS = 15 * 60 * 1000;
+const LISTING_CACHE_MAX = 2000;
+const listingCache = new Map<string, { atMs: number; listings: Listing[] }>();
+
+function readListingCache(key: string): Listing[] | null {
+  const entry = listingCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.atMs > LISTING_CACHE_TTL_MS) {
+    listingCache.delete(key);
+    return null;
+  }
+  return entry.listings;
+}
+
+/**
+ * True when this URL came back from the user's own recent search. Those imports
+ * are already bounded by the search's rate limit (at most 10 per search), so they
+ * skip a second, per-job limit that would otherwise cut a 10-job search short.
+ */
+function isRecentListing(userId: string, url: string): boolean {
+  for (const [key, entry] of listingCache) {
+    if (!key.startsWith(`${userId}:`) || Date.now() - entry.atMs > LISTING_CACHE_TTL_MS) continue;
+    if (entry.listings.some((listing) => listing.url === url)) return true;
+  }
+  return false;
+}
+
+function writeListingCache(key: string, listings: Listing[]) {
+  listingCache.delete(key);
+  listingCache.set(key, { atMs: Date.now(), listings });
+  // Map keeps insertion order, so the first key is the oldest.
+  while (listingCache.size > LISTING_CACHE_MAX) {
+    const oldest = listingCache.keys().next().value;
+    if (oldest === undefined) break;
+    listingCache.delete(oldest);
+  }
 }
 
 export const jobHunterRouter = createTRPCRouter({
@@ -427,17 +489,18 @@ export const jobHunterRouter = createTRPCRouter({
           applicationStatus: z.enum(APPLICATION_STATUSES).optional(),
           minScore: z.number().int().min(0).max(100).optional(),
           limit: z.number().int().min(1).max(100).default(50),
+          /** Fetch exactly these matches (e.g. the results of one search), ignoring the top-N cut. */
+          ids: z.array(z.string().min(1)).max(20).optional(),
         })
         .default({ limit: 50 }),
     )
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.query.jobMatches.findMany({
-        where: input.applicationStatus
-          ? and(
-              eq(jobMatches.userId, ctx.user.id),
-              eq(jobMatches.applicationStatus, input.applicationStatus),
-            )
-          : eq(jobMatches.userId, ctx.user.id),
+        where: and(
+          eq(jobMatches.userId, ctx.user.id),
+          input.applicationStatus ? eq(jobMatches.applicationStatus, input.applicationStatus) : undefined,
+          input.ids ? inArray(jobMatches.id, input.ids.length ? input.ids : [""]) : undefined,
+        ),
         orderBy: [desc(jobMatches.score), desc(jobMatches.createdAt)],
         limit: input.limit,
         with: {
@@ -631,7 +694,7 @@ export const jobHunterRouter = createTRPCRouter({
   stats: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db.query.jobMatches.findMany({
       where: eq(jobMatches.userId, ctx.user.id),
-      columns: { applicationStatus: true, score: true },
+      columns: { applicationStatus: true, score: true, tailoredResumeId: true },
     });
 
     const byStatus = Object.fromEntries(
@@ -646,6 +709,7 @@ export const jobHunterRouter = createTRPCRouter({
       total: rows.length,
       byStatus,
       bestScore: rows.reduce((best, row) => Math.max(best, row.score), 0),
+      tailored: rows.filter((row) => row.tailoredResumeId).length,
     };
   }),
 
@@ -1046,6 +1110,11 @@ export const jobHunterRouter = createTRPCRouter({
    * Disabled unless ONLINEJOBS_SCRAPE_ENABLED is set. Bounded per call by the
    * adapter, and rate limited here so it cannot be driven in a loop.
    */
+  /**
+   * The first half of a platform search: the matching jobs, without their pages.
+   * The client then imports them one at a time (importSearchHit), so each job
+   * appears as soon as it is scored instead of all at once at the end.
+   */
   searchSource: protectedProcedure
     .input(
       z.object({
@@ -1055,54 +1124,112 @@ export const jobHunterRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!onlineJobsPhAdapter.capabilities.pollable || !onlineJobsPhAdapter.search) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message:
-            onlineJobsPhAdapter.capabilities.restrictionNote ??
-            "Searching this source is not enabled.",
-        });
-      }
+      assertOnlineJobsSearchEnabled();
 
       const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
       if (!resume.data) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
       }
 
-      await enforceJobFetchRateLimit(ctx, "searchSource");
-
-      const controller = new AbortController();
-      let jobs: NormalizedJob[];
-      try {
-        jobs = await onlineJobsPhAdapter.search(
-          { query: input.query, location: "", limit: input.limit },
-          controller.signal,
-        );
-      } catch (error) {
-        throw toTrpcError(error);
+      const cacheKey = `${ctx.user.id}:${input.limit}:${input.query.trim().toLowerCase()}`;
+      let listings = readListingCache(cacheKey);
+      if (!listings) {
+        await enforceJobFetchRateLimit(ctx, "searchSource");
+        try {
+          listings = await searchOnlineJobsListings(input.query, input.limit);
+        } catch (error) {
+          throw toTrpcError(error);
+        }
+        writeListingCache(cacheKey, listings);
       }
 
-      let imported = 0;
-      let deduped = 0;
+      // Jobs this user already saved are re-scored from their own copy, not refetched.
+      const saved = listings.length
+        ? await ctx.db.query.jobPostings.findMany({
+            columns: { sourceKey: true },
+            where: and(
+              eq(jobPostings.userId, ctx.user.id),
+              inArray(jobPostings.sourceKey, listings.map((listing) => listing.sourceKey)),
+            ),
+          })
+        : [];
+      const savedKeys = new Set(saved.map((row) => row.sourceKey));
 
-      for (const job of jobs) {
-        if (!job.description.trim()) continue;
+      return {
+        hits: listings.map((listing) => ({
+          url: listing.url,
+          title: listing.title,
+          saved: savedKeys.has(listing.sourceKey),
+        })),
+      };
+    }),
 
-        const posting = await upsertPosting(ctx.db, ctx.user.id, job);
-        if (posting.deduped) deduped += 1;
-        else imported += 1;
+  /**
+   * The second half: one job from a search. A job the user already has is
+   * re-scored from their stored posting with no request to the board; a new one
+   * is fetched in full (the shared crawl clock decides when) and scored, so
+   * accuracy is the same as a pasted job.
+   */
+  importSearchHit: protectedProcedure
+    .input(z.object({ resumeId: z.string().min(1), url: z.string().url().max(2048) }))
+    .mutation(async ({ ctx, input }) => {
+      assertOnlineJobsSearchEnabled();
 
-        await scoreAndUpsertMatch(ctx.db, {
+      const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+      if (!resume.data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+      }
+
+      // The URL came from the browser: derive the job's identity server-side and
+      // refuse anything that is not an OnlineJobs.ph job page.
+      let parsed: URL;
+      try {
+        parsed = new URL(input.url);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That is not a valid link." });
+      }
+      const identity = onlineJobsPhAdapter.identityFromUrl?.(parsed);
+      if (!identity) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That link is not an OnlineJobs.ph job." });
+      }
+
+      const existing = await ctx.db.query.jobPostings.findFirst({
+        columns: { id: true, description: true },
+        where: and(eq(jobPostings.userId, ctx.user.id), eq(jobPostings.sourceKey, identity.sourceKey)),
+      });
+      if (existing) {
+        const matchId = await scoreAndUpsertMatch(ctx.db, {
           userId: ctx.user.id,
-          postingId: posting.id,
+          postingId: existing.id,
           resumeId: resume.id,
           resumeData: resume.data,
           resumeUpdatedAt: resume.updatedAt,
-          jobDescription: job.description,
+          jobDescription: existing.description,
         });
+        return { matchId, cached: true, skipped: false };
       }
 
-      return { found: jobs.length, imported, deduped };
+      if (!isRecentListing(ctx.user.id, input.url)) {
+        await enforceJobFetchRateLimit(ctx, "importSearchHit");
+      }
+      let job: NormalizedJob;
+      try {
+        job = await fetchOnlineJobsPosting(input.url, undefined, "feed");
+      } catch (error) {
+        throw toTrpcError(error);
+      }
+      if (!job.description.trim()) return { matchId: null, cached: false, skipped: true };
+
+      const posting = await upsertPosting(ctx.db, ctx.user.id, job);
+      const matchId = await scoreAndUpsertMatch(ctx.db, {
+        userId: ctx.user.id,
+        postingId: posting.id,
+        resumeId: resume.id,
+        resumeData: resume.data,
+        resumeUpdatedAt: resume.updatedAt,
+        jobDescription: job.description,
+      });
+      return { matchId, cached: posting.deduped, skipped: false };
     }),
 
   listHunts: protectedProcedure.query(async ({ ctx }) => {
