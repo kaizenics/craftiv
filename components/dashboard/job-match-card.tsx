@@ -21,6 +21,7 @@ import {
   Sparkles,
   Target,
   Trash2,
+  Users,
 } from "@/components/ui/icons";
 import { bandStyle } from "@/lib/ats-display";
 import {
@@ -70,6 +71,8 @@ type JobMatchCardProps = {
   onStatusChange: (status: ApplicationStatus) => void;
   onRescore: () => void;
   onTailor: () => void;
+  onApply: () => void;
+  onInterviewPrep: () => void;
   onCompare: () => void;
   onDelete: () => void;
 };
@@ -83,6 +86,8 @@ export function JobMatchCard({
   onStatusChange,
   onRescore,
   onTailor,
+  onApply,
+  onInterviewPrep,
   onCompare,
   onDelete,
 }: JobMatchCardProps) {
@@ -340,19 +345,16 @@ export function JobMatchCard({
           Re-score
         </Button>
 
-        {posting.applyUrl ? (
-          <Button variant="outline" size="sm" asChild className="h-9">
-            <a
-              href={posting.applyUrl}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              aria-label={`Open ${posting.title} on the employer site (opens in a new tab)`}
-            >
-              Open posting
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </a>
-          </Button>
-        ) : null}
+        {/* Apply opens the posting from its own dialog, with the tailored letter ready to copy. */}
+        <Button variant="outline" size="sm" onClick={onApply} disabled={busy} className="h-9">
+          Apply
+          <ArrowUpRight className="size-4" aria-hidden="true" />
+        </Button>
+
+        <Button variant="outline" size="sm" onClick={onInterviewPrep} disabled={busy} className="h-9">
+          <Users className="size-4" aria-hidden="true" />
+          Interview prep
+        </Button>
 
         <Button
           variant="ghost"

@@ -12,6 +12,7 @@ import { runHunt } from "@/lib/job-hunter/runner";
 import { JOB_SOURCE_IDS } from "@/lib/types/job-hunter";
 import {
   InsufficientCreditsError,
+  INTERVIEW_PREP_COST,
   JOB_TAILOR_COST,
   newChargeIdempotencyKey,
   refundCredits,
@@ -20,6 +21,8 @@ import type { AiConnection } from "@/lib/ai";
 import { beginAiAction } from "@/lib/own-ai-access";
 import { normalizeCoverLetterData } from "@/lib/types/cover-letter";
 import { TailorError, tailorResumeForJob } from "@/lib/job-hunter/tailor";
+import { generateInterviewPrep } from "@/lib/job-hunter/interview-prep";
+import { htmlToPlainText } from "@/lib/job-sources/normalize";
 import type { Database } from "@/db";
 import { isUniqueConstraintError } from "@/lib/db-errors";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
@@ -906,6 +909,104 @@ export const jobHunterRouter = createTRPCRouter({
    * Flipping `origin` is the moment generated output becomes theirs. Without
    * this the column is a one-way trapdoor and tailored documents stay invisible.
    */
+  /**
+   * Interview prep for one job: likely questions with answers from the resume.
+   * Charged like tailoring, refunded if the model fails. Not stored; the client
+   * keeps it for the session.
+   * shortcut: regenerating costs again; persist on job_matches if users ask to revisit it.
+   */
+  interviewPrep: protectedProcedure
+    .input(z.object({ matchId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceJobFetchRateLimit(ctx, "interviewPrep");
+
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+      const resume = await getOwnedResume(ctx.db, match.resumeId, ctx.user.id);
+      if (!resume.data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+      }
+      const posting = await ctx.db.query.jobPostings.findFirst({
+        where: and(eq(jobPostings.id, match.jobPostingId), eq(jobPostings.userId, ctx.user.id)),
+      });
+      if (!posting?.description.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This job has no description to prepare from." });
+      }
+
+      const idempotencyKey = newChargeIdempotencyKey("interview_prep", ctx.user.id);
+      let ai: AiConnection;
+      let charged: boolean;
+      try {
+        const started = await beginAiAction({
+          userId: ctx.user.id,
+          eventType: "interview_prep",
+          costUnits: INTERVIEW_PREP_COST,
+          idempotencyKey,
+          metadata: { matchId: match.id, jobPostingId: posting.id },
+        });
+        ai = started.ai;
+        charged = started.charge !== null;
+      } catch (error) {
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have enough credits for this action." });
+        }
+        throw error;
+      }
+
+      try {
+        const questions = await generateInterviewPrep({
+          resumeData: resume.data,
+          jobTitle: posting.title,
+          companyName: posting.company,
+          jobDescription: posting.description,
+          ai,
+        });
+        return { questions };
+      } catch (error) {
+        if (charged) {
+          await refundCredits({
+            userId: ctx.user.id,
+            eventType: "interview_prep_refund",
+            refundUnits: INTERVIEW_PREP_COST,
+            idempotencyKey: `refund:${idempotencyKey}`,
+            metadata: { reason: "ai_failure", matchId: match.id },
+          });
+        }
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not prepare interview questions. Your credits were refunded.",
+        });
+      }
+    }),
+
+  /**
+   * What the Apply dialog needs: the tailored cover letter as plain text (or
+   * null if the job has not been tailored yet) and the address to apply at.
+   */
+  applyKit: protectedProcedure
+    .input(z.object({ matchId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
+      const posting = await ctx.db.query.jobPostings.findFirst({
+        columns: { url: true, applyUrl: true },
+        where: and(eq(jobPostings.id, match.jobPostingId), eq(jobPostings.userId, ctx.user.id)),
+      });
+
+      let coverLetter: string | null = null;
+      if (match.tailoredCoverLetterId) {
+        const letter = await ctx.db.query.coverLetters.findFirst({
+          columns: { data: true },
+          where: and(eq(coverLetters.id, match.tailoredCoverLetterId), eq(coverLetters.userId, ctx.user.id)),
+        });
+        const content = letter?.data?.content ?? "";
+        // Edited letters are stored as HTML; the clipboard wants plain text with paragraph breaks.
+        // A blank line after each paragraph keeps the letter's spacing once tags are stripped.
+        coverLetter = htmlToPlainText(content.replace(/<\/p>/gi, "</p>\n")) || null;
+      }
+
+      return { coverLetter, applyUrl: posting?.applyUrl || posting?.url || null };
+    }),
+
   saveToDocuments: protectedProcedure
     .input(z.object({ matchId: z.string().min(1), kind: z.enum(["resume", "cover_letter"]) }))
     .mutation(async ({ ctx, input }) => {
