@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
+import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 import {
   LayoutDashboard,
@@ -124,6 +125,8 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { session } = useAuth();
+  // useAuth only carries the session record; the account details come from the auth client.
+  const account = authClient.useSession().data?.user ?? null;
   const { data: subscription } = trpc.user.subscription.useQuery(undefined, {
     enabled: !!session,
   });
@@ -177,7 +180,7 @@ export function DashboardSidebar() {
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-border px-4">
+      <div className="flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <Image src="/craftiv.png" alt="logo" width={30} height={30} sizes="30px" />
           <span className="font-display text-lg font-bold">Craftiv</span>
@@ -235,7 +238,7 @@ export function DashboardSidebar() {
                         isExpanded ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
                       )}
                     >
-                      <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+                      <div className="ml-4 mt-1 space-y-0.5 pl-3">
                         {item.children!.map((child) => {
                           const childActive = isItemActive(child.href, pathname);
                           return (
@@ -293,7 +296,7 @@ export function DashboardSidebar() {
 
       {session ? (
         <div className="px-3 pb-2">
-          <div data-tour="credits" className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+          <div data-tour="credits" className="group inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900">
             <Coins className="h-3.5 w-3.5 text-amber-700" />
             <span>{credits}</span>
               <span className="inline-flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-amber-900 transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 group-hover:max-w-[220px] max-w-0 opacity-0">
@@ -311,20 +314,31 @@ export function DashboardSidebar() {
         </div>
       ) : null}
 
-      {/* Footer */}
-      <div className="border-t border-border p-3">
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-3 text-foreground hover:bg-muted/10 dark:hover:bg-muted/10"
-        >
-          <Link href="/contact">
-            <Mail className="h-5 w-5" />
-            <span>Contact Us</span>
+      {/* Signed-in account: who you are, and the way to your profile. */}
+      {account ? (
+        <div className="p-3">
+          <Link
+            href="/dashboard/settings/profile"
+            className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-muted"
+          >
+            {account.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={account.image} alt="" className="size-9 shrink-0 rounded-full object-cover" />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+              >
+                {(account.name || account.email || "?").trim().charAt(0).toUpperCase()}
+              </span>
+            )}
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-foreground">{account.name || "Your account"}</span>
+              <span className="block truncate text-xs text-muted-foreground">{account.email}</span>
+            </span>
           </Link>
-        </Button>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -351,7 +365,7 @@ export function DashboardSidebar() {
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-64 border-r border-border bg-sidebar transition-transform duration-300 lg:hidden",
+          "fixed left-0 top-0 z-50 h-screen w-64 border-r border-border bg-card transition-transform duration-300 lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -359,7 +373,7 @@ export function DashboardSidebar() {
       </aside>
 
       {/* Desktop Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-border bg-sidebar lg:block">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-border bg-card lg:block">
         <SidebarContent />
       </aside>
     </>

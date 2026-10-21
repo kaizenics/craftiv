@@ -1,7 +1,7 @@
 "use client";
 
 import { Lightbulb, X, ArrowRight } from "@/components/ui/icons";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,9 +29,38 @@ const tips = [
   },
 ];
 
+// Remembered per browser, so a dismissed card stays gone after reloads.
+const DISMISS_KEY = "craftiv:tips-dismissed";
+const listeners = new Set<() => void>();
+
+function readDismissed() {
+  try {
+    return window.localStorage.getItem(DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function setDismissed() {
+  try {
+    window.localStorage.setItem(DISMISS_KEY, "1");
+  } catch {
+    // Storage blocked (private mode): the card still hides for this visit below.
+  }
+  listeners.forEach((listener) => listener());
+}
+
 export function TipsCard() {
   const [currentTip, setCurrentTip] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
+  const [hiddenThisVisit, setHiddenThisVisit] = useState(false);
+  // Server renders it hidden, so a dismissed card never flashes before the browser value is read.
+  const storedDismissed = useSyncExternalStore(subscribe, readDismissed, () => true);
+  const dismissed = hiddenThisVisit || storedDismissed;
 
   const nextTip = () => {
     setCurrentTip((prev) => (prev + 1) % tips.length);
@@ -46,13 +75,16 @@ export function TipsCard() {
           key="tips-card"
           exit={{ opacity: 0, scale: 0.97, height: 0 }}
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/30"
+          className="relative overflow-hidden rounded-2xl bg-amber-50 dark:bg-amber-950/30"
         >
           {/* Dismiss */}
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => setDismissed(true)}
+            onClick={() => {
+              setHiddenThisVisit(true);
+              setDismissed();
+            }}
             className="absolute right-3 top-3 h-7 w-7 text-amber-400 hover:bg-amber-100 hover:text-amber-600 dark:hover:bg-amber-900/40 dark:hover:text-amber-300"
           >
             <X className="h-4 w-4" />
