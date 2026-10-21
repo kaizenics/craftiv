@@ -590,7 +590,7 @@ export default function JobHunterPage() {
           layout -- so the Job Hunter tour had nothing to point at and never
           ran. The samples are shown regardless while it is pending. */}
       {hasNoResumes && !demoMode ? (
-        <section className="rounded-xl border border-border bg-card p-8 text-center">
+        <section className="rounded-xl bg-card p-8 text-center">
           <Target className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
           <h2 className="mt-3 font-heading text-lg font-semibold">Create a resume first</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -603,7 +603,7 @@ export default function JobHunterPage() {
         </section>
       ) : (
         <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
-          <div className="rounded-xl border border-border bg-card p-3 lg:hidden">
+          <div className="rounded-xl bg-card p-3 lg:hidden">
             <div className="flex items-end gap-2">
               <label className="min-w-0 flex-1">
                 <span className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -634,7 +634,7 @@ export default function JobHunterPage() {
           </div>
 
           <aside data-tour="jobhunter-intake" className="hidden space-y-4 lg:sticky lg:top-6 lg:col-span-2 lg:block">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl bg-card p-4">
               <ResumeCombobox
                 resumes={resumes}
                 selectedId={activeResumeId}
@@ -828,7 +828,7 @@ export default function JobHunterPage() {
                     : `${filteredMatches.length} of ${matches.length} jobs`}
                 </p>
                 )}
-                <div className="flex rounded-lg border border-border bg-muted/30 p-0.5" aria-label="Pipeline layout">
+                <div className="flex rounded-lg bg-card p-0.5" aria-label="Pipeline layout">
                   <Button
                     type="button"
                     variant={matchesLayout === "list" ? "secondary" : "ghost"}
@@ -876,7 +876,7 @@ export default function JobHunterPage() {
 
               <section
                 aria-label="Filter and sort jobs"
-                className="overflow-hidden rounded-lg border border-border bg-card"
+                className="overflow-hidden rounded-lg bg-card"
               >
                 <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
                   <div className="relative">

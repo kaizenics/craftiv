@@ -153,7 +153,7 @@ export function JobImportPanel({
         "bg-card",
         embedded
           ? "flex min-h-0 flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-          : "rounded-xl border border-border p-4",
+          : "rounded-xl p-4",
       )}
     >
       <div className={cn(embedded && "shrink-0 pb-3 pt-2")}>
@@ -383,7 +383,7 @@ export function JobImportPanel({
           </div>
 
           {bulkResult ? (
-            <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
+            <div className="rounded-lg bg-muted/60 p-3 text-xs">
               <p className="font-medium">
                 {bulkResult.imported} imported, {bulkResult.duplicates} already saved, {bulkResult.failed} failed
               </p>
@@ -404,7 +404,7 @@ export function JobImportPanel({
       </Tabs>
 
       {restrictionNote && mode === "url" ? (
-        <p className="mt-3 flex gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+        <p className="mt-3 flex gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>{restrictionNote}</span>
         </p>

@@ -85,8 +85,8 @@ export function ResumeComparisonDialog({
                 <label
                   key={resume.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2.5",
-                    checked && "border-primary bg-primary/5",
+                    "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 bg-muted/60",
+                    checked && "bg-primary/10",
                     disabled && "cursor-not-allowed opacity-50",
                   )}
                 >
@@ -119,7 +119,7 @@ export function ResumeComparisonDialog({
                 const band = bandStyle(comparison.score ?? 0);
                 const isBest = comparison.score !== undefined && comparison.score === bestScore;
                 return (
-                  <article key={comparison.resumeId} className="rounded-lg border border-border p-3">
+                  <article key={comparison.resumeId} className="rounded-lg p-3 bg-muted/60">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h4 className="truncate text-sm font-semibold">{comparison.resumeTitle}</h4>

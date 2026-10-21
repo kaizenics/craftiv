@@ -51,7 +51,7 @@ function fileRejectionReason(file: File | null): string | null {
 function ReportSkeleton() {
   return (
     <div className="space-y-5" aria-hidden="true">
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-xl bg-card p-6">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
           <div className="h-36 w-36 shrink-0 animate-pulse rounded-full bg-muted" />
           <div className="w-full space-y-3">
@@ -62,7 +62,7 @@ function ReportSkeleton() {
         </div>
       </div>
       <div className="h-9 w-full animate-pulse rounded-4xl bg-muted" />
-      <div className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <div className="space-y-3 rounded-xl bg-card p-5">
         <div className="h-4 w-40 animate-pulse rounded bg-muted" />
         {[0, 1, 2].map((key) => (
           <div key={key} className="h-16 w-full animate-pulse rounded-lg bg-muted" />
@@ -221,7 +221,7 @@ export default function AtsCheckerPage() {
             See how a tracking system reads your resume, and what to change before you apply.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-4xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-4xl bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           {ownAiProvider ? `Runs on your ${ownAiProvider} key` : "1 credit per check"}
         </span>
@@ -236,7 +236,7 @@ export default function AtsCheckerPage() {
         <section
           data-tour="ats-setup"
           aria-labelledby="ats-setup-heading"
-          className="space-y-5 rounded-xl border border-border bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
+          className="space-y-5 rounded-xl bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
         >
           <h2 id="ats-setup-heading" className="sr-only">
             Set up your ATS check
@@ -323,7 +323,7 @@ export default function AtsCheckerPage() {
                 </label>
 
                 {file && (
-                  <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-muted/60">
                     <FileText
                       className="h-4 w-4 shrink-0 text-muted-foreground"
                       aria-hidden="true"

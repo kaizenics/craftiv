@@ -61,7 +61,7 @@ export function ApplyAssistDialog({ matchId, jobLabel, alreadyApplied, onOpenCha
           <Skeleton className="h-56 w-full rounded-xl" />
         ) : !letter ? (
           <div className="space-y-4">
-            <p className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+            <p className="rounded-lg bg-muted/60 p-4 text-sm text-muted-foreground">
               This job has no tailored cover letter yet. Tailor it first: you get a resume rewritten for this
               role and a matching letter, ready to paste here.
             </p>
@@ -88,7 +88,7 @@ export function ApplyAssistDialog({ matchId, jobLabel, alreadyApplied, onOpenCha
                 readOnly
                 value={letter}
                 aria-label="Tailored cover letter"
-                className="mt-2 h-48 w-full resize-y rounded-xl border border-border bg-muted/30 p-3 text-sm leading-relaxed text-foreground"
+                className="mt-2 h-48 w-full resize-y rounded-xl bg-muted/60 p-3 text-sm leading-relaxed text-foreground"
               />
               <Button variant="outline" className="mt-2" onClick={copy}>
                 {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}

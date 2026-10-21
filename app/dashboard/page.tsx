@@ -29,7 +29,7 @@ import { PublicBadge } from "@/components/share/public-badge";
 function DocumentRowsSkeleton() {
   return (
     <div
-      className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm"
+      className="overflow-hidden rounded-2xl bg-card shadow-sm"
       aria-busy="true"
       aria-label="Loading documents"
     >
@@ -144,7 +144,7 @@ export default function Dashboard() {
               {isLoading ? (
                 <DocumentRowsSkeleton />
               ) : (
-              <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+              <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
                 <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-[13px] font-semibold text-foreground/90 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
                   <p className="tracking-tight">Resume</p>
                   <p className="flex items-center gap-1.5 tracking-tight">
@@ -196,7 +196,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => router.push(`/resume/section/${resume.id}`)}
-                            className="h-20 w-14 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02] md:h-28 md:w-20"
+                            className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm transition-transform hover:scale-[1.02] md:h-28 md:w-20"
                           >
                             <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
                           </button>
@@ -227,7 +227,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => router.push("/dashboard/ats-checker")}
-                            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                            className="inline-flex h-9 items-center gap-2 rounded-full bg-muted/60 px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                           >
                             <ScanSearch className="h-4 w-4" />
                             <span>Check</span>
@@ -235,7 +235,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => router.push("/dashboard/ai-resume")}
-                            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                            className="inline-flex h-9 items-center gap-2 rounded-full bg-muted/60 px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                           >
                             <SpellCheck className="h-4 w-4" />
                             <span>Get Review</span>
@@ -255,7 +255,7 @@ export default function Dashboard() {
                         <button
                           type="button"
                           onClick={() => router.push("/dashboard/ats-checker")}
-                          className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                          className="inline-flex h-10 items-center gap-2 rounded-full bg-muted/60 px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                         >
                           <ScanSearch className="h-4 w-4" />
                           <span>Check</span>
@@ -266,7 +266,7 @@ export default function Dashboard() {
                         <button
                           type="button"
                           onClick={() => router.push("/dashboard/ai-resume")}
-                          className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                          className="inline-flex h-10 items-center gap-2 rounded-full bg-muted/60 px-3 text-left font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                         >
                           <SpellCheck className="h-4 w-4" />
                           <span>Get Review</span>
@@ -298,7 +298,7 @@ export default function Dashboard() {
               {isCoverLettersLoading ? (
                 <DocumentRowsSkeleton />
               ) : coverLetters.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+                <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
                   <div className="hidden items-center gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-[13px] font-semibold text-foreground/90 md:grid md:grid-cols-[minmax(0,2.6fr)_170px_185px_190px_110px]">
                     <p className="tracking-tight">Cover Letter</p>
                     <p className="tracking-tight">Job Title</p>
@@ -319,7 +319,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => router.push(`/cover-letter/write?id=${letter.id}`)}
-                            className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-transform hover:scale-[1.02]"
+                            className="h-28 w-20 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm transition-transform hover:scale-[1.02]"
                           >
                             <CoverLetterCardPreview />
                           </button>
@@ -365,7 +365,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-border bg-card p-8 text-center">
+                <div className="rounded-xl bg-card p-8 text-center">
                   <p className="font-medium text-foreground">No cover letters yet</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Create your first cover letter to see it here.
@@ -386,7 +386,7 @@ export default function Dashboard() {
             Getting Started
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl bg-card p-5">
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10 dark:bg-muted/800">
                 <span className="text-lg font-bold text-foreground">1</span>
               </div>
@@ -395,7 +395,7 @@ export default function Dashboard() {
                 Pick from our collection of professional, ATS-friendly resume templates.
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl bg-card p-5">
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10 dark:bg-muted/800">
                 <span className="text-lg font-bold text-foreground">2</span>
               </div>
@@ -404,7 +404,7 @@ export default function Dashboard() {
                 Add your experience, skills, and education with our easy-to-use editor.
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl bg-card p-5">
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10 dark:bg-muted/800">
                 <span className="text-lg font-bold text-foreground">3</span>
               </div>

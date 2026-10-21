@@ -62,7 +62,7 @@ export function CreditsOverview({
   return (
     <section
       aria-labelledby="credits-heading"
-      className="rounded-xl border border-border bg-card p-5"
+      className="rounded-xl bg-card p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -92,7 +92,7 @@ export function CreditsOverview({
           className={cn(
             "rounded-4xl border px-2 py-0.5 text-xs font-medium",
             state === "healthy"
-              ? "border-success-border bg-success-surface text-success-surface-foreground"
+              ? "bg-success-surface text-success-surface-foreground"
               : copy.surface + " " + copy.text
           )}
         >
@@ -131,7 +131,7 @@ export function CreditsOverview({
 
         {/* Replaces a single "0.5 credit each" rate that under-counted expensive
             actions by half and over-counted cheap ones by five times. */}
-        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border">
+        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg bg-muted/60">
           {CREDIT_ACTIONS.map((action) => {
             const remaining = affordableCount(availableCredits, action.costUnits);
             return (

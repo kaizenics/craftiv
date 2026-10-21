@@ -76,7 +76,7 @@ export function ActionPlan({ resumeCount, resumesLoading }: { resumeCount: numbe
     return (
       <section
         data-tour="action-plan"
-        className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+        className="flex flex-col gap-4 rounded-2xl bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
       >
         <div className="flex items-center gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success text-white">
@@ -101,7 +101,7 @@ export function ActionPlan({ resumeCount, resumesLoading }: { resumeCount: numbe
   const nextIndex = steps.findIndex((step) => !step.done);
 
   return (
-    <section data-tour="action-plan" className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+    <section data-tour="action-plan" className="rounded-2xl bg-card p-5 sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-display text-xl font-semibold text-foreground">Your job search</h2>
         <p className="text-sm tabular-nums text-muted-foreground">
@@ -124,10 +124,10 @@ export function ActionPlan({ resumeCount, resumesLoading }: { resumeCount: numbe
               <div className="flex items-center gap-3">
                 <span
                   className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                    step.done && "border-success bg-success text-white",
-                    isNext && "border-primary bg-primary text-primary-foreground",
-                    !step.done && !isNext && "border-border text-muted-foreground",
+                    "flex size-6 shrink-0 items-center justify-center rounded-full",
+                    step.done && "bg-success text-white",
+                    isNext && "bg-primary text-primary-foreground",
+                    !step.done && !isNext && "bg-muted text-muted-foreground",
                   )}
                 >
                   {step.done ? <Check className="size-3.5" aria-hidden /> : <span className="text-xs font-semibold">{index + 1}</span>}

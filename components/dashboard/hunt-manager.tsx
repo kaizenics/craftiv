@@ -89,7 +89,7 @@ export function HuntManager({
   return (
     <div className="space-y-4">
       {pollableSources.length === 0 ? (
-        <p className="flex gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        <p className="flex gap-2 rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>
             No source can be searched automatically right now, so a scheduled hunt will only
@@ -105,7 +105,7 @@ export function HuntManager({
         </p>
       )}
 
-      <section className="rounded-xl border border-border bg-card p-4">
+      <section className="rounded-xl bg-card p-4">
         <h3 className="font-heading text-base font-semibold">New hunt</h3>
 
         <div className="mt-3 space-y-3">
@@ -183,7 +183,7 @@ export function HuntManager({
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+          <div className="flex items-center justify-between rounded-lg p-3 bg-muted/60">
             <div>
               <p className="text-sm font-medium">Email me a digest</p>
               <p className="text-xs text-muted-foreground">
@@ -233,7 +233,7 @@ export function HuntManager({
       ) : (
         <ul className="space-y-3">
           {hunts.map((hunt) => (
-            <li key={hunt.id} className="rounded-xl border border-border bg-card p-4">
+            <li key={hunt.id} className="rounded-xl bg-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-heading text-base font-semibold">{hunt.name}</p>

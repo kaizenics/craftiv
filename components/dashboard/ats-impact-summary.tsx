@@ -27,7 +27,7 @@ export function AtsImpactSummary({ impact }: AtsImpactSummaryProps) {
   return (
     <section
       aria-label="Projected ATS impact"
-      className="space-y-3 rounded-xl border border-border bg-card p-4"
+      className="space-y-3 rounded-xl bg-card p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -50,9 +50,9 @@ export function AtsImpactSummary({ impact }: AtsImpactSummaryProps) {
             className={cn(
               "rounded-4xl border px-2 py-0.5 text-xs font-semibold",
               direction === "up"
-                ? "border-success-border bg-success-surface text-success-surface-foreground"
+                ? "bg-success-surface text-success-surface-foreground"
                 : direction === "down"
-                  ? "border-destructive-border bg-destructive-surface text-destructive-surface-foreground"
+                  ? "bg-destructive-surface text-destructive-surface-foreground"
                   : "border-border bg-muted/60 text-muted-foreground"
             )}
           >
@@ -75,7 +75,7 @@ export function AtsImpactSummary({ impact }: AtsImpactSummaryProps) {
             {impact.matchedKeywordsAdded.map((keyword) => (
               <li
                 key={keyword}
-                className="inline-flex items-center gap-1.5 rounded-4xl border border-success-border bg-success-surface px-2.5 py-1 text-xs font-medium text-success-surface-foreground"
+                className="inline-flex items-center gap-1.5 rounded-4xl bg-success-surface px-2.5 py-1 text-xs font-medium text-success-surface-foreground"
               >
                 <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
                 {keyword}

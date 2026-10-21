@@ -99,7 +99,7 @@ export function JobTailorDialog({
 
             {/* Stating the guarantee up front, because it is the reason this is
                 worth paying for: the score cannot go down. */}
-            <p className="flex gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <p className="flex gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <span>
                 Your resume is re-scored afterwards. If the rewrite does not improve your match,

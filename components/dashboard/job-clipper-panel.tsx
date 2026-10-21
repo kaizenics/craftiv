@@ -31,7 +31,7 @@ export function JobClipperPanel({ appUrl }: { appUrl: string }) {
   return (
     <section
       aria-labelledby="clipper-heading"
-      className="rounded-xl border border-border bg-card p-4"
+      className="rounded-xl bg-card p-4"
     >
       <h2 id="clipper-heading" className="font-heading text-base font-semibold">
         Clip jobs while you browse
@@ -46,7 +46,7 @@ export function JobClipperPanel({ appUrl }: { appUrl: string }) {
           href={bookmarklet}
           draggable
           onClick={(event) => event.preventDefault()}
-          className="inline-flex h-9 cursor-grab items-center rounded-lg border border-border bg-muted px-3 text-sm font-medium active:cursor-grabbing"
+          className="inline-flex h-9 cursor-grab items-center rounded-lg bg-muted px-3 text-sm font-medium active:cursor-grabbing"
           title="Drag me to your bookmarks bar"
         >
           Clip to Craftiv

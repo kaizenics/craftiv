@@ -341,8 +341,8 @@ export function CoverLetterDownloadDialog({
             <button
               type="button"
               onClick={() => setFormat("pdf")}
-              className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
-                format === "pdf" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+              className={`flex flex-col items-center gap-2 rounded-lg p-4 transition-colors ${
+                format === "pdf" ? "bg-primary/10" : "bg-muted/60 hover:bg-muted"
               }`}
             >
               <FileText className={`h-8 w-8 ${format === "pdf" ? "text-primary" : "text-muted-foreground"}`} />
@@ -353,8 +353,8 @@ export function CoverLetterDownloadDialog({
             <button
               type="button"
               onClick={() => setFormat("docx")}
-              className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
-                format === "docx" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+              className={`flex flex-col items-center gap-2 rounded-lg p-4 transition-colors ${
+                format === "docx" ? "bg-primary/10" : "bg-muted/60 hover:bg-muted"
               }`}
             >
               <File className={`h-8 w-8 ${format === "docx" ? "text-primary" : "text-muted-foreground"}`} />
@@ -365,8 +365,8 @@ export function CoverLetterDownloadDialog({
             <button
               type="button"
               onClick={() => setFormat("txt")}
-              className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all ${
-                format === "txt" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+              className={`flex flex-col items-center gap-2 rounded-lg p-4 transition-colors ${
+                format === "txt" ? "bg-primary/10" : "bg-muted/60 hover:bg-muted"
               }`}
             >
               <File className={`h-8 w-8 ${format === "txt" ? "text-primary" : "text-muted-foreground"}`} />

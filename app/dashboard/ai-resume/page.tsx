@@ -101,16 +101,16 @@ const GOALS: { id: Goal; label: string; hint: string; icon: typeof ScrollText }[
 ];
 
 const IMPORTANCE_STYLES: Record<string, string> = {
-  high: "border-destructive-border bg-destructive-surface text-destructive-surface-foreground",
-  medium: "border-warning-border bg-warning-surface text-warning-surface-foreground",
-  low: "border-border bg-muted text-muted-foreground",
+  high: "border-transparent bg-destructive-surface text-destructive-surface-foreground",
+  medium: "border-transparent bg-warning-surface text-warning-surface-foreground",
+  low: "border-transparent bg-muted text-muted-foreground",
 };
 
 function ResultSkeleton() {
   return (
     <div className="space-y-3" aria-hidden="true">
       {[0, 1].map((key) => (
-        <div key={key} className="overflow-hidden rounded-xl border border-border">
+        <div key={key} className="overflow-hidden rounded-xl bg-muted/60">
           <div className="h-10 animate-pulse bg-muted/60" />
           <div className="space-y-2 p-4">
             <div className="h-3 w-full animate-pulse rounded bg-muted" />
@@ -578,7 +578,7 @@ export default function AIAssistantPage() {
             AI-powered tools to improve your resume and job applications.
           </p>
         </div>
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl bg-card p-12 text-center">
           <Sparkles className="mb-4 h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-lg font-semibold text-foreground">No resumes yet</h2>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
@@ -634,7 +634,7 @@ export default function AIAssistantPage() {
         <section
           data-tour="assistant-context"
           aria-labelledby="ai-context-heading"
-          className="space-y-5 rounded-xl border border-border bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
+          className="space-y-5 rounded-xl bg-card p-5 lg:sticky lg:top-6 lg:col-span-2"
         >
           <h2 id="ai-context-heading" className="sr-only">
             Choose what to work on
@@ -720,7 +720,7 @@ export default function AIAssistantPage() {
 
             {/* TOOL 1: Resume Improver */}
             <TabsContent value="improver" className="space-y-4">
-              <div className="space-y-4 rounded-xl border border-border bg-card p-5">
+              <div className="space-y-4 rounded-xl bg-card p-5">
                 <div className="space-y-2">
                   <p id="improver-goal-label" className="text-sm font-medium text-foreground">
                     Goal
@@ -752,11 +752,11 @@ export default function AIAssistantPage() {
                             clearResults();
                           }}
                           className={cn(
-                            "flex flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
+                            "flex flex-col gap-1 rounded-lg p-3 text-left transition-colors",
                             "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                             isActive
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:bg-muted/40"
+                              ? "bg-primary/10 text-foreground"
+                              : "bg-muted/60 hover:bg-muted"
                           )}
                         >
                           <span className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -912,7 +912,7 @@ export default function AIAssistantPage() {
                     <AtsImpactSummary impact={SAMPLE_REWRITE.impact} />
                   </>
                 ) : activeResumeId && !resumeLoading ? (
-                  <div className="rounded-xl border border-border bg-card p-5">
+                  <div className="rounded-xl bg-card p-5">
                     <h2 className="text-base font-semibold text-foreground">
                       Current content
                     </h2>
@@ -928,7 +928,7 @@ export default function AIAssistantPage() {
                         ).map((block, index) => (
                           <div
                             key={`cur-${index}`}
-                            className="rounded-lg border border-border bg-muted/30 p-3"
+                            className="rounded-lg bg-muted/60 p-3"
                           >
                             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                               {block.label}
@@ -951,7 +951,7 @@ export default function AIAssistantPage() {
 
             {/* TOOL 2: Keyword Booster */}
             <TabsContent value="keywords" className="space-y-4">
-              <div className="space-y-3 rounded-xl border border-border bg-card p-5">
+              <div className="space-y-3 rounded-xl bg-card p-5">
                 <Button
                   onClick={handleKeywordGenerate}
                   disabled={!canKeyword}
@@ -1019,7 +1019,7 @@ export default function AIAssistantPage() {
                         {keywordResults.map((keyword, index) => (
                           <li
                             key={`kw-${index}`}
-                            className="rounded-xl border border-border bg-card p-4"
+                            className="rounded-xl bg-card p-4"
                           >
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-semibold text-foreground">
@@ -1039,7 +1039,7 @@ export default function AIAssistantPage() {
                               <span className="font-medium text-foreground">Place in:</span>{" "}
                               <span className="capitalize">{keyword.section}</span>
                             </p>
-                            <p className="mt-2 rounded-lg border border-border bg-muted/40 p-3 text-sm leading-relaxed text-foreground">
+                            <p className="mt-2 rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-foreground">
                               {keyword.suggestion}
                             </p>
                           </li>
@@ -1053,7 +1053,7 @@ export default function AIAssistantPage() {
 
             {/* TOOL 3: Achievement Builder */}
             <TabsContent value="achievements" className="space-y-4">
-              <div className="space-y-4 rounded-xl border border-border bg-card p-5">
+              <div className="space-y-4 rounded-xl bg-card p-5">
                 {data?.experiences && data.experiences.length > 0 ? (
                   <>
                     <div className="space-y-2">
@@ -1097,11 +1097,11 @@ export default function AIAssistantPage() {
                                 setError(null);
                               }}
                               className={cn(
-                                "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                                "flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors",
                                 "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                                 isActive
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:bg-muted/40"
+                                  ? "bg-primary/10 text-foreground"
+                                  : "bg-muted/60 hover:bg-muted"
                               )}
                             >
                               <span
@@ -1203,11 +1203,11 @@ export default function AIAssistantPage() {
                     />
                   </>
                 ) : data?.experiences?.[selectedExpIndex]?.description ? (
-                  <div className="rounded-xl border border-border bg-card p-5">
+                  <div className="rounded-xl bg-card p-5">
                     <h2 className="text-base font-semibold text-foreground">
                       Current description
                     </h2>
-                    <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="mt-3 rounded-lg bg-muted/60 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {data.experiences[selectedExpIndex].jobTitle} at{" "}
                         {data.experiences[selectedExpIndex].employer}

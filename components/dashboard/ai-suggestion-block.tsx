@@ -57,11 +57,12 @@ export function AiSuggestionBlock({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border transition-colors",
-        selectable && applyChecked ? "border-primary/40" : "border-border"
+        "overflow-hidden rounded-xl bg-card ring-1 transition-shadow",
+        // A selected rewrite is outlined in the brand colour; otherwise no outline at all.
+        selectable && applyChecked ? "ring-primary/40" : "ring-transparent"
       )}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-2.5">
+      <div className="flex items-center justify-between gap-3 bg-muted/60 px-4 py-2.5">
         <p className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
         </p>

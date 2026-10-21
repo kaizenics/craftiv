@@ -57,7 +57,7 @@ export function InterviewPrepDialog({ matchId, jobLabel, onOpenChange }: Intervi
 
         <div className="space-y-5">
           <InterviewPrepPreview />
-          <p className="flex gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <p className="flex gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>
               Answers only use what your resume says, so nothing is made up. Where the role asks for something

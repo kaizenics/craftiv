@@ -91,11 +91,11 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
   return (
     <>
       <div
-        className="group relative rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/5 cursor-pointer"
+        className="group relative rounded-xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/5 cursor-pointer"
         onClick={handleCardClick}
       >
         <div className="flex items-center gap-3 pr-8">
-          <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+          <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md bg-white shadow-sm">
             <CoverLetterCardPreview data={letter.data} />
           </div>
           <div className="min-w-0 flex-1">
@@ -130,7 +130,7 @@ function CoverLetterCard({ letter }: { letter: CoverLetterListItem }) {
                     setShowMenu(false);
                   }}
                 />
-                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-lg">
+                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg bg-popover p-1 shadow-lg">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -278,7 +278,7 @@ export default function CoverLettersPage() {
       </div>
 
       {!hasLetters ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl bg-card py-16 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/20">
             <Mail className="h-8 w-8 text-muted-foreground" />
           </div>
