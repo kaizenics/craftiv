@@ -89,7 +89,7 @@ export function AtsResumePicker({
         {[0, 1].map((key) => (
           <div
             key={key}
-            className="h-[3.75rem] animate-pulse rounded-lg border border-border bg-muted/40"
+            className="h-[3.75rem] animate-pulse rounded-lg bg-muted/60"
           />
         ))}
       </div>
@@ -162,11 +162,11 @@ export function AtsResumePicker({
                 onClick={() => onSelect(resume.id)}
                 onKeyDown={(event) => handleKeyDown(event, index)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                  "flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors",
                   "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                   isSelected
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted/40"
+                    ? "bg-primary/10"
+                    : "bg-muted/60 hover:bg-muted"
                 )}
               >
                 <span

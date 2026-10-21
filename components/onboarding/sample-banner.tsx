@@ -11,7 +11,7 @@ export function SampleBanner({ title, children }: { title: string; children: Rea
   return (
     <div
       role="note"
-      className="flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm"
+      className="flex items-start gap-2.5 rounded-lg bg-primary/5 px-3 py-2.5 text-sm"
     >
       <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
       <p>

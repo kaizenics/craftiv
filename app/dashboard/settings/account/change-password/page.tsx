@@ -160,7 +160,7 @@ export default function ChangePasswordPage() {
         </div>
       )}
 
-      <div className="bg-white border border-border rounded-lg p-6">
+      <div className="bg-white rounded-lg p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField

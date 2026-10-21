@@ -85,7 +85,7 @@ export default function InterviewPrepPage({ params }: { params: Promise<{ matchI
   }
   if (query.error || !query.data) {
     return (
-      <div className="rounded-xl border border-border p-8 text-center">
+      <div className="rounded-xl bg-card p-8 text-center">
         <p className="font-medium text-foreground">This interview prep could not be found.</p>
         <Button asChild variant="outline" className="mt-4">
           <Link href="/dashboard/applications">Back to Applications</Link>
@@ -159,7 +159,7 @@ export default function InterviewPrepPage({ params }: { params: Promise<{ matchI
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex cursor-pointer items-center gap-3">
               <Switch
                 checked={practice}
@@ -183,7 +183,7 @@ export default function InterviewPrepPage({ params }: { params: Promise<{ matchI
                     setSetIndex(Number(event.target.value));
                     setRevealed(new Set());
                   }}
-                  className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                  className="rounded-lg bg-muted/60 px-2 py-1.5 text-sm text-foreground"
                 >
                   {sets.map((set, i) => (
                     <option key={set.id} value={i}>
@@ -199,7 +199,7 @@ export default function InterviewPrepPage({ params }: { params: Promise<{ matchI
             {current.questions.map((q, index) => {
               const hidden = practice && !revealed.has(index);
               return (
-                <li key={`${current.id}-${index}`} className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+                <li key={`${current.id}-${index}`} className="rounded-2xl bg-card p-5 sm:p-6">
                   <p className="text-xs font-medium text-muted-foreground">
                     {index + 1}. {TYPE_LABELS[q.type]}
                   </p>
@@ -215,7 +215,7 @@ export default function InterviewPrepPage({ params }: { params: Promise<{ matchI
                       <button
                         type="button"
                         onClick={() => setRevealed((prev) => new Set(prev).add(index))}
-                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary/5"
+                        className="flex w-full items-center justify-between gap-3 rounded-xl bg-muted/60 px-4 py-3 text-left transition-colors hover:bg-primary/10"
                       >
                         <span>
                           <span className="block text-sm font-medium text-foreground">Compare with a suggested answer</span>

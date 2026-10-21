@@ -77,7 +77,7 @@ export function InterviewPrepPreview() {
               <ArrowLeft className="size-3" /> Applications
             </p>
             <div className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-lg border border-success-border bg-success-surface font-display text-sm font-semibold text-success-surface-foreground">
+              <span className="flex size-10 items-center justify-center rounded-lg bg-success-surface font-display text-sm font-semibold text-success-surface-foreground">
                 88
               </span>
               <div>
@@ -85,13 +85,13 @@ export function InterviewPrepPreview() {
                 <p className="text-[11px] text-muted-foreground">Senior .NET Software Developer · New</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2">
               <span className="relative h-4 w-7 rounded-full bg-primary">
                 <span className="absolute top-0.5 right-0.5 size-3 rounded-full bg-white" />
               </span>
               <span className="text-[11px] font-medium text-foreground">Practice mode</span>
             </div>
-            <div className="rounded-xl border border-border bg-card p-3">
+            <div className="rounded-xl bg-card p-3">
               <p className="text-[10px] font-medium text-muted-foreground">1. Behavioural</p>
               <p className="mt-0.5 text-xs font-medium text-foreground">{QUESTION}</p>
               <div
@@ -122,8 +122,8 @@ export function InterviewPrepPreview() {
                   <div
                     data-cursor-target="compare"
                     className={cn(
-                      "flex items-center justify-between rounded-lg border border-dashed px-2.5 py-2 transition-colors",
-                      beat.target === "compare" ? "border-primary bg-primary/5" : "border-border",
+                      "flex items-center justify-between rounded-lg px-2.5 py-2 transition-colors",
+                      beat.target === "compare" ? "bg-primary/10" : "bg-muted/60",
                     )}
                   >
                     <span>
@@ -145,8 +145,8 @@ export function InterviewPrepPreview() {
               <span className="px-2 py-1 text-[10px] text-muted-foreground">Interviewing (0)</span>
             </div>
             {ROWS.map((row, i) => (
-              <div key={row.title} className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-success-border bg-success-surface font-display text-sm font-semibold text-success-surface-foreground">
+              <div key={row.title} className="flex items-center gap-3 rounded-lg bg-card p-2.5">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success-surface font-display text-sm font-semibold text-success-surface-foreground">
                   {row.score}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -159,8 +159,8 @@ export function InterviewPrepPreview() {
                 <span
                   data-cursor-target={i === 0 ? "row-prep" : undefined}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors",
-                    i === 0 && beat.target === "row-prep" && scene === "list" ? "border-primary bg-primary/5 text-primary" : "border-border bg-muted/40 text-foreground",
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors",
+                    i === 0 && beat.target === "row-prep" && scene === "list" ? "bg-primary/10 text-primary" : "bg-muted/60 text-foreground",
                   )}
                 >
                   <Users className="size-2.5" /> Interview prep
@@ -178,7 +178,7 @@ export function InterviewPrepPreview() {
             <motion.div initial={{ scale: 0.96, y: 6 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-sm rounded-xl bg-card p-4 shadow-xl">
               <p className="font-display text-sm font-semibold text-foreground">Interview prep</p>
               <p className="mt-0.5 text-[10.5px] text-muted-foreground">The questions Senior .NET Software Developer is likely to ask.</p>
-              <p className="mt-3 flex gap-1.5 rounded-lg border border-border bg-muted/40 p-2 text-[9.5px] text-muted-foreground">
+              <p className="mt-3 flex gap-1.5 rounded-lg bg-muted/60 p-2 text-[9.5px] text-muted-foreground">
                 <AlertCircle className="mt-px size-3 shrink-0" />
                 Answers only use what your resume says. Your prep is saved to this job.
               </p>

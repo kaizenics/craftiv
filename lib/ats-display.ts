@@ -19,7 +19,7 @@ export type AtsBandStyle = {
   text: string;
   /** Tinted panel background. */
   surface: string;
-  /** Panel border to pair with `surface`. */
+  /** Kept transparent: a tinted fill plus a same-colour border read as a template default. */
   border: string;
   /** Solid fill for gauges and progress indicators. */
   fill: string;
@@ -33,27 +33,27 @@ const BANDS: Record<AtsBand, Omit<AtsBandStyle, "band">> = {
     hint: "Most tracking systems will drop or misread this resume. Fix the flagged items before applying.",
     text: "text-destructive-surface-foreground",
     surface: "bg-destructive-surface",
-    border: "border-destructive-border",
+    border: "border-transparent",
     fill: "bg-destructive",
-    pill: "border-destructive-border bg-destructive-surface text-destructive-surface-foreground",
+    pill: "border-transparent bg-destructive-surface text-destructive-surface-foreground",
   },
   attention: {
     label: "Getting there",
     hint: "This parses, but a stronger keyword match would move you up the shortlist.",
     text: "text-warning-surface-foreground",
     surface: "bg-warning-surface",
-    border: "border-warning-border",
+    border: "border-transparent",
     fill: "bg-warning",
-    pill: "border-warning-border bg-warning-surface text-warning-surface-foreground",
+    pill: "border-transparent bg-warning-surface text-warning-surface-foreground",
   },
   strong: {
     label: "Strong match",
     hint: "This reads cleanly for both tracking systems and recruiters.",
     text: "text-success-surface-foreground",
     surface: "bg-success-surface",
-    border: "border-success-border",
+    border: "border-transparent",
     fill: "bg-success",
-    pill: "border-success-border bg-success-surface text-success-surface-foreground",
+    pill: "border-transparent bg-success-surface text-success-surface-foreground",
   },
 };
 

@@ -111,7 +111,7 @@ export default function ApplicationsPage() {
             return (
               <li
                 key={match.id}
-                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:p-5"
+                className="flex flex-col gap-4 rounded-xl bg-card p-4 sm:flex-row sm:items-center sm:p-5"
               >
                 <span className={cn("flex size-14 shrink-0 flex-col items-center justify-center rounded-xl border", band.surface, band.border)}>
                   <span className={cn("font-display text-xl font-semibold tabular-nums", band.text)}>{match.score}</span>

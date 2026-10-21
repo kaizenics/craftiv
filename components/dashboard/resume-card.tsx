@@ -91,11 +91,11 @@ export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor, 
   return (
     <>
       <div 
-        className="group relative rounded-xl border border-border bg-card p-4 transition-all hover:shadow-md cursor-pointer"
+        className="group relative rounded-xl bg-card p-4 transition-all hover:shadow-md cursor-pointer"
         onClick={handleCardClick}
       >
         {/* Preview Thumbnail */}
-        <div className="mb-4 w-full aspect-[calc(1*1.5+1)/3] overflow-hidden rounded-lg border border-zinc-100 bg-white">
+        <div className="mb-4 w-full aspect-[calc(1*1.5+1)/3] overflow-hidden rounded-lg bg-white shadow-sm">
           <ResumeCardPreview templateId={template} data={data} />
         </div>
 
@@ -140,7 +140,7 @@ export function ResumeCard({ id, title, updatedAt, template, data, tailoredFor, 
                     setShowMenu(false);
                   }} 
                 />
-                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-border bg-popover p-1 shadow-lg">
+                <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg bg-popover p-1 shadow-lg">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

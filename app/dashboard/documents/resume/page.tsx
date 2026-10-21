@@ -165,7 +165,7 @@ export default function DocumentsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="flex items-center rounded-lg border border-border p-1">
+            <div className="flex items-center rounded-lg bg-card p-1">
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -220,9 +220,9 @@ export default function DocumentsPage() {
                   ) : (
                   <div
                     key={resume.id}
-                    className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/10"
+                    className="flex items-center gap-4 rounded-lg bg-card p-4 transition-colors hover:bg-muted/10"
                   >
-                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded border border-zinc-100 bg-white">
+                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-white shadow-sm">
                       <ResumeCardPreview templateId={resume.templateId} data={resume.data} />
                     </div>
                     <div className="flex-1 min-w-0">

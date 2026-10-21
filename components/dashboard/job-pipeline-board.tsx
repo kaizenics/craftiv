@@ -74,9 +74,9 @@ export function JobPipelineBoard({
                 finishDrop(status);
               }}
               className={cn(
-                "min-h-[360px] rounded-lg border border-border bg-muted/25 p-2 transition-colors",
+                "min-h-[360px] rounded-xl bg-card p-2 transition-colors",
                 fullscreen && "min-h-[calc(100dvh-12rem)]",
-                dropStatus === status && "border-primary bg-primary/5",
+                dropStatus === status && "bg-primary/10",
               )}
             >
               <div className="flex h-8 items-center justify-between gap-2 px-1">
@@ -103,7 +103,7 @@ export function JobPipelineBoard({
                         setDropStatus(null);
                       }}
                       className={cn(
-                        "cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm active:cursor-grabbing",
+                        "cursor-grab rounded-lg bg-muted/60 p-3 active:cursor-grabbing",
                         draggedId === match.id && "opacity-50",
                         busyMatchId === match.id && "pointer-events-none opacity-60",
                       )}
@@ -159,7 +159,7 @@ export function JobPipelineBoard({
                         onValueChange={(value) => onStatusChange(match.id, value as ApplicationStatus)}
                         disabled={busyMatchId === match.id}
                       >
-                        <SelectTrigger className="mt-2 h-8 w-full text-xs" aria-label={`Move ${match.posting.title} to another stage`}>
+                        <SelectTrigger className="mt-2 h-8 w-full bg-card text-xs" aria-label={`Move ${match.posting.title} to another stage`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -175,7 +175,7 @@ export function JobPipelineBoard({
                 })}
 
                 {columnMatches.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border px-2 py-6 text-center text-xs text-muted-foreground">
+                  <div className="rounded-lg bg-muted/40 px-2 py-6 text-center text-xs text-muted-foreground">
                     Drop a job here
                   </div>
                 ) : null}

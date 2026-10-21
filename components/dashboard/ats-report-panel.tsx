@@ -36,7 +36,7 @@ function SectionRow({
   const style = bandStyle(section.score);
 
   return (
-    <li className="space-y-2 rounded-lg border border-border p-3">
+    <li className="space-y-2 rounded-lg p-3 bg-muted/60">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-foreground">{section.section}</p>
         <div className="flex shrink-0 items-center gap-2">
@@ -102,7 +102,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-xl bg-card p-6">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
           <AtsScoreGauge score={report.overallScore} className="shrink-0" />
 
@@ -123,7 +123,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
             </div>
 
             {report.topActions?.[0] && (
-              <div className="rounded-lg border border-border bg-muted/40 p-3">
+              <div className="rounded-lg bg-muted/60 p-3">
                 <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <Target className="h-3.5 w-3.5" aria-hidden="true" />
                   Do this first
@@ -178,14 +178,14 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-xl bg-card p-5">
             <h3 className="text-base font-semibold text-foreground">Recruiter summary</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {report.summary}
             </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-xl bg-card p-5">
             <h3 className="text-base font-semibold text-foreground">Section scores</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Weakest sections first, so the biggest win is at the top.
@@ -198,7 +198,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
           </div>
 
           {strengths.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl bg-card p-5">
               <h3 className="text-base font-semibold text-foreground">
                 What is already working
               </h3>
@@ -220,7 +220,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
         <TabsContent value="keywords" className="space-y-4">
           {/* Each pill carries an icon as well as a colour, so matched and
               missing stay distinguishable without relying on hue. */}
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-xl bg-card p-5">
             <h3 className="text-base font-semibold text-foreground">
               Matched keywords{" "}
               <span className="font-normal text-muted-foreground">({matched.length})</span>
@@ -237,7 +237,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
                 {matched.map((keyword, index) => (
                   <li
                     key={keyword + "-" + index}
-                    className="inline-flex items-center gap-1.5 rounded-4xl border border-success-border bg-success-surface px-2.5 py-1 text-xs font-medium text-success-surface-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-4xl bg-success-surface px-2.5 py-1 text-xs font-medium text-success-surface-foreground"
                   >
                     <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
                     {keyword}
@@ -247,7 +247,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-xl bg-card p-5">
             <h3 className="text-base font-semibold text-foreground">
               Missing keywords{" "}
               <span className="font-normal text-muted-foreground">({missing.length})</span>
@@ -264,7 +264,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
                 {missing.map((keyword, index) => (
                   <li
                     key={keyword + "-" + index}
-                    className="inline-flex items-center gap-1.5 rounded-4xl border border-warning-border bg-warning-surface px-2.5 py-1 text-xs font-medium text-warning-surface-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-4xl bg-warning-surface px-2.5 py-1 text-xs font-medium text-warning-surface-foreground"
                   >
                     <Plus className="h-3 w-3 shrink-0" aria-hidden="true" />
                     {keyword}
@@ -277,7 +277,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
 
         <TabsContent value="improvements" className="space-y-4">
           {improvements.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+            <div className="rounded-xl bg-card p-5 text-sm text-muted-foreground">
               No specific rewrites suggested for this run.
             </div>
           ) : (
@@ -285,7 +285,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
               {improvements.map((item, index) => (
                 <li
                   key={item.title + "-" + index}
-                  className="rounded-xl border border-border bg-card p-5"
+                  className="rounded-xl bg-card p-5"
                 >
                   <div className="flex items-start gap-3">
                     <span
@@ -301,7 +301,7 @@ export function AtsReportPanel({ report, sourceLabel, savedAt }: AtsReportPanelP
                       <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                         {item.why}
                       </p>
-                      <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3">
+                      <div className="mt-3 rounded-lg bg-muted/60 p-3">
                         <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
                           Try this

@@ -27,7 +27,7 @@ export function QuickActions() {
           <Link
             key={action.title}
             href={action.href}
-            className="group flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-4 text-center transition-all hover:border-muted/20 hover:shadow-md"
+            className="group flex flex-col items-center gap-3 rounded-xl bg-card p-4 text-center transition-shadow hover:shadow-md"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-transform group-hover:scale-110">
               <action.icon className="h-6 w-6" />

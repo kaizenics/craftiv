@@ -114,7 +114,7 @@ export function JobMatchCard({
   const needsToggle = overview.length > COLLAPSE_AT;
 
   return (
-    <article className="rounded-xl border border-border bg-card p-4">
+    <article className="rounded-xl bg-card p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate font-heading text-base font-semibold">{posting.title}</h3>
@@ -154,12 +154,12 @@ export function JobMatchCard({
       </div>
 
       {stale ? (
-        <p className="mt-3 rounded-lg border border-warning-border bg-warning-surface px-3 py-2 text-xs text-warning-surface-foreground">
+        <p className="mt-3 rounded-lg bg-warning-surface px-3 py-2 text-xs text-warning-surface-foreground">
           Your resume changed since this was scored. Re-score for an up-to-date match.
         </p>
       ) : null}
 
-      <section className="mt-3 rounded-lg border border-border bg-muted/20">
+      <section className="mt-3 rounded-lg bg-muted/60">
         <button
           type="button"
           onClick={() => setExplanationOpen((open) => !open)}
@@ -223,7 +223,7 @@ export function JobMatchCard({
                 <p className="text-xs font-medium text-muted-foreground">Matched keywords</p>
                 <ul className="mt-1.5 flex flex-wrap gap-1.5">
                   {match.matchedKeywords.map((keyword) => (
-                    <li key={keyword} className="rounded-full border border-success-border bg-success-surface px-2 py-0.5 text-xs text-success-surface-foreground">
+                    <li key={keyword} className="rounded-full bg-success-surface px-2 py-0.5 text-xs text-success-surface-foreground">
                       {keyword}
                     </li>
                   ))}
@@ -275,7 +275,7 @@ export function JobMatchCard({
             {match.missingKeywords.slice(0, 6).map((keyword) => (
               <li
                 key={keyword}
-                className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground"
+                className="rounded-full bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground"
               >
                 {keyword}
               </li>

@@ -108,7 +108,7 @@ export function OwnAiSettings() {
 
   if (!unlocked) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-xl bg-card p-5">
         <div className="flex items-start gap-3">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Sparkles className="h-4 w-4" aria-hidden="true" />
@@ -154,7 +154,7 @@ export function OwnAiSettings() {
   const busy = setEnabled.isPending || test.isPending || remove.isPending;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-xl bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{provider.label}</p>
@@ -314,7 +314,7 @@ function ConnectForm({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-xl bg-card p-5">
       <div>
         <label htmlFor="own-ai-provider" className="text-sm font-medium text-foreground">
           1. Choose your AI provider
