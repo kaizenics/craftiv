@@ -179,7 +179,7 @@ export function ShareShowcase() {
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src="/resume-templates/harvard.jpg"
+                        src="/resume-templates/harvard.webp"
                         alt="The shared resume as the recruiter sees it"
                         className="mx-auto w-full max-w-sm rounded-t-lg shadow-[0_20px_40px_-20px_rgb(24_24_27/0.35)]"
                       />
