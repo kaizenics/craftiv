@@ -8,7 +8,7 @@ import { BlurInText } from "@/components/ui/blur-in-text";
 import { BlurFade } from "@/components/ui/blur-fade";
 
 const templateSlides = templates.map((template) => ({
-  src: `/resume-templates/${template.id}.jpg`,
+  src: `/resume-templates/${template.id}.webp`,
   alt: `${template.name} resume template`,
   title: template.name,
 }));

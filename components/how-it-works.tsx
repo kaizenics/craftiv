@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { BlurInText } from "@/components/ui/blur-in-text";
@@ -113,18 +113,21 @@ export function HowItWorks() {
 
           <div className="hidden lg:col-span-7 lg:block">
             <BlurFade delay={0.1} className="sticky top-24 flex h-[calc(100dvh-8rem)] items-center justify-center rounded-3xl bg-zinc-100 p-10">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={active}
-                  initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
-                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                  className="flex max-h-full w-full items-center justify-center"
-                >
-                  <Screen step={steps[active]} priority={active === 0} />
-                </motion.div>
-              </AnimatePresence>
+              {/* All screens stay mounted and stacked, so they download together instead of one per scroll step. */}
+              <div className="grid max-h-full w-full place-items-center">
+                {steps.map((step, index) => (
+                  <motion.div
+                    key={step.title}
+                    initial={false}
+                    animate={{ opacity: index === active ? 1 : 0, y: index === active || reduceMotion ? 0 : 12 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    aria-hidden={index !== active}
+                    className="col-start-1 row-start-1 flex max-h-full w-full items-center justify-center"
+                  >
+                    <Screen step={step} />
+                  </motion.div>
+                ))}
+              </div>
             </BlurFade>
           </div>
         </div>
