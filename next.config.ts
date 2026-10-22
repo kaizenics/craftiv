@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
   // by path at runtime, which does not survive being packed into a chunk.
   serverExternalPackages: ["pdfjs-dist"],
   images: {
-    formats: ["image/avif", "image/webp"],
+    // WebP only: AVIF encodes many times slower, which made first loads of each image crawl.
+    formats: ["image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   async headers() {
