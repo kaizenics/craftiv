@@ -1,5 +1,6 @@
 "use client";
 
+import { TemplateFonts } from "@/components/template-fonts";
 import { getCoverLetterTemplate } from "@/lib/cover-letter-templates";
 import { CoverLetterData } from "@/lib/types/cover-letter";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,7 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
         lineHeight: previewLineHeight,
       }}
     >
+      <TemplateFonts />
       <div
         className={cn(
           "h-full",

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { TemplateFonts } from "@/components/template-fonts";
 import { ResumeData, TemplateLayout, normalizeSectionOrder } from '@/lib/types/resume';
 import { resumeTemplates } from '@/lib/resume-templates';
 import { cn } from '@/lib/utils';
@@ -1656,6 +1657,7 @@ export function ResumePreview({
         minHeight: renderAllPages ? 'auto' : undefined
       }}
     >
+      <TemplateFonts />
       {/* Resume Score Header */}
       {shouldShowScore && (
         <div data-preview-header className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b">
