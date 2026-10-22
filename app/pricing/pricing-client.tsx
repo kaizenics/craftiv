@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "@/components/ui/icons";
+import { CREDIT_PACKS, JOB_TAILOR_COST } from "@/lib/credit-costs";
 
 // Everything here costs nothing; only AI features spend credits.
 const FREE_FEATURES = [
@@ -73,6 +74,10 @@ export function PricingClient() {
     Number.isInteger(value) ? value.toString() : value.toFixed(2);
   const proDiscountedPrice = PRICING.proOriginalPrice * (1 - PRICING.proDiscountRate);
 
+  // Derived from the packs the payment webhook grants, so the promise always matches the real tailoring cost.
+  const tailoredJobs = (plan: (typeof CREDIT_PACKS)[number]["plan"]) =>
+    `${Math.floor(CREDIT_PACKS.find((pack) => pack.plan === plan)!.creditUnits / JOB_TAILOR_COST)} jobs tailored, each with a resume and cover letter`;
+
   const plans: Plan[] = [
     {
       name: "Active",
@@ -82,7 +87,7 @@ export function PricingClient() {
       subscriptionMatch: "active",
       description: "Great for active job seekers.",
       features: [
-        "2 fully optimized resumes + 1 leftover Review credit",
+        tailoredJobs("active"),
         "Job match score before and after with missing keywords",
         "AI-rewritten bullets tailored to the job description",
         "Choose from ATS Optimized Templates",
@@ -101,7 +106,7 @@ export function PricingClient() {
       subscriptionMatch: "plus",
       description: "For users who need more optimizations per week.",
       features: [
-        "6 fully optimized resumes",
+        tailoredJobs("plus"),
         "Job match score before and after with missing keywords",
         "AI-rewritten bullets tailored to the job description",
         "Choose from ATS Optimized Templates",
@@ -122,7 +127,7 @@ export function PricingClient() {
       subscriptionMatch: "pro",
       description: "Designed for high-volume applicants and career switchers.",
       features: [
-        "12 fully optimized resumes + 1 leftover Review credit",
+        tailoredJobs("pro"),
         "Job match score before and after with missing keywords",
         "AI-rewritten bullets tailored to the job description",
         "Choose from ATS Optimized Templates",
