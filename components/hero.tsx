@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { Button } from "@/components/ui/button";
-import { BlurFade } from "@/components/ui/blur-fade";
 import { CompanyMarquee } from "@/components/company-marquee";
 import { HeroHeadline } from "@/components/hero-headline";
 import { HeroJobTicker, type TickerJob } from "@/components/hero-job-ticker";
@@ -44,7 +43,8 @@ export async function Hero() {
         <HeroHeadline />
 
         <div className="mt-10 grid gap-10 border-t border-zinc-200 pt-8 lg:mt-14 lg:grid-cols-12 lg:gap-8">
-          <BlurFade className="lg:col-span-6" delay={0.5}>
+          {/* CSS fades, not BlurFade: they start at first paint instead of waiting for hydration, which held LCP back on phones. */}
+          <div className="hero-in lg:col-span-6" style={{ animationDelay: "0.5s" }}>
             <p className="max-w-lg text-base leading-relaxed text-pretty text-zinc-600 sm:text-lg dark:text-zinc-400">
               Craftiv matches roles to your resume, tailors each application,
               and tracks it all the way to the offer.
@@ -58,12 +58,12 @@ export async function Hero() {
               </Button>
               <span className="text-sm text-zinc-500 sm:ml-2">1 free credit. No subscription.</span>
             </div>
-          </BlurFade>
+          </div>
 
           {jobs.length > 0 ? (
-            <BlurFade className="lg:col-span-5 lg:col-start-8" delay={0.7}>
+            <div className="hero-in lg:col-span-5 lg:col-start-8" style={{ animationDelay: "0.7s" }}>
               <HeroJobTicker jobs={jobs} />
-            </BlurFade>
+            </div>
           ) : null}
         </div>
       </div>

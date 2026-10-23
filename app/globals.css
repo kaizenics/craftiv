@@ -184,3 +184,20 @@
     display: none;
   }
 }
+
+/* Above-the-fold entrance that runs before JavaScript loads (see hero.tsx). No opacity fade on purpose:
+   text at opacity 0 does not count as painted, which kept the hero subtitle out of LCP for seconds on phones. */
+@keyframes hero-in {
+  from {
+    transform: translateY(24px);
+    filter: blur(6px);
+  }
+}
+.hero-in {
+  animation: hero-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-in {
+    animation: none;
+  }
+}
