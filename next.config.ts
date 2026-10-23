@@ -27,8 +27,8 @@ const nextConfig: NextConfig = {
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
     const scriptSrc = isProd
-      ? "script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://www.googletagmanager.com"
-      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://www.googletagmanager.com";
+      ? "script-src 'self' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
     const csp = [
       "default-src 'self'",
@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
       "connect-src 'self' https:",
-      "frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com",
+      "frame-src 'self'",
       "form-action 'self'",
       ...(isProd ? ["upgrade-insecure-requests"] : []),
     ].join("; ");

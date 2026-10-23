@@ -195,11 +195,18 @@ export default function JobHunterPage() {
     await Promise.all([utils.jobHunter.listMatches.invalidate(), utils.jobHunter.stats.invalidate()]);
   }
 
+  const trackMatch = trpc.applications.trackMatch.useMutation({
+    onSuccess: (result) => toast.success(result.created ? "Added to Applications." : "Already in Applications."),
+    onError: (error) => toast.error(error.message),
+  });
+
   const importJob = trpc.jobHunter.importJob.useMutation({
     onSuccess: async (result) => {
       setImportError(null);
       await refresh();
-      toast.success(result.deduped ? "Already in your pipeline — score updated." : "Job scored.");
+      toast.success(result.deduped ? "Already in your pipeline — score updated." : "Job scored.", {
+        action: { label: "Add to Applications", onClick: () => trackMatch.mutate({ matchId: result.matchId }) },
+      });
     },
     onError: (error) => setImportError(error.message),
   });

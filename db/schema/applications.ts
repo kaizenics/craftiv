@@ -2,7 +2,7 @@ import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core
 
 import { users } from "./users";
 import { jobMatches } from "./job-hunter";
-import type { CustomField, TrackerStatus } from "@/lib/types/applications";
+import type { CustomField, StatusEntry, TrackerStatus } from "@/lib/types/applications";
 
 /**
  * The user's own application tracker: one row per job they are pursuing, entered
@@ -28,6 +28,12 @@ export const applications = sqliteTable(
     interviewStage: text("interview_stage").notNull().default(""),
     interviewer: text("interviewer").notNull().default(""),
     notes: text("notes").notNull().default(""),
+    salary: text("salary").notNull().default(""),
+    location: text("location").notNull().default(""),
+    // Every column the card entered and when, oldest first; drives board stats and follow-up reminders.
+    statusHistory: text("status_history", { mode: "json" }).$type<StatusEntry[]>().notNull().default([]),
+    // The last AI follow-up email, kept so a paid draft is never lost.
+    followUpEmail: text("follow_up_email").notNull().default(""),
     customFields: text("custom_fields", { mode: "json" }).$type<CustomField[]>().notNull().default([]),
     // Set when the card was created from a Job Hunter match; the match may later be deleted.
     matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),

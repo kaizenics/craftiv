@@ -41,6 +41,9 @@ export const TRACKER_LIMITS = {
 
 export type CustomField = { label: string; value: string };
 
+/** One column change on a card; `at` is epoch milliseconds. */
+export type StatusEntry = { status: TrackerStatus; at: number };
+
 /** Job Hunter stages mapped onto the tracker's columns. */
 export const TRACKER_STATUS_FROM_MATCH: Record<ApplicationStatus, TrackerStatus> = {
   new: "saved",

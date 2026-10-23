@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import FlexCarousel from "@/components/ui/flex-carousel";
+import dynamic from "next/dynamic";
+
+// WebGL and ~1,400 lines that only matter far below the fold: load after the first screen. The box has a fixed height, so no layout shift.
+const FlexCarousel = dynamic(() => import("@/components/ui/flex-carousel"), { ssr: false });
 import { templates } from "@/lib/data/templates";
 import { coverLetterTemplates } from "@/lib/cover-letter-templates";
 import { BlurInText } from "@/components/ui/blur-in-text";

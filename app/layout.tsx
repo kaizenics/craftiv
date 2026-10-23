@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Lora, Figtree } from "next/font/google";
+import { Lora, Figtree } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
@@ -9,15 +9,7 @@ import { Toaster } from "sonner";
 import { siteConfig } from "@/lib/seo";
 import { ChatbotLoader } from "@/components/chatbot/chatbot-loader";
 
-const loraHeading = Lora({subsets:['latin'],variable:'--font-heading'});
-
 const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const lora = Lora({
   variable: "--font-lora",
@@ -85,16 +77,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn("font-sans", figtree.variable, loraHeading.variable)}>
-      <head>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6660601826429035"
-          crossOrigin="anonymous"
-        ></script>
-      </head>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", figtree.variable, lora.variable)}>
       <body
-        className={`${manrope.variable} ${lora.variable} antialiased font-sans`}
+        className="antialiased font-sans"
         suppressHydrationWarning
       >
         <TRPCProvider>
