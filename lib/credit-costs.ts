@@ -37,6 +37,9 @@ export const JOB_TAILOR_COST = 75;
 /** Interview prep for one job: likely questions with answers drawn from the resume. */
 export const INTERVIEW_PREP_COST = 50;
 
+/** A short follow-up email for one tracked application. */
+export const FOLLOW_UP_EMAIL_COST = 25;
+
 /**
  * The one-time credit packs, in credit units. The payment webhook grants exactly
  * these amounts, and the landing page prices from the same list, so what a page
@@ -91,6 +94,12 @@ export const CREDIT_ACTIONS: {
     label: "Interview prep",
     detail: "Likely questions and answers for one job",
     costUnits: INTERVIEW_PREP_COST,
+  },
+  {
+    id: "follow_up_email",
+    label: "Follow-up email",
+    detail: "A polite nudge for an application with no reply",
+    costUnits: FOLLOW_UP_EMAIL_COST,
   },
   {
     id: "ai_resume_improver",
