@@ -25,7 +25,9 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, CalendarIcon, Link2, Plus, Target, Users } from "@/components/ui/icons";
+import { ArrowUpRight, CalendarIcon, Clock, Link2, MapPin, Money, Plus, Search, Target, Users } from "@/components/ui/icons";
+import { Input } from "@/components/ui/input";
+import { daysWaiting, FOLLOW_UP_AFTER_DAYS, GHOSTED_AFTER_DAYS, TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
 import { ApplicationSheet, emptyDraft, type ApplicationDraft } from "@/components/dashboard/application-sheet";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
 import { InterviewPrepDialog, interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
@@ -105,6 +107,22 @@ function AppCardBody({ app }: { app: TrackedApp }) {
           {[app.contact, app.interviewer].filter(Boolean).join(" · ")}
         </p>
       ) : null}
+      {app.location || app.salary ? (
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {app.location ? (
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <MapPin className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{app.location}</span>
+            </span>
+          ) : null}
+          {app.salary ? (
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <Money className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{app.salary}</span>
+            </span>
+          ) : null}
+        </p>
+      ) : null}
       {app.notes ? <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground/80">{app.notes}</p> : null}
       {app.postingUrl || app.customFields?.length ? (
         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -120,23 +138,49 @@ function AppCardBody({ app }: { app: TrackedApp }) {
   );
 }
 
-function SortableAppCard({ app, onOpen }: { app: TrackedApp; onOpen: () => void }) {
+function SortableAppCard({ app, onOpen, onGhost }: { app: TrackedApp; onOpen: () => void; onGhost: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: app.id });
+  const waiting = daysWaiting(app);
   return (
-    <button
+    <div
       ref={setNodeRef}
-      type="button"
-      {...attributes}
-      {...listeners}
-      onClick={onOpen}
       style={{
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         transition,
       }}
-      className={cn(CARD_CLASS, "cursor-grab touch-manipulation", isDragging && "opacity-40")}
+      className={cn("rounded-xl", isDragging && "opacity-40")}
     >
-      <AppCardBody app={app} />
-    </button>
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={onOpen}
+        className={cn(
+          CARD_CLASS,
+          "cursor-grab touch-manipulation",
+          waiting !== null && waiting >= FOLLOW_UP_AFTER_DAYS && "rounded-b-none",
+        )}
+      >
+        <AppCardBody app={app} />
+      </button>
+      {waiting !== null && waiting >= FOLLOW_UP_AFTER_DAYS ? (
+        <div className="flex items-center justify-between gap-2 rounded-b-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="inline-flex items-center gap-1">
+            <Clock className="size-3" aria-hidden="true" />
+            No reply in {waiting} days
+          </span>
+          {waiting >= GHOSTED_AFTER_DAYS ? (
+            <button type="button" onClick={onGhost} className="font-medium underline-offset-2 hover:underline">
+              Move to Ghosted
+            </button>
+          ) : (
+            <button type="button" onClick={onOpen} className="font-medium underline-offset-2 hover:underline">
+              Follow up
+            </button>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -219,16 +263,30 @@ export default function ApplicationsPage() {
     }),
   );
 
+  const [filter, setFilter] = useState("");
+  const needle = filter.trim().toLowerCase();
+  const matchesFilter = (app: TrackedApp) =>
+    !needle || [app.company, app.title, app.location, app.salary].some((value) => value.toLowerCase().includes(needle));
+  const stats = useMemo(() => trackerStats(apps), [apps]);
+
+  // Drag maths uses every card in a column, so a filtered view still drops in the right place.
   const inColumn = (status: TrackerStatus) => apps.filter((app) => app.status === status).sort((a, b) => a.position - b.position);
   const columns = TRACKER_STATUSES.map((status) => ({
     status,
-    apps: inColumn(status),
+    apps: inColumn(status).filter(matchesFilter),
     hunter: hunterJobs.filter((m) => TRACKER_STATUS_FROM_MATCH[m.applicationStatus] === status),
   }));
 
   // `over` is either a card (its column) or an empty part of a column (the status itself).
   const statusOf = (id: UniqueIdentifier) => apps.find((item) => item.id === id)?.status ?? (id as TrackerStatus);
   const dragApp = apps.find((item) => item.id === dragId) ?? null;
+
+  // One-click column change (the "Move to Ghosted" nudge): lands at the bottom, like the side panel.
+  const moveTo = (app: TrackedApp, status: TrackerStatus) => {
+    const position = positionBetween(inColumn(status).at(-1)?.position, undefined);
+    utils.applications.list.setData(undefined, (prev) => prev?.map((item) => (item.id === app.id ? { ...item, status, position } : item)));
+    move.mutate({ id: app.id, status, position });
+  };
 
   const onDragOver = ({ over }: DragOverEvent) => setDropTarget(over ? statusOf(over.id) : null);
 
@@ -296,6 +354,40 @@ export default function ApplicationsPage() {
         </div>
       </div>
 
+      {apps.length > 0 ? (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <dl className="flex flex-wrap gap-2">
+            {[
+              { label: "Sent", value: String(stats.sent) },
+              { label: "Response rate", value: stats.responseRate === null ? "–" : `${stats.responseRate}%` },
+              { label: "Interview rate", value: stats.interviewRate === null ? "–" : `${stats.interviewRate}%` },
+              ...TIMED_STAGES.filter((stage) => stats.avgDays[stage] !== null).map((stage) => ({
+                label: `Avg. in ${TRACKER_STATUS_LABELS[stage].toLowerCase()}`,
+                value: `${(stats.avgDays[stage] ?? 0) < 1 ? "<1" : stats.avgDays[stage]} d`,
+              })),
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl bg-card px-3 py-2">
+                <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                <dd className="text-sm font-semibold tabular-nums text-foreground">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="relative w-full lg:w-72">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder="Filter by company, location, salary"
+              aria-label="Filter applications"
+              className="bg-card pl-9"
+            />
+          </div>
+        </div>
+      ) : null}
+
       {appsQuery.isLoading ? (
         <div className="flex gap-4 overflow-hidden">
           {[0, 1, 2, 3].map((i) => (
@@ -346,6 +438,7 @@ export default function ApplicationsPage() {
                         <SortableAppCard
                           key={app.id}
                           app={app}
+                          onGhost={() => moveTo(app, "ghosted")}
                           onOpen={() =>
                             openDraft({
                               ...app,

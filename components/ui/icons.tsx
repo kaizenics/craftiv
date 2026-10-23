@@ -16,6 +16,8 @@ import {
   CheckmarkBadge01Icon,
   CheckmarkCircle02Icon,
   Clock01Icon,
+  Location01Icon,
+  Money01Icon,
   Copy01Icon,
   DashboardSquare02Icon,
   DashedLineCircleIcon,
@@ -133,6 +135,8 @@ export const ChevronRight = createIcon(ArrowRight01Icon);
 export const ChevronUp = createIcon(ArrowUp01Icon);
 export const CircleDashed = createIcon(DashedLineCircleIcon);
 export const Clock = createIcon(Clock01Icon);
+export const MapPin = createIcon(Location01Icon);
+export const Money = createIcon(Money01Icon);
 export const Copy = createIcon(Copy01Icon);
 export const Download = createIcon(Download01Icon);
 export const Edit = createIcon(Edit02Icon);

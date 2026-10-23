@@ -9,14 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Loader2, Plus, Trash2, X } from "@/components/ui/icons";
-import {
-  TRACKER_LIMITS,
-  TRACKER_STATUS_LABELS,
-  TRACKER_STATUSES,
-  type CustomField,
-  type TrackerStatus,
-} from "@/lib/types/applications";
+import { ArrowUpRight, Copy, Loader2, Mail, Plus, Trash2, X } from "@/components/ui/icons";
+import { TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
 
 export type ApplicationDraft = {
@@ -30,6 +24,9 @@ export type ApplicationDraft = {
   interviewStage: string;
   interviewer: string;
   notes: string;
+  salary: string;
+  location: string;
+  followUpEmail?: string;
   customFields: CustomField[];
 };
 
@@ -43,6 +40,8 @@ export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft =>
   interviewStage: "",
   interviewer: "",
   notes: "",
+  salary: "",
+  location: "",
   customFields: [],
 });
 
@@ -62,22 +61,39 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
     toast.success(message);
     onClose();
   };
-  const create = trpc.applications.create.useMutation({ onSuccess: () => done("Application added."), onError: (e) => toast.error(e.message) });
+  const create = trpc.applications.create.useMutation({
+    onSuccess: () => done("Application added."),
+    onError: (e) => toast.error(e.message),
+  });
   const update = trpc.applications.update.useMutation({ onSuccess: () => done("Saved."), onError: (e) => toast.error(e.message) });
-  const remove = trpc.applications.remove.useMutation({ onSuccess: () => done("Application deleted."), onError: (e) => toast.error(e.message) });
+  const remove = trpc.applications.remove.useMutation({
+    onSuccess: () => done("Application deleted."),
+    onError: (e) => toast.error(e.message),
+  });
   const move = trpc.applications.move.useMutation();
+  const followUp = trpc.applications.followUpEmail.useMutation({
+    onSuccess: async (result) => {
+      set("followUpEmail", result.followUpEmail);
+      await utils.applications.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const pending = create.isPending || update.isPending || remove.isPending;
 
   const set = <K extends keyof ApplicationDraft>(key: K, value: ApplicationDraft[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const setCustom = (index: number, patch: Partial<CustomField>) =>
-    set("customFields", form.customFields.map((field, i) => (i === index ? { ...field, ...patch } : field)));
+    set(
+      "customFields",
+      form.customFields.map((field, i) => (i === index ? { ...field, ...patch } : field)),
+    );
 
   const save = async () => {
     if (!form.company.trim() && !form.title.trim()) {
       toast.error("Add at least a company or a job title.");
       return;
     }
-    const { id, status, ...rest } = form;
+    const { id, status, followUpEmail, ...rest } = form;
+    void followUpEmail; // AI-written, saved by its own mutation, never sent back through update.
     // Unnamed custom fields are dropped rather than rejected.
     const payload = { ...rest, customFields: rest.customFields.filter((field) => field.label.trim()) };
     if (!id) {
@@ -88,7 +104,11 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
     update.mutate({ id, ...payload });
   };
 
-  const textField = (key: "company" | "title" | "contact" | "interviewStage" | "interviewer", label: string, placeholder: string) => (
+  const textField = (
+    key: "company" | "title" | "contact" | "interviewStage" | "interviewer" | "salary" | "location",
+    label: string,
+    placeholder: string,
+  ) => (
     <div className="grid gap-1.5">
       <Label htmlFor={`app-${key}`}>{label}</Label>
       <Input
@@ -163,6 +183,10 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
             {textField("interviewer", "Interviewer", "Who you met")}
           </div>
           {textField("interviewStage", "Interview stage", "First round, technical, final...")}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {textField("salary", "Salary", "$60k to $70k")}
+            {textField("location", "Location", "Remote, Manila...")}
+          </div>
 
           <div className="grid gap-1.5">
             <Label htmlFor="app-notes">Notes</Label>
@@ -190,7 +214,7 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
               </Button>
             </div>
             {form.customFields.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Track anything else, like salary, location or referral source.</p>
+              <p className="text-xs text-muted-foreground">Track anything else, like referral source, benefits or visa.</p>
             ) : (
               form.customFields.map((field, index) => (
                 <div key={index} className="flex gap-2">
@@ -213,7 +237,12 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
                     variant="ghost"
                     size="icon"
                     aria-label={`Remove field ${index + 1}`}
-                    onClick={() => set("customFields", form.customFields.filter((_, i) => i !== index))}
+                    onClick={() =>
+                      set(
+                        "customFields",
+                        form.customFields.filter((_, i) => i !== index),
+                      )
+                    }
                   >
                     <X className="size-4" aria-hidden="true" />
                   </Button>
@@ -221,6 +250,51 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
               ))
             )}
           </div>
+
+          {!isNew ? (
+            <div className="grid gap-2 rounded-xl bg-muted/60 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Follow-up email</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-card"
+                  disabled={followUp.isPending}
+                  onClick={() => form.id && followUp.mutate({ id: form.id })}
+                >
+                  {followUp.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Mail className="size-4" aria-hidden="true" />
+                  )}
+                  {form.followUpEmail ? "Write a new one" : "Write it for me"}
+                </Button>
+              </div>
+              {form.followUpEmail ? (
+                <>
+                  <p className="whitespace-pre-wrap rounded-lg bg-card p-3 text-sm leading-relaxed text-foreground">{form.followUpEmail}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-self-start"
+                    onClick={() =>
+                      navigator.clipboard?.writeText(form.followUpEmail ?? "").then(
+                        () => toast.success("Email copied."),
+                        () => toast.error("Could not copy. Select the text instead."),
+                      )
+                    }
+                  >
+                    <Copy className="size-4" aria-hidden="true" />
+                    Copy email
+                  </Button>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  A short, polite nudge from the details above. Uses 0.25 credits, refunded if it fails.
+                </p>
+              )}
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-2 pt-2">
             <Button onClick={() => void save()} disabled={pending}>
