@@ -26,7 +26,8 @@ export function ActionPlan({ resumeCount, resumesLoading }: { resumeCount: numbe
   const { data: stats, isLoading: statsLoading } = trpc.jobHunter.stats.useQuery();
 
   if (resumesLoading || statsLoading || !stats) {
-    return <Skeleton className="h-64 w-full rounded-2xl" />;
+    // Sized like the loaded checklist (phone / desktop), so the cards below do not jump when it arrives.
+    return <Skeleton className="h-[452px] w-full rounded-2xl sm:h-[376px]" />;
   }
 
   const { byStatus, total, tailored, bestScore } = stats;
