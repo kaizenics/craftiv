@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { and, asc, eq, max } from "drizzle-orm";
+import { and, asc, eq, inArray, max } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { applications, jobMatches, jobPostings } from "@/db/schema";
+import { applications, boardItems, jobMatches, jobPostings } from "@/db/schema";
 import type { Database } from "@/db";
 import { InsufficientCreditsError, FOLLOW_UP_EMAIL_COST, newChargeIdempotencyKey, refundCredits } from "@/lib/credits";
 import type { AiConnection } from "@/lib/ai";
 import { beginAiAction } from "@/lib/own-ai-access";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { generateFollowUpEmail } from "@/lib/follow-up-email";
+import { ensureBoards, getOwnedBoard } from "./board";
 import { TRACKER_LIMITS, TRACKER_STATUS_FROM_MATCH, TRACKER_STATUSES, type TrackerStatus } from "@/lib/types/applications";
 
 const text = z.string().trim().max(TRACKER_LIMITS.text);
@@ -45,6 +46,13 @@ const fields = z.object({
     .optional(),
 });
 const status = z.enum(TRACKER_STATUSES);
+const boardId = z.string().min(1).max(200);
+
+/** The tab a new card goes on: the one asked for (if the user owns it), else their first tab. */
+async function resolveBoard(db: Database, userId: string, requested?: string) {
+  if (requested) return (await getOwnedBoard(db, userId, requested)).id;
+  return (await ensureBoards(db, userId))[0].id;
+}
 
 /** Puts a card at the bottom of a column. */
 async function nextPosition(db: Database, userId: string, inStatus: TrackerStatus) {
@@ -65,35 +73,52 @@ async function getOwned(db: Database, id: string, userId: string) {
 }
 
 export const applicationsRouter = createTRPCRouter({
-  list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.applications.findMany({
+  /** One tab's cards, or every card when no tab is given. Cards from before tabs existed (no tab) show on the first one. */
+  list: protectedProcedure.input(z.object({ boardId: boardId.optional() }).optional()).query(async ({ ctx, input }) => {
+    const rows = await ctx.db.query.applications.findMany({
       where: eq(applications.userId, ctx.user.id),
       orderBy: [asc(applications.position), asc(applications.createdAt)],
     });
+    if (!input?.boardId) return rows;
+    const first = (await ensureBoards(ctx.db, ctx.user.id))[0].id;
+    return rows.filter((row) => (row.boardId ?? first) === input.boardId);
   }),
 
-  create: protectedProcedure.input(fields.extend({ status: status.default("saved") })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(fields.extend({ status: status.default("saved"), boardId: boardId.optional() })).mutation(async ({ ctx, input }) => {
     const id = randomUUID();
+    const onBoard = await resolveBoard(ctx.db, ctx.user.id, input.boardId);
     const position = await nextPosition(ctx.db, ctx.user.id, input.status);
     await ctx.db
       .insert(applications)
-      .values({ ...input, id, userId: ctx.user.id, position, statusHistory: [{ status: input.status, at: Date.now() }] });
+      .values({ ...input, boardId: onBoard, id, userId: ctx.user.id, position, statusHistory: [{ status: input.status, at: Date.now() }] });
     return { id };
   }),
 
-  update: protectedProcedure.input(fields.extend({ id: z.string().min(1) })).mutation(async ({ ctx, input }) => {
-    const { id, ...changes } = input;
+  update: protectedProcedure.input(fields.extend({ id: z.string().min(1), boardId: boardId.optional() })).mutation(async ({ ctx, input }) => {
+    const { id, boardId: toBoard, ...changes } = input;
     await getOwned(ctx.db, id, ctx.user.id);
+    // Moving to another tab: the card restacks in that tab's frame for its status.
+    const tabMove = toBoard ? { boardId: await resolveBoard(ctx.db, ctx.user.id, toBoard), canvasX: null, canvasY: null } : {};
     await ctx.db
       .update(applications)
-      .set({ ...changes, updatedAt: new Date() })
+      .set({ ...changes, ...tabMove, updatedAt: new Date() })
       .where(and(eq(applications.id, id), eq(applications.userId, ctx.user.id)));
     return { ok: true };
   }),
 
   /** Moves a card to a column, at `position` (the board sends a value between its new neighbours) or at the bottom. */
   move: protectedProcedure
-    .input(z.object({ id: z.string().min(1), status, position: z.number().optional() }))
+    .input(
+      z.object({
+        id: z.string().min(1),
+        status,
+        position: z.number().optional(),
+        // Canvas drop point. Without it a status change clears the old spot, so the card restacks in its new frame.
+        // null puts the card back into its frame's stack.
+        canvasX: z.number().min(-100_000).max(100_000).nullable().optional(),
+        canvasY: z.number().min(-100_000).max(100_000).nullable().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const card = await getOwned(ctx.db, input.id, ctx.user.id);
       const position = input.position ?? (await nextPosition(ctx.db, ctx.user.id, input.status));
@@ -102,7 +127,17 @@ export const applicationsRouter = createTRPCRouter({
         card.status === input.status ? card.statusHistory : [...card.statusHistory, { status: input.status, at: Date.now() }];
       await ctx.db
         .update(applications)
-        .set({ status: input.status, position, statusHistory, updatedAt: new Date() })
+        .set({
+          status: input.status,
+          position,
+          statusHistory,
+          updatedAt: new Date(),
+          ...(input.canvasX !== undefined && input.canvasY !== undefined
+            ? { canvasX: input.canvasX, canvasY: input.canvasY }
+            : card.status !== input.status
+              ? { canvasX: null, canvasY: null }
+              : {}),
+        })
         .where(and(eq(applications.id, input.id), eq(applications.userId, ctx.user.id)));
       return { ok: true };
     }),
@@ -110,11 +145,15 @@ export const applicationsRouter = createTRPCRouter({
   remove: protectedProcedure.input(z.object({ id: z.string().min(1) })).mutation(async ({ ctx, input }) => {
     await getOwned(ctx.db, input.id, ctx.user.id);
     await ctx.db.delete(applications).where(and(eq(applications.id, input.id), eq(applications.userId, ctx.user.id)));
+    // Arrows drawn to the card would point at nothing.
+    const edges = await ctx.db.query.boardItems.findMany({ where: and(eq(boardItems.userId, ctx.user.id), eq(boardItems.kind, "edge")) });
+    const dangling = edges.filter((edge) => edge.data.source === input.id || edge.data.target === input.id).map((edge) => edge.id);
+    if (dangling.length) await ctx.db.delete(boardItems).where(and(eq(boardItems.userId, ctx.user.id), inArray(boardItems.id, dangling)));
     return { ok: true };
   }),
 
   /** Copies a Job Hunter match into the tracker; a second call returns the existing card. */
-  trackMatch: protectedProcedure.input(z.object({ matchId: z.string().min(1) })).mutation(async ({ ctx, input }) => {
+  trackMatch: protectedProcedure.input(z.object({ matchId: z.string().min(1), boardId: boardId.optional() })).mutation(async ({ ctx, input }) => {
     const match = await ctx.db.query.jobMatches.findFirst({
       columns: { id: true, jobPostingId: true, applicationStatus: true, appliedAt: true },
       where: and(eq(jobMatches.id, input.matchId), eq(jobMatches.userId, ctx.user.id)),
@@ -144,6 +183,7 @@ export const applicationsRouter = createTRPCRouter({
       postingUrl: /^https?:\/\//i.test(link) ? link.slice(0, TRACKER_LIMITS.url) : "",
       appliedOn: match.appliedAt ? match.appliedAt.toISOString().slice(0, 10) : "",
       matchId: match.id,
+      boardId: await resolveBoard(ctx.db, ctx.user.id, input.boardId),
       statusHistory: [{ status: inStatus, at: Date.now() }],
     });
     return { id, created: true };
