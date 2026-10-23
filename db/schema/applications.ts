@@ -2,6 +2,7 @@ import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core
 
 import { users } from "./users";
 import { jobMatches } from "./job-hunter";
+import { boards } from "./board";
 import type { CustomField, StatusEntry, TrackerStatus } from "@/lib/types/applications";
 
 /**
@@ -19,6 +20,11 @@ export const applications = sqliteTable(
     status: text("status").$type<TrackerStatus>().notNull().default("saved"),
     // Order within its column; a drop puts the card last.
     position: real("position").notNull().default(0),
+    // The tab the card lives on.
+    boardId: text("board_id").references(() => boards.id, { onDelete: "set null" }),
+    // Where the card sits on the canvas; null means "stack it in its status frame".
+    canvasX: real("canvas_x"),
+    canvasY: real("canvas_y"),
     company: text("company").notNull().default(""),
     title: text("title").notNull().default(""),
     postingUrl: text("posting_url").notNull().default(""),
