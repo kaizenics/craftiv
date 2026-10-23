@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Copy, Loader2, Mail, Plus, Trash2, X } from "@/components/ui/icons";
+import { ArrowUpRight, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
+import { interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
 import { TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
 
@@ -27,6 +29,8 @@ export type ApplicationDraft = {
   salary: string;
   location: string;
   followUpEmail?: string;
+  // Set when the card is linked to a Job Hunter job, which is what interview prep runs on.
+  matchId?: string | null;
   customFields: CustomField[];
 };
 
@@ -59,6 +63,19 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
   const utils = trpc.useUtils();
   const [form, setForm] = useState<ApplicationDraft>(draft ?? emptyDraft());
   const [targetBoard, setTargetBoard] = useState(boardId);
+  const router = useRouter();
+  const [prepResume, setPrepResume] = useState("");
+  const [prepDescription, setPrepDescription] = useState(draft?.notes ?? "");
+  const needsJob = !form.matchId;
+  const resumesQuery = trpc.resume.listSummary.useQuery(undefined, { enabled: Boolean(draft?.id) && needsJob && draft?.status === "interview" });
+  const prepare = trpc.applications.prepareInterview.useMutation({
+    onSuccess: ({ matchId }) => {
+      toast.success("Interview prep ready.");
+      onClose();
+      router.push(interviewPrepHref(matchId));
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const isNew = !form.id;
   const done = async (message: string) => {
     await utils.applications.list.invalidate();
@@ -272,6 +289,66 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
               ))
             )}
           </div>
+
+          {!isNew && form.status === "interview" ? (
+            <div className="grid gap-3 rounded-xl bg-sky-50 p-4 dark:bg-sky-950/30">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Prep for this interview</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  Likely questions with answers from your resume
+                  {form.interviewStage || form.interviewer
+                    ? `, tuned to ${[form.interviewStage, form.interviewer && `your talk with ${form.interviewer}`].filter(Boolean).join(" and ")}`
+                    : ""}
+                  . Uses 0.5 credits, refunded if it fails.
+                </p>
+              </div>
+              {needsJob ? (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="prep-resume">Resume you applied with</Label>
+                    <Select value={prepResume} onValueChange={setPrepResume}>
+                      <SelectTrigger id="prep-resume" className="bg-card">
+                        <SelectValue placeholder={resumesQuery.isLoading ? "Loading..." : "Pick a resume"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(resumesQuery.data ?? []).map((resume) => (
+                          <SelectItem key={resume.id} value={resume.id}>
+                            {resume.title || "Untitled resume"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="prep-description">Job description</Label>
+                    <Textarea
+                      id="prep-description"
+                      rows={5}
+                      value={prepDescription}
+                      className="bg-card"
+                      placeholder="Paste the job advert so the questions fit the role."
+                      onChange={(event) => setPrepDescription(event.target.value)}
+                    />
+                  </div>
+                </>
+              ) : null}
+              <Button
+                className="justify-self-start"
+                disabled={prepare.isPending || (needsJob && (!prepResume || prepDescription.trim().length < 80))}
+                onClick={() =>
+                  form.id &&
+                  prepare.mutate({ id: form.id, ...(needsJob ? { resumeId: prepResume, description: prepDescription } : {}) })
+                }
+              >
+                {prepare.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Users className="size-4" aria-hidden="true" />
+                )}
+                Prep for this interview
+              </Button>
+            </div>
+          ) : null}
 
           {!isNew ? (
             <div className="grid gap-2 rounded-xl bg-muted/60 p-4">

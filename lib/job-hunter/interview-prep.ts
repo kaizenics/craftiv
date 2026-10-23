@@ -25,6 +25,7 @@ export async function generateInterviewPrep(params: {
   jobTitle: string;
   companyName: string;
   jobDescription: string;
+  round?: { stage: string; interviewer: string };
   ai?: AiConnection;
 }): Promise<InterviewQuestion[]> {
   const prompt = buildInterviewPrepPrompt(params);

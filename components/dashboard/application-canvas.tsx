@@ -178,7 +178,11 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
   return (
     <div className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed && "opacity-25")} style={{ width: CARD_WIDTH }}>
       <Handles />
-      <button type="button" onClick={() => openApp(app)} className={cn("block w-full rounded-xl p-3 text-left", nudge && "rounded-b-none")}>
+      <button
+        type="button"
+        onClick={() => openApp(app)}
+        className={cn("block w-full rounded-xl p-3 text-left", (nudge || app.status === "interview") && "rounded-b-none")}
+      >
         <div className="flex items-start justify-between gap-2">
           <p className="truncate text-sm font-semibold text-foreground">{app.company || "No company"}</p>
           <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold", TRACKER_STATUS_STYLES[app.status])}>
@@ -223,6 +227,16 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
           </p>
         ) : null}
       </button>
+      {app.status === "interview" && !nudge ? (
+        <button
+          type="button"
+          onClick={() => openApp(app)}
+          className="nodrag flex w-full items-center gap-1.5 rounded-b-xl bg-sky-50 px-3 py-2 text-left text-xs font-medium text-sky-900 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-200"
+        >
+          <Users className="size-3.5" aria-hidden="true" />
+          Prep for this interview
+        </button>
+      ) : null}
       {nudge ? (
         <div className="flex items-center justify-between gap-2 rounded-b-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <span className="inline-flex items-center gap-1">

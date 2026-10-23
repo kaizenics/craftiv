@@ -56,7 +56,7 @@ import type { ResumeDataJSON } from "@/db/schema/resumes";
  */
 
 /** Mirrors getOwnedResume in trpc/routers/resume.ts. */
-async function getOwnedResume(db: Database, resumeId: string, userId: string) {
+export async function getOwnedResume(db: Database, resumeId: string, userId: string) {
   const resume = await db.query.resumes.findFirst({
     where: and(eq(resumes.id, resumeId), eq(resumes.userId, userId)),
   });
@@ -210,7 +210,7 @@ async function scoreAndUpsertMatch(
  * Outbound scraping is heavier and more conspicuous than an ordinary mutation,
  * so it borrows the ai_heavy budget rather than the global one.
  */
-async function enforceJobFetchRateLimit(
+export async function enforceJobFetchRateLimit(
   ctx: { requestHeaders: { get(name: string): string | null }; user: { id: string } },
   mutation: string,
 ) {
@@ -267,7 +267,7 @@ const importJobInput = z
 
 type ImportJobInput = z.infer<typeof importJobInput>;
 
-async function importJobForResume(
+export async function importJobForResume(
   db: Database,
   userId: string,
   resume: Awaited<ReturnType<typeof getOwnedResume>>,
@@ -380,6 +380,79 @@ function writeListingCache(key: string, listings: Listing[]) {
     const oldest = listingCache.keys().next().value;
     if (oldest === undefined) break;
     listingCache.delete(oldest);
+  }
+}
+
+/**
+ * Interview prep for one job: charged up front, refunded if the model fails, saved before returning.
+ * Shared by Job Hunter and the Applications board, which can pass the round (stage and interviewer).
+ */
+export async function runInterviewPrep(
+  db: Database,
+  userId: string,
+  matchId: string,
+  round?: { stage: string; interviewer: string },
+): Promise<{ prepId: string; matchId: string }> {
+  const match = await getOwnedMatch(db, matchId, userId);
+  const resume = await getOwnedResume(db, match.resumeId, userId);
+  if (!resume.data) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
+  }
+  const posting = await db.query.jobPostings.findFirst({
+    where: and(eq(jobPostings.id, match.jobPostingId), eq(jobPostings.userId, userId)),
+  });
+  if (!posting?.description.trim()) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "This job has no description to prepare from." });
+  }
+
+  const idempotencyKey = newChargeIdempotencyKey("interview_prep", userId);
+  let ai: AiConnection;
+  let charged: boolean;
+  try {
+    const started = await beginAiAction({
+      userId,
+      eventType: "interview_prep",
+      costUnits: INTERVIEW_PREP_COST,
+      idempotencyKey,
+      metadata: { matchId: match.id, jobPostingId: posting.id },
+    });
+    ai = started.ai;
+    charged = started.charge !== null;
+  } catch (error) {
+    if (error instanceof InsufficientCreditsError) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have enough credits for this action." });
+    }
+    throw error;
+  }
+
+  try {
+    const questions = await generateInterviewPrep({
+      resumeData: resume.data,
+      jobTitle: posting.title,
+      companyName: posting.company,
+      jobDescription: posting.description,
+      round,
+      ai,
+    });
+    // Saved before returning, so a paid set is never lost if the page closes.
+    const prepId = randomUUID();
+    await db.insert(interviewPreps).values({ id: prepId, userId: userId, matchId: match.id, questions });
+    return { prepId, matchId: match.id };
+  } catch (error) {
+    if (charged) {
+      await refundCredits({
+        userId: userId,
+        eventType: "interview_prep_refund",
+        refundUnits: INTERVIEW_PREP_COST,
+        idempotencyKey: `refund:${idempotencyKey}`,
+        metadata: { reason: "ai_failure", matchId: match.id },
+      });
+    }
+    if (error instanceof TRPCError) throw error;
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not prepare interview questions. Your credits were refunded.",
+    });
   }
 }
 
@@ -919,67 +992,7 @@ export const jobHunterRouter = createTRPCRouter({
     .input(z.object({ matchId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       await enforceJobFetchRateLimit(ctx, "interviewPrep");
-
-      const match = await getOwnedMatch(ctx.db, input.matchId, ctx.user.id);
-      const resume = await getOwnedResume(ctx.db, match.resumeId, ctx.user.id);
-      if (!resume.data) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "That resume is empty." });
-      }
-      const posting = await ctx.db.query.jobPostings.findFirst({
-        where: and(eq(jobPostings.id, match.jobPostingId), eq(jobPostings.userId, ctx.user.id)),
-      });
-      if (!posting?.description.trim()) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "This job has no description to prepare from." });
-      }
-
-      const idempotencyKey = newChargeIdempotencyKey("interview_prep", ctx.user.id);
-      let ai: AiConnection;
-      let charged: boolean;
-      try {
-        const started = await beginAiAction({
-          userId: ctx.user.id,
-          eventType: "interview_prep",
-          costUnits: INTERVIEW_PREP_COST,
-          idempotencyKey,
-          metadata: { matchId: match.id, jobPostingId: posting.id },
-        });
-        ai = started.ai;
-        charged = started.charge !== null;
-      } catch (error) {
-        if (error instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have enough credits for this action." });
-        }
-        throw error;
-      }
-
-      try {
-        const questions = await generateInterviewPrep({
-          resumeData: resume.data,
-          jobTitle: posting.title,
-          companyName: posting.company,
-          jobDescription: posting.description,
-          ai,
-        });
-        // Saved before returning, so a paid set is never lost if the page closes.
-        const prepId = randomUUID();
-        await ctx.db.insert(interviewPreps).values({ id: prepId, userId: ctx.user.id, matchId: match.id, questions });
-        return { prepId, matchId: match.id };
-      } catch (error) {
-        if (charged) {
-          await refundCredits({
-            userId: ctx.user.id,
-            eventType: "interview_prep_refund",
-            refundUnits: INTERVIEW_PREP_COST,
-            idempotencyKey: `refund:${idempotencyKey}`,
-            metadata: { reason: "ai_failure", matchId: match.id },
-          });
-        }
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Could not prepare interview questions. Your credits were refunded.",
-        });
-      }
+      return runInterviewPrep(ctx.db, ctx.user.id, input.matchId);
     }),
 
   /** Which of the user's jobs already have an interview prep, so buttons can say "View prep". */

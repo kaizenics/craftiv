@@ -12,6 +12,8 @@ import { beginAiAction } from "@/lib/own-ai-access";
 import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { generateFollowUpEmail } from "@/lib/follow-up-email";
 import { ensureBoards, getOwnedBoard } from "./board";
+import { enforceJobFetchRateLimit, getOwnedResume, importJobForResume, runInterviewPrep } from "./jobHunter";
+import { PROMPT_INPUT_LIMITS } from "@/lib/constants/prompt-limits";
 import { TRACKER_LIMITS, TRACKER_STATUS_FROM_MATCH, TRACKER_STATUSES, type TrackerStatus } from "@/lib/types/applications";
 
 const text = z.string().trim().max(TRACKER_LIMITS.text);
@@ -188,6 +190,46 @@ export const applicationsRouter = createTRPCRouter({
     });
     return { id, created: true };
   }),
+
+  /**
+   * "Prep for this interview" on a card. A card tracked from Job Hunter already has its job and resume; a card typed
+   * in by hand first becomes a match from the pasted job description. The prep then uses the card's stage and interviewer.
+   */
+  prepareInterview: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        resumeId: z.string().min(1).optional(),
+        description: z.string().trim().max(PROMPT_INPUT_LIMITS.jobDescription).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await enforceJobFetchRateLimit(ctx, "prepareInterview");
+      const card = await ctx.db.query.applications.findFirst({
+        where: and(eq(applications.id, input.id), eq(applications.userId, ctx.user.id)),
+      });
+      if (!card) throw new TRPCError({ code: "NOT_FOUND", message: "That application was not found." });
+      let matchId = card.matchId;
+      if (!matchId) {
+        if (!input.resumeId) throw new TRPCError({ code: "BAD_REQUEST", message: "Pick the resume you applied with." });
+        if (!input.description || input.description.length < 80) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Paste the job description (a few lines at least) so the questions fit the role." });
+        }
+        const resume = await getOwnedResume(ctx.db, input.resumeId, ctx.user.id);
+        const imported = await importJobForResume(ctx.db, ctx.user.id, resume, {
+          resumeId: input.resumeId,
+          description: input.description,
+          title: card.title.slice(0, PROMPT_INPUT_LIMITS.targetRole),
+          company: card.company.slice(0, PROMPT_INPUT_LIMITS.name),
+          location: card.location.slice(0, PROMPT_INPUT_LIMITS.name),
+          url: card.postingUrl || undefined,
+        });
+        matchId = imported.matchId;
+        // Linked now, so a retry after a failed prep reuses the same job instead of importing it again.
+        await ctx.db.update(applications).set({ matchId }).where(and(eq(applications.id, card.id), eq(applications.userId, ctx.user.id)));
+      }
+      return runInterviewPrep(ctx.db, ctx.user.id, matchId, { stage: card.interviewStage, interviewer: card.interviewer });
+    }),
 
   /** Writes a follow-up email for a card with no reply. Charged up front and refunded if the model fails; the draft is saved. */
   followUpEmail: protectedProcedure.input(z.object({ id: z.string().min(1) })).mutation(async ({ ctx, input }) => {
