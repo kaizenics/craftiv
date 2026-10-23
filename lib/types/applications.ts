@@ -55,11 +55,3 @@ export const TRACKER_STATUS_FROM_MATCH: Record<ApplicationStatus, TrackerStatus>
   dismissed: "dropped",
 };
 
-/**
- * Sort key for a card dropped between two neighbours, so only the moved card is written.
- * shortcut: about 50 drops into the same gap exhaust float precision and the two cards tie (then createdAt orders them); renumber the column if that ever shows up.
- */
-export function positionBetween(before?: number, after?: number) {
-  if (before === undefined) return after === undefined ? 1 : after - 1;
-  return after === undefined ? before + 1 : (before + after) / 2;
-}
