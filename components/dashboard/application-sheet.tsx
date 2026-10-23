@@ -48,13 +48,17 @@ export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft =>
 type ApplicationSheetProps = {
   /** The card being edited (with id) or a new one; null keeps the sheet closed. */
   draft: ApplicationDraft | null;
+  /** The open tab: new cards go here, and with more than one tab a card can be moved to another. */
+  boardId: string;
+  boards: { id: string; name: string }[];
   onClose: () => void;
 };
 
 /** Create or edit one tracked application. Parent remounts it per card via `key`. */
-export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
+export function ApplicationSheet({ draft, boardId, boards, onClose }: ApplicationSheetProps) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState<ApplicationDraft>(draft ?? emptyDraft());
+  const [targetBoard, setTargetBoard] = useState(boardId);
   const isNew = !form.id;
   const done = async (message: string) => {
     await utils.applications.list.invalidate();
@@ -97,11 +101,11 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
     // Unnamed custom fields are dropped rather than rejected.
     const payload = { ...rest, customFields: rest.customFields.filter((field) => field.label.trim()) };
     if (!id) {
-      create.mutate({ ...payload, status });
+      create.mutate({ ...payload, status, boardId: targetBoard });
       return;
     }
     if (draft && status !== draft.status) await move.mutateAsync({ id, status });
-    update.mutate({ id, ...payload });
+    update.mutate({ id, ...payload, ...(targetBoard !== boardId ? { boardId: targetBoard } : {}) });
   };
 
   const textField = (
@@ -156,6 +160,24 @@ export function ApplicationSheet({ draft, onClose }: ApplicationSheetProps) {
               <Input id="app-date" type="date" value={form.appliedOn} onChange={(event) => set("appliedOn", event.target.value)} />
             </div>
           </div>
+
+          {boards.length > 1 ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor="app-board">Board</Label>
+              <Select value={targetBoard} onValueChange={setTargetBoard}>
+                <SelectTrigger id="app-board">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {boards.map((board) => (
+                    <SelectItem key={board.id} value={board.id}>
+                      {board.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="grid gap-1.5">
             <Label htmlFor="app-link">Job posting link</Label>

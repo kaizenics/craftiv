@@ -1,6 +1,7 @@
 import { createTRPCRouter } from "./init";
 import { aiRouter } from "./routers/ai";
 import { applicationsRouter } from "./routers/applications";
+import { boardRouter } from "./routers/board";
 import { coverLetterRouter } from "./routers/coverLetter";
 import { jobHunterRouter } from "./routers/jobHunter";
 import { ownAiRouter } from "./routers/ownAi";
@@ -21,6 +22,7 @@ export const appRouter = createTRPCRouter({
   coverLetter: coverLetterRouter,
   jobHunter: jobHunterRouter,
   applications: applicationsRouter,
+  board: boardRouter,
   ai: aiRouter,
   ownAi: ownAiRouter,
 });
