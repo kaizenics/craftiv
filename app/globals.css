@@ -201,3 +201,10 @@
     animation: none;
   }
 }
+
+/* Blinking text cursor (share section link). */
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
