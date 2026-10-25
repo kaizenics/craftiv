@@ -4,6 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +73,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
   const utils = trpc.useUtils();
   const [form, setForm] = useState<ApplicationDraft>(draft ?? emptyDraft());
   const [targetBoard, setTargetBoard] = useState(boardId);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
   const [prepResume, setPrepResume] = useState("");
   const [prepDescription, setPrepDescription] = useState(draft?.notes ?? "");
@@ -408,9 +419,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
                 variant="ghost"
                 className="ml-auto text-muted-foreground hover:text-destructive-surface-foreground"
                 disabled={pending}
-                onClick={() => {
-                  if (form.id && window.confirm("Delete this application? This cannot be undone.")) remove.mutate({ id: form.id });
-                }}
+                onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 className="size-4" aria-hidden="true" />
                 Delete
@@ -419,6 +428,23 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
           </div>
         </div>
       </SheetContent>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this application?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {[form.title, form.company].filter(Boolean).join(" at ") || "This card"} and its notes will be removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => form.id && remove.mutate({ id: form.id })}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
