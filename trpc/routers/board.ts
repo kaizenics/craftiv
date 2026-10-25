@@ -23,6 +23,7 @@ const data = z.object({
   sourceHandle: z.enum(HANDLE_SIDES).optional(),
   targetHandle: z.enum(HANDLE_SIDES).optional(),
   members: z.array(z.string().min(1).max(200)).min(2).max(100).optional(),
+  locked: z.boolean().optional(),
 });
 const position = z.object({ id: z.string().min(1), x: coord, y: coord });
 

@@ -25,6 +25,8 @@ export type BoardItemData = {
   targetHandle?: HandleSide;
   // Groups: the node ids that select and move together.
   members?: string[];
+  // Locked items cannot be moved, resized, edited, recoloured or deleted until unlocked.
+  locked?: boolean;
 };
 
 export const HANDLE_SIDES = ["top", "right", "bottom", "left"] as const;
