@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { EyeOff, Link2, RefreshCw, Send } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion, useInView, useReducedMotion } from "motion/react";
+import { Eye, EyeOff, Globe, Link2, RefreshCw, Send } from "@/components/ui/icons";
 import { Switch } from "@/components/ui/switch";
+import { CountUp } from "@/components/ui/count-up";
 import { BlurInText } from "@/components/ui/blur-in-text";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { cn } from "@/lib/utils";
@@ -12,36 +13,85 @@ import { cn } from "@/lib/utils";
 // switched off, can be regenerated (the old token dies), and count views. Example data only.
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 const newToken = () => Array.from({ length: 8 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join("");
+const HOST = "gocraftiv.com";
 
-// One S-curve from your panel (left, lower) to the recruiter's (right, higher), in the 112x160 box.
-const PATH = "M0 110 C 56 110, 56 50, 112 50";
-const PATH_START = "M0 110 C 28 110, 40 98, 50 86";
-const PATH_END = "M62 74 C 72 62, 84 50, 112 50";
-
-type RecruiterScreen = "waiting" | "resume" | "off" | "dead";
+type Event = { id: number; kind: "sent" | "opened" | "off" | "on" | "new"; text: string };
+const EVENT_ICON = { sent: Send, opened: Eye, off: EyeOff, on: Link2, new: RefreshCw };
 
 export function ShareShowcase() {
+  const reduce = useReducedMotion();
+  const linkRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(linkRef, { once: true, margin: "0px 0px -20% 0px" });
+  const visible = useInView(linkRef, { margin: "0px 0px -20% 0px" });
+  // The demo plays itself while on screen, until the visitor takes over by pressing anything.
+  const [auto, setAuto] = useState(true);
+  const autoplay = auto && visible && !reduce;
+
   const [isPublic, setIsPublic] = useState(true);
   const [token, setToken] = useState("k3f9xq2m");
+  const [typed, setTyped] = useState(0);
   const [sentToken, setSentToken] = useState<string | null>(null);
-  const [flying, setFlying] = useState(0);
   const [views, setViews] = useState(0);
+  const [events, setEvents] = useState<Event[]>([]);
+  const nextId = useRef(0);
+  // The latest link state, read by the delayed "opened" event so it never fires on a dead or private link.
+  const live = useRef({ token, isPublic });
+  useEffect(() => {
+    live.current = { token, isPublic };
+  }, [token, isPublic]);
 
-  // What the recruiter sees follows from what was sent and the state of the link now.
-  const screen: RecruiterScreen = !sentToken ? "waiting" : sentToken !== token ? "dead" : isPublic ? "resume" : "off";
+  // The token types itself out once the link scrolls into view, and again after "New link".
+  useEffect(() => {
+    if (!inView || reduce || typed >= token.length) return;
+    const timer = setTimeout(() => setTyped((n) => n + 1), typed === 0 ? 350 : 70);
+    return () => clearTimeout(timer);
+  }, [inView, reduce, typed, token]);
+  const shown = reduce ? token.length : typed;
+  const typing = shown < token.length;
 
-  const line: "live" | "off" | "snapped" = !isPublic ? "off" : screen === "dead" ? "snapped" : "live";
+  const log = useCallback(
+    (kind: Event["kind"], text: string) => setEvents((prev) => [{ id: nextId.current++, kind, text }, ...prev].slice(0, 3)),
+    [],
+  );
 
-  const send = () => {
-    setSentToken(token);
-    setFlying((n) => n + 1);
-    // The recruiter opens it as the link lands.
-    setTimeout(() => setViews((n) => n + 1), 900);
+  const send = useCallback(() => {
+    const sent = token;
+    setSentToken(sent);
+    log("sent", "Sent to a recruiter");
+    setTimeout(() => {
+      if (live.current.token !== sent || !live.current.isPublic) return;
+      setViews((n) => n + 1);
+      log("opened", "Opened in Manila, just now");
+    }, 1100);
+  }, [token, log]);
+  const toggle = (on: boolean) => {
+    setIsPublic(on);
+    log(on ? "on" : "off", on ? "Link switched back on" : "Link switched off. It opens nothing now");
   };
+  const regenerate = useCallback(() => {
+    setToken(newToken());
+    setTyped(0);
+    setViews(0);
+    log("new", "New link made. The old one is retired");
+  }, [log]);
+
+  // Autoplay: once the link is typed, send it; once it has been opened, make a new link and go again.
+  useEffect(() => {
+    if (!autoplay || typing || !isPublic || sentToken === token) return;
+    const timer = setTimeout(send, 900);
+    return () => clearTimeout(timer);
+  }, [autoplay, typing, isPublic, sentToken, token, send]);
+  useEffect(() => {
+    if (!autoplay || sentToken !== token || views === 0) return;
+    const timer = setTimeout(regenerate, 4500);
+    return () => clearTimeout(timer);
+  }, [autoplay, sentToken, token, views, regenerate]);
+
+  const screen = !sentToken ? "waiting" : sentToken !== token ? "dead" : isPublic ? "resume" : "off";
 
   return (
     <MotionConfig reducedMotion="user">
-      <section id="share" className="scroll-mt-24 border-t border-zinc-200 bg-zinc-50 py-24 font-sans lg:py-32">
+      <section id="share" className="scroll-mt-24 bg-zinc-50 py-24 font-sans lg:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 className="max-w-3xl font-display text-4xl font-semibold tracking-tight text-balance text-zinc-900 sm:text-5xl">
             <BlurInText text="Share a link. See it land." />
@@ -54,166 +104,174 @@ export function ShareShowcase() {
             />
           </p>
 
-          <BlurFade className="mt-14 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,5fr)_7rem_minmax(0,7fr)] lg:gap-0">
-            {/* You */}
-            <div className="flex min-w-0 flex-col rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8">
-              <p className="text-sm font-medium text-zinc-500">You</p>
-              <p className="mt-1 font-display text-2xl font-semibold text-zinc-900">Executive assistant resume</p>
+          <BlurFade className="mt-14 rounded-[2rem] bg-white p-6 sm:p-10 lg:p-14">
+            {/* The link itself is the hero. */}
+            <div ref={linkRef}>
+              <p className="text-sm font-medium text-zinc-500">Your resume link</p>
+            </div>
 
-              <label className="mt-6 flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-zinc-50 px-4 py-3">
-                <span>
-                  <span className="block text-sm font-medium text-zinc-900">Public link</span>
-                  <span className="block text-xs text-zinc-500">{isPublic ? "Anyone with the link can open it" : "Off. The link opens nothing"}</span>
-                </span>
-                <Switch checked={isPublic} onCheckedChange={setIsPublic} aria-label="Public link" />
-              </label>
+            <div
+              className={cn(
+                "mt-5 flex min-w-0 items-center gap-3 font-display text-[clamp(1.1rem,5.8vw,4.75rem)] leading-none tracking-tight transition-colors duration-500 sm:gap-5",
+                isPublic ? "text-zinc-900" : "text-zinc-300",
+              )}
+              aria-label={`${HOST}/r/${token}${isPublic ? "" : ", switched off"}`}
+            >
+              <Globe className={cn("size-[0.8em] shrink-0 transition-colors", isPublic ? "text-primary" : "text-zinc-300")} aria-hidden />
+              <p className={cn("min-w-0 py-2 break-all sm:break-normal", !isPublic && "line-through decoration-2")} aria-hidden>
+                {HOST}
+                <span className={isPublic ? "text-zinc-400" : undefined}>/r/</span>
+                <span className={isPublic ? "text-primary" : undefined}>{token.slice(0, shown)}</span>
+                {isPublic ? (
+                  <span
+                    className={cn("ml-1 inline-block h-[0.85em] w-[3px] translate-y-[0.1em] bg-primary", !typing && "animate-[caret_1s_steps(1)_infinite]")}
+                    aria-hidden
+                  />
+                ) : null}
+              </p>
+            </div>
 
-              <div className={cn("mt-3 flex items-center gap-2 rounded-2xl border px-4 py-3 transition-colors", isPublic ? "border-zinc-200" : "border-dashed border-zinc-200")}>
-                <Link2 className={cn("size-4 shrink-0", isPublic ? "text-primary" : "text-zinc-300")} aria-hidden />
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.span
-                    key={token}
-                    initial={{ opacity: 0, filter: "blur(6px)" }}
-                    animate={{ opacity: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, filter: "blur(6px)" }}
-                    className={cn("min-w-0 truncate font-mono text-sm", isPublic ? "text-zinc-800" : "text-zinc-300 line-through")}
-                  >
-                    gocraftiv.com/r/{token}
-                  </motion.span>
-                </AnimatePresence>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={send}
-                  disabled={!isPublic}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-[opacity,transform] hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
-                >
-                  <Send className="size-4" aria-hidden />
-                  {sentToken === token ? "Send again" : "Send to recruiter"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setToken(newToken());
-                    setViews(0);
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuto(false);
+                  send();
+                }}
+                disabled={!isPublic || typing}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-[opacity,transform] hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+              >
+                <Send className="size-4" aria-hidden />
+                {sentToken === token ? "Send again" : "Send to recruiter"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuto(false);
+                  regenerate();
+                }}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 hover:text-zinc-900"
+              >
+                <RefreshCw className="size-4" aria-hidden />
+                New link
+              </button>
+              <label className="ml-auto inline-flex cursor-pointer items-center gap-3 rounded-xl bg-zinc-100 px-4 py-2.5">
+                <span className="text-sm font-medium text-zinc-700">Public link</span>
+                <Switch
+                  checked={isPublic}
+                  onCheckedChange={(on) => {
+                    setAuto(false);
+                    toggle(on);
                   }}
-                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition-colors hover:text-zinc-900"
-                >
-                  <RefreshCw className="size-4" aria-hidden />
-                  New link
-                </button>
-              </div>
-
-              <div className="mt-6 flex items-baseline gap-3 border-t border-zinc-100 pt-5 lg:mt-auto" aria-live="polite">
-                <p className="font-display text-4xl font-semibold tabular-nums text-zinc-900">{views}</p>
-                <p className="text-sm text-zinc-500">
-                  {views === 0 ? "views so far" : views === 1 ? "view, opened just now" : "views, last opened just now"}
-                </p>
-              </div>
+                  aria-label="Public link"
+                />
+              </label>
             </div>
 
-            {/* The link itself, drawn between the two sides. Desktop only; phones stack the panels. */}
-            <div className="relative hidden items-center justify-center lg:flex" aria-hidden>
-              <div className="relative h-40 w-28">
-                <svg viewBox="0 0 112 160" className="absolute inset-0 size-full overflow-visible">
-                  {line === "off" ? (
-                    <>
-                      <path d={PATH_START} fill="none" strokeWidth="2" strokeDasharray="4 6" className="stroke-zinc-300" />
-                      <path d={PATH_END} fill="none" strokeWidth="2" strokeDasharray="4 6" className="stroke-zinc-300" />
-                      <path d="M50 74 l12 12 M62 74 l-12 12" strokeWidth="2" strokeLinecap="round" className="stroke-zinc-400" />
-                    </>
-                  ) : (
-                    <motion.path
-                      d={PATH}
-                      fill="none"
-                      strokeWidth="2"
-                      strokeDasharray="4 6"
-                      initial={false}
-                      animate={line === "live" ? { strokeDashoffset: [0, -20] } : { strokeDashoffset: 0 }}
-                      transition={line === "live" ? { duration: 0.8, repeat: Infinity, ease: "linear" } : { duration: 0 }}
-                      className={cn("transition-[stroke] duration-500", line === "live" ? (sentToken ? "stroke-primary" : "stroke-primary/40") : "stroke-zinc-300")}
-                    />
-                  )}
-                  <circle cx="0" cy="110" r="4" className={line === "live" ? "fill-primary" : "fill-zinc-300"} />
-                  <circle cx="112" cy="50" r="4" className={line === "live" && sentToken ? "fill-primary" : "fill-zinc-300"} />
-                </svg>
-                {/* The chip rides the same path via CSS offset-path. */}
-                <AnimatePresence>
-                  {flying > 0 && line === "live" ? (
-                    <motion.span
-                      key={flying}
-                      initial={{ offsetDistance: "0%", opacity: 0, scale: 0.85 }}
-                      animate={{ offsetDistance: "100%", opacity: [0, 1, 1, 0], scale: [0.85, 1, 1, 0.85] }}
-                      transition={{ duration: 0.9, ease: [0.65, 0, 0.35, 1] }}
-                      style={{ offsetPath: `path("${PATH}")`, offsetRotate: "0deg" }}
-                      className="absolute top-0 left-0 z-10 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-primary-foreground shadow-lg"
-                    >
-                      <Link2 className="size-3" />
-                      /r/{token}
-                    </motion.span>
-                  ) : null}
-                </AnimatePresence>
+            <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+              {/* What you see: views and the activity on the link. */}
+              <div className="flex h-[24rem] min-w-0 flex-col overflow-hidden rounded-3xl bg-zinc-50 p-6 sm:h-[26rem]">
+                <div className="flex items-baseline gap-3" aria-live="polite">
+                  <p className="font-display text-6xl font-semibold tabular-nums text-zinc-900">
+                    <CountUp to={views} duration={0.8} />
+                  </p>
+                  <p className="text-sm text-zinc-500">{views === 1 ? "view on this link" : "views on this link"}</p>
+                </div>
+                <ul className="mt-6 grid gap-2 overflow-hidden" aria-label="Link activity">
+                  {/* popLayout takes a leaving item out of the flow at once, so the others glide instead of jumping. */}
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {events.length ? (
+                      events.map((event) => {
+                        const Icon = EVENT_ICON[event.kind];
+                        return (
+                          <motion.li
+                            key={event.id}
+                            layout
+                            initial={{ opacity: 0, y: -14, scale: 0.97, filter: "blur(4px)" }}
+                            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, scale: 0.96, filter: "blur(4px)", transition: { duration: 0.25, ease: [0.4, 0, 1, 1] } }}
+                            transition={{
+                              layout: { type: "spring", stiffness: 260, damping: 30, mass: 0.8 },
+                              default: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+                            }}
+                            className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-sm text-zinc-700"
+                          >
+                            <span
+                              className={cn(
+                                "flex size-7 shrink-0 items-center justify-center rounded-lg",
+                                event.kind === "opened" ? "bg-primary text-primary-foreground" : "bg-zinc-100 text-zinc-500",
+                              )}
+                            >
+                              <Icon className="size-3.5" aria-hidden />
+                            </span>
+                            {event.text}
+                          </motion.li>
+                        );
+                      })
+                    ) : (
+                      <li className="rounded-xl px-3 py-2.5 text-sm text-zinc-400">Activity on your link shows up here.</li>
+                    )}
+                  </AnimatePresence>
+                </ul>
               </div>
-            </div>
 
-            {/* Recruiter */}
-            <div className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white">
-              <div className="flex items-center gap-3 border-b border-zinc-100 px-5 py-3">
-                <p className="text-sm font-medium text-zinc-500">Recruiter</p>
-                <span className="min-w-0 flex-1 truncate rounded-lg bg-zinc-50 px-3 py-1.5 font-mono text-xs text-zinc-500">
-                  {sentToken ? `gocraftiv.com/r/${sentToken}` : "Waiting for a link"}
-                </span>
-              </div>
-              <div className="relative h-[22rem] sm:h-[26rem]">
-                <AnimatePresence mode="wait" initial={false}>
-                  {screen === "resume" ? (
-                    <motion.div
-                      key="resume"
-                      initial={{ opacity: 0, y: 24 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -12 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.5 }}
-                      className="absolute inset-0 overflow-hidden bg-zinc-100 px-6 pt-6"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="/resume-templates/harvard.webp"
-                        alt="The shared resume as the recruiter sees it"
-                        className="mx-auto w-full max-w-sm rounded-t-lg shadow-[0_20px_40px_-20px_rgb(24_24_27/0.35)]"
-                      />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key={screen}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
-                    >
-                      {screen === "waiting" ? (
-                        <>
-                          <Send className="size-8 text-zinc-300" strokeWidth={1.5} aria-hidden />
-                          <p className="mt-4 font-display text-xl font-semibold text-zinc-900">Nothing here yet</p>
-                          <p className="mt-1 max-w-xs text-sm text-zinc-500">Press Send to recruiter and watch it arrive.</p>
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="size-8 text-zinc-300" strokeWidth={1.5} aria-hidden />
-                          <p className="mt-4 font-display text-xl font-semibold text-zinc-900">
-                            {screen === "off" ? "This link is off" : "This link no longer works"}
-                          </p>
-                          <p className="mt-1 max-w-xs text-sm text-zinc-500">
-                            {screen === "off"
+              {/* What the recruiter sees. */}
+              <div className="flex h-[24rem] min-w-0 flex-col overflow-hidden rounded-3xl bg-zinc-100 sm:h-[26rem]">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <span className="flex gap-1.5" aria-hidden>
+                    <span className="size-2.5 rounded-full bg-zinc-300" />
+                    <span className="size-2.5 rounded-full bg-zinc-300" />
+                    <span className="size-2.5 rounded-full bg-zinc-300" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate rounded-lg bg-white px-3 py-1.5 text-xs text-zinc-500">
+                    {sentToken ? `${HOST}/r/${sentToken}` : "The recruiter's browser"}
+                  </span>
+                </div>
+                <div className="relative min-h-0 flex-1">
+                  <AnimatePresence mode="wait" initial={false}>
+                    {screen === "resume" ? (
+                      <motion.div
+                        key="resume"
+                        initial={{ opacity: 0, y: 32 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.6 }}
+                        className="absolute inset-0 overflow-hidden px-6 pt-2"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/resume-templates/harvard.webp"
+                          alt="The shared resume as the recruiter sees it"
+                          className="mx-auto w-full max-w-sm rounded-t-xl shadow-[0_20px_40px_-20px_rgb(24_24_27/0.35)]"
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={screen}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
+                      >
+                        {screen === "waiting" ? (
+                          <Send className="size-7 text-zinc-300" aria-hidden />
+                        ) : (
+                          <EyeOff className="size-7 text-zinc-300" aria-hidden />
+                        )}
+                        <p className="mt-4 font-display text-xl font-semibold text-zinc-900">
+                          {screen === "waiting" ? "Nothing here yet" : screen === "off" ? "This link is off" : "This link no longer works"}
+                        </p>
+                        <p className="mt-1 max-w-xs text-sm text-zinc-500">
+                          {screen === "waiting"
+                            ? "Press Send to recruiter and watch it arrive."
+                            : screen === "off"
                               ? "The owner made this resume private."
                               : "The owner made a new link, so this one is retired."}
-                          </p>
-                        </>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
           </BlurFade>

@@ -8,6 +8,10 @@ import {
   Briefcase,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
   FileText,
   Grid,
   List,
@@ -19,6 +23,7 @@ import {
   Sparkles,
   Target,
   Trophy,
+  Upload,
 } from "@/components/ui/icons";
 import {
   DemoCursor,
@@ -30,9 +35,17 @@ import { cn } from "@/lib/utils";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { BlurInText } from "@/components/ui/blur-in-text";
 
-type FeatureId = "hunter" | "ats" | "assistant";
+type FeatureId = "create" | "hunter" | "ats" | "assistant";
 
 const features = [
+  {
+    id: "create" as const,
+    name: "Create a resume",
+    description: "Pick a template, fill in your details while the preview updates, then share it as a link and see when it is opened.",
+    href: "/resume/templates",
+    cta: "Browse templates",
+    icon: FileText,
+  },
   {
     id: "hunter" as const,
     name: "Job Hunter",
@@ -102,6 +115,16 @@ const ATS_DESC =
 const ASSISTANT_ROLE = "Executive Virtual Assistant";
 const ASSISTANT_DESC =
   "Manage schedules, client communication, CRM updates, and weekly reporting for a growing remote team.";
+const CREATE_FIRST = "Angela";
+const CREATE_LAST = "Reyes";
+const CREATE_TITLE = "Executive Virtual Assistant";
+const SHARE_URL = "gocraftiv.com/r/k3f9xq2m";
+// Real template previews from the picker, in its order.
+const CREATE_TEMPLATES = [
+  { id: "harvard", name: "Harvard" },
+  { id: "classic", name: "Classic" },
+  { id: "metro", name: "Metro" },
+];
 
 /**
  * Each interaction is staged in three beats: arrive, press, then act.
@@ -117,6 +140,36 @@ const ASSISTANT_DESC =
  * left to hunt for what changed on a full-width screenshot.
  */
 const SCRIPTS: Record<FeatureId, Beat[]> = {
+  // The real path: template picker, the Contacts step of the editor, then the finished resume.
+  // selectOpen here is the "Use this template" hover overlay.
+  create: [
+    { target: "create-template", ms: 900, step: 0, zoom: 1.25, zoomTarget: "create-picker" },
+    { target: "create-template", ms: 650, step: 0, selectOpen: true, zoom: 1.25, zoomTarget: "create-picker" },
+    { target: "create-use", ms: 450, step: 0, selectOpen: true, zoom: 1.25, zoomTarget: "create-picker" },
+    { target: "create-use", action: "click", ms: 450, step: 0, selectOpen: true, zoom: 1.25, zoomTarget: "create-picker" },
+    { target: "create-first", ms: 700, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-first", action: "click", ms: 340, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-first", action: "type", field: "createFirst", text: CREATE_FIRST, ms: 650, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-last", ms: 420, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-last", action: "click", ms: 340, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-last", action: "type", field: "createLast", text: CREATE_LAST, ms: 600, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-title", ms: 420, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-title", action: "click", ms: 340, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-title", action: "type", field: "createTitle", text: CREATE_TITLE, ms: 1300, step: 1, zoom: 1.3, zoomTarget: "create-form" },
+    { target: "create-preview", ms: 1800, step: 1 },
+    { target: "create-next", ms: 520, step: 1 },
+    { target: "create-next", action: "click", ms: 440, step: 1 },
+    // Then the finished resume: Share, switch the public link on, copy it, and watch the view land.
+    // From here, selected is the Public link switch.
+    { target: "share-open", ms: 1000, step: 2 },
+    { target: "share-open", action: "click", ms: 440, step: 2 },
+    { target: "share-switch", ms: 700, step: 3, zoom: 1.3, zoomTarget: "share-dialog" },
+    { target: "share-switch", action: "click", ms: 420, step: 3, zoom: 1.3, zoomTarget: "share-dialog" },
+    { target: "share-copy", ms: 800, step: 3, selected: true, zoom: 1.3, zoomTarget: "share-dialog" },
+    { target: "share-copy", action: "click", ms: 440, step: 3, selected: true, zoom: 1.3, zoomTarget: "share-dialog" },
+    { target: "share-copy", ms: 1400, step: 4, selected: true, zoom: 1.3, zoomTarget: "share-dialog" },
+    { target: "share-views", ms: 2400, step: 5, selected: true, zoom: 1.3, zoomTarget: "share-dialog" },
+  ],
   hunter: [
     { target: "hunter-select", ms: 900, step: 0, zoom: 1.35, zoomTarget: "hunter-form" },
     { target: "hunter-select", action: "click", ms: 400, step: 0, zoom: 1.35, zoomTarget: "hunter-form" },
@@ -175,6 +228,9 @@ const RESTING_TYPED: Record<string, string> = {
   atsDesc: ATS_DESC,
   assistantRole: ASSISTANT_ROLE,
   assistantDesc: ASSISTANT_DESC,
+  createFirst: CREATE_FIRST,
+  createLast: CREATE_LAST,
+  createTitle: CREATE_TITLE,
 };
 
 /**
@@ -187,6 +243,9 @@ const TEXT_FIELD_TARGETS: Record<string, string> = {
   "ats-desc": "atsDesc",
   "assistant-role": "assistantRole",
   "assistant-desc": "assistantDesc",
+  "create-first": "createFirst",
+  "create-last": "createLast",
+  "create-title": "createTitle",
 };
 
 type DemoState = {
@@ -210,10 +269,12 @@ const RESTING_STATE: DemoState = {
 };
 
 function TourSteps({ step }: { step: number }) {
+  // The create tour runs on into sharing; its later beats share the last dot.
+  const dot = Math.min(step, 2);
   return (
-    <div className="flex items-center gap-1.5" aria-label={`Tour step ${step + 1} of 3`}>
+    <div className="flex items-center gap-1.5" aria-label={`Tour step ${dot + 1} of 3`}>
       {[0, 1, 2].map((item) => (
-        <span key={item} className={cn("h-1.5 rounded-full transition-all duration-300", item === step ? "w-5 bg-primary" : "w-1.5 bg-zinc-300 dark:bg-zinc-700")} />
+        <span key={item} className={cn("h-1.5 rounded-full transition-all duration-300", item === dot ? "w-5 bg-primary" : "w-1.5 bg-zinc-300 dark:bg-zinc-700")} />
       ))}
     </div>
   );
@@ -378,8 +439,374 @@ function AssistantPreview({ state }: { state: DemoState }) {
   );
 }
 
+const RESUME_STEPS = ["Contacts", "Experience", "Education", "Skills", "Summary", "Finalize"];
+const RESUME_EMAIL = "angela.reyes@email.com";
+const RESUME_PHONE = "+63 917 555 0142";
+
+/** The resume as the editor's live preview draws it: name and title fill in as they are typed. */
+// What the rest of the resume holds once the contact details are in. The tour skips typing these.
+const RESUME_BODY = {
+  summary:
+    "Executive virtual assistant with 5 years supporting founders and leadership teams remotely. Keeps calendars, inboxes and projects running across time zones.",
+  experience: [
+    {
+      role: "Executive Virtual Assistant",
+      org: "Northwind Partners · Remote",
+      dates: "2022 - Present",
+      bullets: [
+        "Managed calendars and travel for 3 executives across 4 time zones",
+        "Cut scheduling conflicts by 40% with a shared booking system",
+        "Prepared weekly board packs and meeting notes for the leadership team",
+        "Triaged 200+ emails a day, drafting replies for executive sign-off",
+      ],
+    },
+    {
+      role: "Administrative Assistant",
+      org: "Brightline Health · Manila",
+      dates: "2019 - 2022",
+      bullets: [
+        "Kept CRM records and weekly reports up to date for a 12-person sales team",
+        "Coordinated onboarding for 30 new hires, from accounts to first-week schedules",
+        "Rebuilt the shared drive filing system, halving time spent finding documents",
+      ],
+    },
+    {
+      role: "Customer Support Associate",
+      org: "Atlas BPO · Quezon City",
+      dates: "2017 - 2019",
+      bullets: ["Resolved 60+ customer tickets a day with a 96% satisfaction score"],
+    },
+  ],
+  education: { degree: "BS Business Administration", school: "University of Santo Tomas", dates: "2013 - 2017" },
+  certifications: ["Google Workspace Administrator", "HubSpot CRM Certified"],
+  languages: ["English (Fluent)", "Filipino (Native)"],
+  skills: ["Calendar management", "Google Workspace", "HubSpot CRM", "Travel planning", "Client communication", "Notion", "Slack", "Data entry"],
+};
+
+function MiniResume({
+  first,
+  last,
+  title,
+  typing,
+  filled,
+  withScore,
+}: {
+  first?: string;
+  last?: string;
+  title?: string;
+  typing?: string | null;
+  /** Show the full resume body instead of placeholder lines. */
+  filled?: boolean;
+  /** The editor's "Profile completeness" bar above the page. */
+  withScore?: boolean;
+}) {
+  const name = [first, last].filter(Boolean).join(" ");
+  // Same points as calculateScore in resume-preview: 4 per contact field (email and phone are pre-filled here),
+  // then described jobs (25), 3+ skills (15), a 50+ character summary (15), education (15), languages (2) and certifications (3).
+  const score = 8 + [first, last, title].filter(Boolean).length * 4 + (filled ? 75 : 0);
+  return (
+    <div className="overflow-hidden rounded-lg bg-white shadow-[0_16px_32px_-20px_rgb(24_24_27/0.35)] dark:bg-zinc-950">
+      {withScore ? (
+        <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+          <span className="rounded bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">{score}%</span>
+          <span className="text-[10px] text-gray-600 dark:text-zinc-400">Profile completeness</span>
+        </div>
+      ) : null}
+      <div className="p-4">
+      <p className="text-center text-base font-bold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
+        {name || <span className="text-zinc-900 dark:text-zinc-100">Your Name</span>}
+        {typing === "createFirst" || typing === "createLast" ? <TypingCaret /> : null}
+      </p>
+      <p className="mt-0.5 text-center text-[10px] text-zinc-500">
+        {title}
+        {typing === "createTitle" ? <TypingCaret /> : null}
+      </p>
+      {title || name ? <p className="mt-1 text-center text-[9px] text-zinc-400">{RESUME_EMAIL} · {RESUME_PHONE}</p> : null}
+      {filled ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Summary</p>
+          <p className="mt-1.5 text-[9px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.summary}</p>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Experience</p>
+          {RESUME_BODY.experience.map((job) => (
+            <div key={job.role} className="mt-1.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-[9px] font-semibold text-zinc-800 dark:text-zinc-200">{job.role}</p>
+                <p className="shrink-0 text-[8px] text-zinc-400">{job.dates}</p>
+              </div>
+              <p className="text-[8px] text-zinc-500">{job.org}</p>
+              <ul className="mt-0.5 list-disc space-y-0.5 pl-3 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+                {job.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Skills</p>
+          <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.skills.join(" · ")}</p>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Education</p>
+          <div className="mt-1.5 flex items-baseline justify-between gap-2">
+            <p className="text-[9px] font-semibold text-zinc-800 dark:text-zinc-200">{RESUME_BODY.education.degree}</p>
+            <p className="shrink-0 text-[8px] text-zinc-400">{RESUME_BODY.education.dates}</p>
+          </div>
+          <p className="text-[8px] text-zinc-500">{RESUME_BODY.education.school}</p>
+          <div className="mt-3 grid grid-cols-2 gap-4">
+            <div>
+              <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Certifications</p>
+              <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.certifications.join(" · ")}</p>
+            </div>
+            <div>
+              <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Languages</p>
+              <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.languages.join(" · ")}</p>
+            </div>
+          </div>
+        </motion.div>
+      ) : (
+        ["Summary", "Experience", "Skills"].map((section) => (
+          <div key={section} className="mt-3">
+            <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">{section}</p>
+            <div className="mt-1.5 space-y-1">
+              <div className="h-1.5 w-full rounded bg-zinc-100 dark:bg-zinc-800" />
+              <div className="h-1.5 w-5/6 rounded bg-zinc-100 dark:bg-zinc-800" />
+            </div>
+          </div>
+        ))
+      )}
+      </div>
+    </div>
+  );
+}
+
+function CreatePreview({ state }: { state: DemoState }) {
+  const { step, typed, focusField, typingField } = state;
+  const filled = typed.createTitle === CREATE_TITLE && typingField !== "createTitle";
+  const field = (key: string, target: string, label: string, placeholder: string) => (
+    <div>
+      <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">{label}</p>
+      <div
+        data-cursor-target={target}
+        className={cn(
+          "mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors",
+          focusField === key ? "border-primary bg-white ring-2 ring-primary/15 dark:bg-zinc-950" : "border-transparent bg-zinc-100 dark:bg-zinc-900",
+        )}
+      >
+        <Typed value={typed[key]} placeholder={placeholder} typing={typingField === key} />
+      </div>
+    </div>
+  );
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      {step === 0 ? (
+        <motion.div key="picker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-cursor-target="create-picker" className="p-4 sm:p-5">
+          <div className="flex items-center justify-center gap-3 text-[11px]">
+            {["Choose template", "Enter your details", "Download resume"].map((label, i) => (
+              <span key={label} className="flex items-center gap-2">
+                {i > 0 ? <span className="h-px w-6 bg-zinc-200 dark:bg-zinc-700" /> : null}
+                <span className={cn("flex size-5 items-center justify-center rounded-full text-[10px] font-semibold", i === 0 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800")}>{i + 1}</span>
+                <span className={cn("hidden sm:inline", i === 0 ? "font-semibold text-zinc-900 dark:text-zinc-100" : "text-zinc-500")}>{label}</span>
+              </span>
+            ))}
+          </div>
+          <p className="mt-5 text-center font-display text-xl font-bold">Resume templates</p>
+          <div className="mt-3 flex justify-center gap-4 border-b border-zinc-200 text-[11px] dark:border-zinc-800">
+            {["All Templates", "Simple", "Modern", "Professional", "ATS Friendly", "Creative"].map((tab, i) => (
+              <span key={tab} className={cn("pb-2", i === 0 ? "border-b-2 border-primary font-semibold text-zinc-900 dark:text-zinc-100" : "hidden text-zinc-500 sm:inline")}>{tab}</span>
+            ))}
+          </div>
+          <div className="mx-auto mt-4 grid max-w-2xl grid-cols-3 gap-3">
+            {CREATE_TEMPLATES.map((template, i) => (
+              <div key={template.id} data-cursor-target={i === 0 ? "create-template" : undefined} className="relative overflow-hidden rounded-lg bg-white shadow-sm dark:bg-zinc-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/resume-templates/${template.id}.webp`} alt="" className="aspect-[3/4] w-full object-cover object-top" loading="lazy" />
+                <AnimatePresence>
+                  {i === 0 && state.selectOpen ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 flex items-center justify-center bg-black/50">
+                      <span data-cursor-target="create-use" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-white">
+                        <FileText className="size-3.5" />
+                        Use this template
+                      </span>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+                <span className="absolute inset-x-0 bottom-0 bg-white/95 px-2 py-1 text-[10px] font-medium text-zinc-700 dark:bg-zinc-950/95 dark:text-zinc-300">{template.name}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      ) : step === 1 ? (
+        <motion.div key="editor" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="bg-white dark:bg-zinc-950">
+          {/* Same chrome as the real editor (app/resume/section): back link, title, saved state, preview toggle. */}
+          <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2.5 dark:border-zinc-800">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                <ChevronLeft className="size-3" />
+                Dashboard
+              </span>
+              <span className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+              <span className="font-display text-sm font-bold">Create Your Resume</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[10px] text-zinc-500">
+                <Check className="size-3 text-emerald-600" />
+                Saved
+              </span>
+              <span className="hidden rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] font-medium sm:inline dark:border-zinc-700">Hide Preview</span>
+            </div>
+          </div>
+          <div className="grid lg:grid-cols-2">
+            <div data-cursor-target="create-form" className="border-zinc-200 lg:border-r dark:border-zinc-800">
+              <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
+                {RESUME_STEPS.map((label, i) => (
+                  <span key={label} className="flex flex-col items-center gap-1">
+                    <span
+                      className={cn(
+                        "flex size-5 items-center justify-center rounded-full text-[9px] font-semibold",
+                        i === 0 ? "bg-primary text-white" : "border border-zinc-300 text-zinc-500 dark:border-zinc-700",
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className={cn("text-[9px]", i === 0 ? "font-medium text-primary" : "text-zinc-500")}>{label}</span>
+                  </span>
+                ))}
+              </div>
+              <div className="px-6 py-4">
+                <p className="font-display text-lg font-bold">Contact Information</p>
+                <p className="mt-0.5 text-[10px] text-zinc-500">Let employers know how to reach you. This information will appear at the top of your resume.</p>
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                  <span>
+                    <span className="block text-[10px] font-medium">Show Profile Photo</span>
+                    <span className="block text-[9px] text-zinc-500">Turn this on to upload and display a photo in your resume.</span>
+                  </span>
+                  <span className="flex h-4 w-7 items-center rounded-full bg-primary p-0.5">
+                    <span className="size-3 translate-x-3 rounded-full bg-white" />
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-700">
+                    <Upload className="size-3.5" />
+                  </span>
+                  <span>
+                    <span className="block text-[10px] font-medium">Upload your photo</span>
+                    <span className="block text-[9px] text-zinc-500">Recommended: Square image, max 5MB. Accepts JPG, PNG, or GIF.</span>
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {field("createFirst", "create-first", "First Name", "John")}
+                  {field("createLast", "create-last", "Last Name", "Doe")}
+                </div>
+                <div className="mt-2.5">
+                  {field("createTitle", "create-title", "Desired Job Title", "e.g. Software Engineer, Product Manager, UX Designer")}
+                  <p className="mt-1 text-[9px] text-zinc-500">This will appear prominently on your resume and help recruiters understand your target role.</p>
+                </div>
+                <div className="mt-2.5 grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">Phone Number</p>
+                    <div className="mt-1.5 rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{RESUME_PHONE}</div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">Email Address</p>
+                    <div className="mt-1.5 truncate rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{RESUME_EMAIL}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between border-t border-zinc-200 px-5 py-2.5 dark:border-zinc-800">
+                <span className="rounded-full px-3 py-1.5 text-[11px] text-zinc-400">Back</span>
+                <span data-cursor-target="create-next" className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-1.5 text-[11px] font-semibold text-white">
+                  Next
+                  <ChevronRight className="size-3" />
+                </span>
+              </div>
+            </div>
+            <div data-cursor-target="create-preview" className="hidden bg-zinc-50 p-5 lg:block dark:bg-zinc-900">
+              <MiniResume first={typed.createFirst} last={typed.createLast} title={typed.createTitle} typing={typingField} filled={filled} withScore />
+            </div>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div key="final" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+          <SharePreview state={{ ...state, step: step - 2 }} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function SharePreview({ state }: { state: DemoState }) {
+  const { step, selected } = state;
+  return (
+    <div className="relative min-h-[38rem] p-4 sm:min-h-[35rem] sm:p-5">
+      <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 dark:bg-zinc-950">
+        <p className="text-xs font-semibold">Angela - Virtual Assistant</p>
+        <div className="flex gap-2">
+          <span data-cursor-target="share-open" className="rounded-lg border border-zinc-200 px-3 py-1.5 text-[11px] font-semibold dark:border-zinc-700">Share</span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-white"><Download className="size-3" />Download Resume</span>
+        </div>
+      </div>
+      <div className="mx-auto mt-4 max-w-sm">
+        <MiniResume first={CREATE_FIRST} last={CREATE_LAST} title={CREATE_TITLE} filled />
+      </div>
+      <AnimatePresence>
+        {step >= 1 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 flex items-start justify-center bg-zinc-900/30 pt-10">
+            <motion.div
+              data-cursor-target="share-dialog"
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="w-[22rem] max-w-[90%] rounded-2xl bg-white p-5 shadow-xl dark:bg-zinc-950"
+            >
+              <p className="text-sm font-semibold">Share your resume</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">Anyone with the link can view this resume. It updates as you edit and is hidden from search engines.</p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs font-medium">Public link</span>
+                <span data-cursor-target="share-switch" className={cn("flex h-5 w-9 items-center rounded-full p-0.5 transition-colors", selected ? "bg-primary" : "bg-zinc-200 dark:bg-zinc-700")}>
+                  <span className={cn("size-4 rounded-full bg-white shadow transition-transform", selected && "translate-x-4")} />
+                </span>
+              </div>
+              <AnimatePresence initial={false}>
+                {selected ? (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
+                    <div className="mt-4 flex gap-2">
+                      <span className="min-w-0 flex-1 truncate rounded-lg border border-zinc-200 px-3 py-2 text-[11px] text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">{SHARE_URL}</span>
+                      <span data-cursor-target="share-copy" className="flex size-8 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        {step >= 2 ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+                      </span>
+                    </div>
+                    <div data-cursor-target="share-views" className="mt-3 grid grid-cols-2 gap-2">
+                      {["Total views", "Last 30 days"].map((label) => (
+                        <div key={label} className="rounded-lg border border-zinc-200 p-2.5 dark:border-zinc-700">
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            <motion.p key={step >= 3 ? 1 : 0} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-lg font-semibold tabular-nums">
+                              {step >= 3 ? 1 : 0}
+                            </motion.p>
+                          </AnimatePresence>
+                          <p className="text-[10px] text-zinc-500">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+                      {step >= 3 ? "Last viewed just now." : "No views yet."} Each visitor counts once a day; your own views don&apos;t count.
+                    </p>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {step === 2 ? (
+          <motion.span initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-6 right-6 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-[11px] font-medium shadow-lg dark:bg-zinc-950">
+            <Check className="size-3.5 text-success-surface-foreground" />
+            Link copied.
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function FeatureDemo() {
-  const [active, setActive] = useState<FeatureId>("hunter");
+  const [active, setActive] = useState<FeatureId>("create");
   const [beatIndex, setBeatIndex] = useState(0);
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [playing, setPlaying] = useState(true);
@@ -507,7 +934,7 @@ export function FeatureDemo() {
               animate={{ scale: zoom, x: frame.x, y: frame.y }}
               transition={{ type: "spring", stiffness: 55, damping: 20, mass: 1 }}
             >
-            <AnimatePresence mode="wait" initial={false}><motion.div key={active} initial={reduceMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: -12 }} transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}>{active === "hunter" ? <JobHunterPreview state={state} /> : null}{active === "ats" ? <AtsPreview state={state} /> : null}{active === "assistant" ? <AssistantPreview state={state} /> : null}</motion.div></AnimatePresence>
+            <AnimatePresence mode="wait" initial={false}><motion.div key={active} initial={reduceMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: -12 }} transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}>{active === "hunter" ? <JobHunterPreview state={state} /> : null}{active === "ats" ? <AtsPreview state={state} /> : null}{active === "assistant" ? <AssistantPreview state={state} /> : null}{active === "create" ? <CreatePreview state={state} /> : null}</motion.div></AnimatePresence>
               <DemoCursor point={cursorPoint} clicking={isAnimating && beat.action === "click"} clickKey={beatIndex} variant={targetField ? "text" : "arrow"} />
             </motion.div>
           </div>

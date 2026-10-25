@@ -4,23 +4,15 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import {
   Background,
   BackgroundVariant,
-  ConnectionMode,
   Controls,
-  Handle,
-  MarkerType,
   MiniMap,
   NodeResizeControl,
   NodeResizer,
   ResizeControlVariant,
-  Position,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
   useReactFlow,
-  type Connection,
-  type Edge,
-  type EdgeChange,
-  type FinalConnectionState,
   type Node,
   type NodeChange,
   type NodeProps,
@@ -30,7 +22,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, Clock, Link2, MapPin, Money, Plus, Redo2, Type, Undo2, Users, StickyNote, Frame } from "@/components/ui/icons";
+import { CalendarIcon, Clock, Link2, Lock, Unlock, MapPin, Money, Plus, Redo2, Type, Undo2, Users, StickyNote, Frame } from "@/components/ui/icons";
 import { daysWaiting, FOLLOW_UP_AFTER_DAYS, GHOSTED_AFTER_DAYS } from "@/lib/tracker-stats";
 import { TRACKER_STATUS_LABELS, TRACKER_STATUS_STYLES, type TrackerStatus } from "@/lib/types/applications";
 import {
@@ -39,11 +31,9 @@ import {
   CARD_WIDTH,
   FRAME_HEADER,
   FRAME_PAD,
-  HANDLE_SIDES,
   positionBetween,
   statusFrameAt,
   type BoardItemData,
-  type HandleSide,
   type NoteColor,
 } from "@/lib/types/board";
 import { trpc } from "@/trpc/client";
@@ -74,7 +64,6 @@ const NOTE_STYLES: Record<NoteColor, string> = {
   green: "bg-emerald-100",
   purple: "bg-violet-100",
 };
-const SIDE_POSITION: Record<HandleSide, Position> = { top: Position.Top, right: Position.Right, bottom: Position.Bottom, left: Position.Left };
 const CARD_FALLBACK_HEIGHT = 110;
 
 function formatDate(value: string) {
@@ -83,20 +72,12 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Four connection points; arrows can start or end on any of them. Shown on hover. */
-function Handles() {
+/** Marks an item the user has locked. */
+function LockBadge() {
   return (
-    <>
-      {HANDLE_SIDES.map((side) => (
-        <Handle
-          key={side}
-          id={side}
-          type="source"
-          position={SIDE_POSITION[side]}
-          className="!size-2.5 !border-2 !border-card !bg-primary opacity-0 transition-opacity group-hover:opacity-100"
-        />
-      ))}
-    </>
+    <span className="absolute -right-2 -top-2 z-10 flex size-5 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm" title="Locked">
+      <Lock className="size-3" aria-label="Locked" />
+    </span>
   );
 }
 
@@ -104,10 +85,11 @@ function FrameNode({ id, data, selected }: NodeProps<Node<BoardItemData & { coun
   const { addApp, saveItem } = useActions();
   const [editing, setEditing] = useState(false);
   return (
-    <div className={cn("h-full w-full rounded-2xl bg-card/90 p-3", selected && "ring-2 ring-primary/40")}>
+    <div className={cn("relative h-full w-full rounded-2xl bg-card/90 p-3", selected && "ring-2 ring-primary/40")}>
+      {data.locked ? <LockBadge /> : null}
       {data.status ? (
         // Status frames keep their column width; only the bottom edge drags, to make the column taller or shorter.
-        selected ? (
+        selected && !data.locked ? (
           <NodeResizeControl
             position="bottom"
             variant={ResizeControlVariant.Line}
@@ -119,7 +101,7 @@ function FrameNode({ id, data, selected }: NodeProps<Node<BoardItemData & { coun
         ) : null
       ) : (
         <NodeResizer
-          isVisible={selected}
+          isVisible={selected && !data.locked}
           minWidth={200}
           minHeight={160}
           lineClassName="!border-primary/40"
@@ -146,7 +128,7 @@ function FrameNode({ id, data, selected }: NodeProps<Node<BoardItemData & { coun
             onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
           />
         ) : (
-          <button type="button" className="truncate text-sm font-semibold text-foreground" onDoubleClick={() => setEditing(true)}>
+          <button type="button" className="truncate text-sm font-semibold text-foreground" onDoubleClick={() => !data.locked && setEditing(true)}>
             {data.text || "Untitled frame"}
           </button>
         )}
@@ -177,7 +159,6 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
   const dimmed = needle && ![app.company, app.title, app.location, app.salary].some((value) => value.toLowerCase().includes(needle));
   return (
     <div className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed && "opacity-25")} style={{ width: CARD_WIDTH }}>
-      <Handles />
       <button
         type="button"
         onClick={() => openApp(app)}
@@ -273,12 +254,12 @@ function EditableNode({ id, data, selected, type }: NodeProps<Node<BoardItemData
         note ? cn("rounded-md p-4 shadow-sm", NOTE_STYLES[data.color ?? "yellow"]) : "px-1",
         selected && "ring-2 ring-primary/40",
       )}
-      onDoubleClick={() => setEditing(true)}
+      onDoubleClick={() => !data.locked && setEditing(true)}
     >
-      <Handles />
+      {data.locked ? <LockBadge /> : null}
       {note ? (
         <NodeResizer
-          isVisible={selected}
+          isVisible={selected && !data.locked}
           minWidth={120}
           minHeight={100}
           lineClassName="!border-primary/40"
@@ -442,6 +423,8 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
         height: Math.max(frame.data.h ?? 0, FRAME_HEADER + stacked + FRAME_PAD),
         data: { ...frame.data, count: frame.data.status ? apps.filter((a) => a.status === frame.data.status).length : 0 },
         zIndex: 0,
+        draggable: !frame.data.locked,
+        deletable: !frame.data.locked,
       };
     });
     const loose: Node[] = items
@@ -454,6 +437,8 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
         height: row.data.h ?? (row.kind === "note" ? 180 : 48),
         data: row.data,
         zIndex: 1,
+        draggable: !row.data.locked,
+        deletable: !row.data.locked,
       }));
     return [...frameNodes, ...loose, ...cards, ...hunters];
   }, [apps, items, frames, hunter, heights]);
@@ -471,39 +456,6 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
     );
   }
 
-  const ids = useMemo(() => new Set(nodesFromData.map((n) => n.id)), [nodesFromData]);
-  const [selectedEdges, setSelectedEdges] = useState<Set<string>>(new Set());
-  const edges: Edge[] = useMemo(
-    () =>
-      items
-        .filter((row) => row.kind === "edge" && ids.has(row.data.source ?? "") && ids.has(row.data.target ?? ""))
-        .map((row) => ({
-          id: row.id,
-          source: row.data.source!,
-          target: row.data.target!,
-          sourceHandle: row.data.sourceHandle,
-          targetHandle: row.data.targetHandle,
-          markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-          style: { strokeWidth: 2 },
-          selected: selectedEdges.has(row.id),
-          // Above frames and cards, as in Miro; otherwise arrows inside a frame hide behind it and cannot be clicked.
-          zIndex: 3,
-        })),
-    [items, ids, selectedEdges],
-  );
-
-  const onEdgesChange = (changes: EdgeChange[]) => {
-    const picks = changes.filter((change) => change.type === "select");
-    if (!picks.length) return;
-    setSelectedEdges((prev) => {
-      const next = new Set(prev);
-      for (const change of picks) {
-        if (change.selected) next.add(change.id);
-        else next.delete(change.id);
-      }
-      return next;
-    });
-  };
 
   const groups = useMemo(() => items.filter((row) => row.kind === "group" && row.data.members?.length), [items]);
   const groupOf = (id: string) => groups.find((g) => g.data.members!.includes(id));
@@ -541,7 +493,8 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
     for (const n of dragged) {
       const ids: string[] = [];
       for (const member of groupOf(n.id)?.data.members ?? []) {
-        if (taken.has(member)) continue;
+        // A locked member stays put even when the rest of its group moves.
+        if (taken.has(member) || (nodes.find((x) => x.id === member)?.data as BoardItemData | undefined)?.locked) continue;
         ids.push(member);
         taken.add(member);
       }
@@ -550,6 +503,7 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
         const statusFrame = Boolean((n.data as BoardItemData).status);
         for (const child of nodes) {
           if (taken.has(child.id) || child.type === "frame" || child.type === "hunter" || (statusFrame && child.type === "card")) continue;
+          if ((child.data as BoardItemData).locked) continue;
           if (!inside(child, n)) continue;
           ids.push(child.id);
           taken.add(child.id);
@@ -634,42 +588,10 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
     savePositions.mutate({ items: itemMoves, cards: cardMoves });
   };
 
-  // Released on a card or note but not exactly on a dot: attach to its nearest side, like Miro.
-  const onConnectEnd = (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
-    if (state.isValid || !state.fromNode) return;
-    const point = "changedTouches" in event ? event.changedTouches[0] : event;
-    const el = document.elementFromPoint(point.clientX, point.clientY)?.closest<HTMLElement>(".react-flow__node");
-    const targetId = el?.dataset.id;
-    if (!el || !targetId || targetId === state.fromNode.id || el.classList.contains("react-flow__node-frame")) return;
-    const box = el.getBoundingClientRect();
-    const gaps: [HandleSide, number][] = [
-      ["top", point.clientY - box.top],
-      ["bottom", box.bottom - point.clientY],
-      ["left", point.clientX - box.left],
-      ["right", box.right - point.clientX],
-    ];
-    const side = gaps.sort((a, b) => a[1] - b[1])[0][0];
-    onConnect({ source: state.fromNode.id, sourceHandle: state.fromHandle?.id ?? null, target: targetId, targetHandle: side });
-  };
-
-  const onConnect = (connection: Connection) => {
-    if (!connection.source || !connection.target || connection.source === connection.target) return;
-    record();
-    save.mutate({ boardId, 
-      kind: "edge",
-      data: {
-        source: connection.source,
-        target: connection.target,
-        sourceHandle: (connection.sourceHandle ?? undefined) as HandleSide | undefined,
-        targetHandle: (connection.targetHandle ?? undefined) as HandleSide | undefined,
-      },
-    });
-  };
-
   // Notes, text, custom frames and arrows can be deleted; cards are deleted from their panel and status frames are the board's columns.
   const deletable = (id: string) => {
     const row = items.find((r) => r.id === id);
-    return Boolean(row && !(row.kind === "frame" && row.data.status));
+    return Boolean(row && !row.data.locked && !(row.kind === "frame" && row.data.status));
   };
 
   const add = (kind: "note" | "text" | "frame") => {
@@ -683,7 +605,9 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
     });
   };
 
-  const selectedNotes = nodes.filter((n) => n.selected && n.type === "note");
+  const selectedNotes = nodes.filter((n) => n.selected && n.type === "note" && !(n.data as BoardItemData).locked);
+  const lockable = nodes.filter((n) => n.selected && (n.type === "frame" || n.type === "note" || n.type === "text"));
+  const allLocked = lockable.length > 0 && lockable.every((n) => (n.data as BoardItemData).locked);
   // Status frames and Job Hunter cards are part of the board itself, so they never join a group.
   const groupable = nodes.filter((n) => n.selected && n.type !== "hunter" && !(n.type === "frame" && (n.data as BoardItemData).status));
   const selectedGroup = groupable.length ? groupOf(groupable[0].id) : undefined;
@@ -710,16 +634,11 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
       <div ref={wrapper} className="relative h-full overflow-hidden bg-muted/60">
         <ReactFlow
           nodes={nodes}
-          edges={edges}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
           onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
-          onConnect={onConnect}
-          onConnectEnd={onConnectEnd}
-          connectionMode={ConnectionMode.Loose}
           onBeforeDelete={async ({ nodes: n, edges: e }) => ({ nodes: n.filter((node) => deletable(node.id)), edges: e })}
           onDelete={({ nodes: n, edges: e }) => {
             const removed = [...n.map((node) => node.id), ...e.map((edge) => edge.id)];
@@ -728,6 +647,7 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
             utils.board.list.setData({ boardId }, (prev) => prev?.filter((row) => !removed.includes(row.id)));
             remove.mutate({ ids: removed });
           }}
+          nodesConnectable={false}
           deleteKeyCode={["Backspace", "Delete"]}
           // Keep stacking fixed: a selected frame must not jump in front of the cards inside it.
           elevateNodesOnSelect={false}
@@ -761,7 +681,7 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
           </Button>
         </div>
 
-        {selectedNotes.length || isWholeGroup || groupable.length >= 2 ? (
+        {lockable.length || selectedNotes.length || isWholeGroup || groupable.length >= 2 ? (
           <div
             className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1.5 rounded-xl bg-card p-1.5 shadow-sm"
             role="toolbar"
@@ -778,6 +698,12 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
                   />
                 ))
               : null}
+            {lockable.length ? (
+              <Button variant="ghost" size="sm" onClick={() => lockable.forEach((n) => saveItem(n.id, { locked: !allLocked }))}>
+                {allLocked ? <Unlock className="size-4" aria-hidden="true" /> : <Lock className="size-4" aria-hidden="true" />}
+                {allLocked ? "Unlock" : "Lock"}
+              </Button>
+            ) : null}
             {isWholeGroup ? (
               <Button variant="ghost" size="sm" onClick={ungroup}>
                 Ungroup
@@ -791,7 +717,7 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
         ) : null}
 
         <p className="pointer-events-none absolute bottom-3 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-card/80 px-2.5 py-1.5 text-xs text-muted-foreground xl:block">
-          Drag to move around · scroll to zoom · Shift-drag to select · drag from a dot to draw an arrow
+          Drag to move around · scroll to zoom · Shift-drag to select
         </p>
       </div>
     </ActionsContext.Provider>

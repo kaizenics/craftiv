@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Plus } from "@/components/ui/icons";
 import { trpc } from "@/trpc/client";
@@ -15,6 +25,7 @@ type Props = { boards: Board[]; activeId: string; onSelect: (id: string) => void
 export function BoardTabs({ boards, activeId, onSelect }: Props) {
   const utils = trpc.useUtils();
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Board | null>(null);
   const onError = (error: { message: string }) => toast.error(error.message);
   const create = trpc.board.createBoard.useMutation({
     onSuccess: async ({ id }) => {
@@ -91,11 +102,7 @@ export function BoardTabs({ boards, activeId, onSelect }: Props) {
                   <DropdownMenuItem
                     disabled={boards.length < 2}
                     className="text-destructive-surface-foreground"
-                    onSelect={() => {
-                      if (window.confirm(`Delete "${board.name}"? Its notes and frames go; its cards move to your first board.`)) {
-                        remove.mutate({ boardId: board.id });
-                      }
-                    }}
+                    onSelect={() => setDeleting(board)}
                   >
                     Delete board
                   </DropdownMenuItem>
@@ -115,6 +122,23 @@ export function BoardTabs({ boards, activeId, onSelect }: Props) {
       >
         <Plus className="size-4" aria-hidden="true" />
       </button>
+
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{deleting?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Its notes and frames are deleted. Its application cards are kept and move to your first board.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => deleting && remove.mutate({ boardId: deleting.id })}>
+              Delete board
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   );
 }
