@@ -200,8 +200,8 @@ function ResumeTemplatesPageContent() {
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="text-center">
-            <Spinner className="h-8 w-8 mx-auto mb-4 text-white" />
-            <p className="text-white">Creating your resume...</p>
+            <Spinner className="h-8 w-8 mx-auto mb-4 text-white dark:text-foreground" />
+            <p className="text-white dark:text-foreground">Creating your resume...</p>
           </div>
         </div>
       )}

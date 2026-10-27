@@ -24,7 +24,7 @@ const navigation = {
 
 export function Footer() {
   return (
-    <footer className="bg-primary font-sans">
+    <footer className="bg-primary font-sans dark:bg-zinc-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="py-12 lg:py-16">
@@ -32,10 +32,10 @@ export function Footer() {
             {/* Brand Column */}
             <div className="lg:col-span-2">
               <div>
-                <Link href="/" className="font-display text-2xl font-bold text-white">
+                <Link href="/" className="font-display text-2xl font-bold text-white dark:text-foreground">
                   Craftiv
                 </Link>
-                <p className="mt-4 max-w-xs text-sm text-white/80 leading-relaxed">
+                <p className="mt-4 max-w-xs text-sm text-white/80 dark:text-foreground/70 leading-relaxed">
                   Find roles that fit, tailor every application, and keep track of each one until the offer.
                 </p>
               </div>
@@ -43,13 +43,13 @@ export function Footer() {
 
             {/* Navigation Columns */}
             <div>
-              <h3 className="font-display text-sm font-semibold text-white">Product</h3>
+              <h3 className="font-display text-sm font-semibold text-white dark:text-foreground">Product</h3>
               <ul className="mt-4 space-y-3">
                 {navigation.product.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-white/80 hover:text-white transition-colors"
+                      className="text-sm text-white/80 dark:text-foreground/70 hover:text-white dark:hover:text-foreground transition-colors"
                     >
                       {item.name}
                     </Link>
@@ -59,13 +59,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-display text-sm font-semibold text-white">Company</h3>
+              <h3 className="font-display text-sm font-semibold text-white dark:text-foreground">Company</h3>
               <ul className="mt-4 space-y-3">
                 {navigation.company.map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
-                      className="text-sm text-white/80 hover:text-white transition-colors"
+                      className="text-sm text-white/80 dark:text-foreground/70 hover:text-white dark:hover:text-foreground transition-colors"
                     >
                       {item.name}
                     </Link>
@@ -75,7 +75,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h3 className="font-display text-sm font-semibold text-white">Resources</h3>
+              <h3 className="font-display text-sm font-semibold text-white dark:text-foreground">Resources</h3>
               <ul className="mt-4 space-y-3">
                 {navigation.resources.map((item) => (
                   <li key={item.name}>
@@ -83,7 +83,7 @@ export function Footer() {
                       href={item.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-white/80 hover:text-white transition-colors"
+                      className="text-sm text-white/80 dark:text-foreground/70 hover:text-white dark:hover:text-foreground transition-colors"
                     >
                       {item.name}
                     </a>
@@ -95,8 +95,8 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/20 py-6">
-          <p className="text-center text-xs text-white/80">
+        <div className="border-t border-white/20 dark:border-border py-6">
+          <p className="text-center text-xs text-white/80 dark:text-foreground/70">
             © {new Date().getFullYear()} Craftiv. All rights reserved.
           </p>
         </div>

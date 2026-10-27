@@ -274,7 +274,7 @@ function TourSteps({ step }: { step: number }) {
   return (
     <div className="flex items-center gap-1.5" aria-label={`Tour step ${dot + 1} of 3`}>
       {[0, 1, 2].map((item) => (
-        <span key={item} className={cn("h-1.5 rounded-full transition-all duration-300", item === dot ? "w-5 bg-primary" : "w-1.5 bg-zinc-300 dark:bg-zinc-700")} />
+        <span key={item} className={cn("h-1.5 rounded-full transition-all duration-300", item === dot ? "w-5 bg-primary" : "w-1.5 bg-zinc-300")} />
       ))}
     </div>
   );
@@ -282,7 +282,7 @@ function TourSteps({ step }: { step: number }) {
 
 /** Text as the cursor has typed it so far, with a caret while it is the focus. */
 function Typed({ value, placeholder, typing }: { value?: string; placeholder: string; typing: boolean }) {
-  if (!value) return <span className="text-zinc-400 dark:text-zinc-500">{placeholder}</span>;
+  if (!value) return <span className="text-zinc-400">{placeholder}</span>;
   return (
     <>
       {value}
@@ -306,13 +306,13 @@ function MiniSelect({
 }) {
   return (
     <div className="relative block">
-      <span className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">{label}</span>
+      <span className="block text-[11px] font-semibold text-zinc-700">{label}</span>
       <span
         data-cursor-target={targetKey}
         className={cn(
-          "mt-1.5 flex h-9 items-center justify-between rounded-lg border bg-white px-3 text-xs font-medium transition-colors dark:bg-zinc-950",
-          open ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700",
-          selected ? "text-zinc-800 dark:text-zinc-200" : "text-zinc-400 dark:text-zinc-500",
+          "mt-1.5 flex h-9 items-center justify-between rounded-lg border bg-white px-3 text-xs font-medium transition-colors",
+          open ? "border-primary ring-2 ring-primary/15" : "border-zinc-200",
+          selected ? "text-zinc-800" : "text-zinc-400",
         )}
       >
         {selected ? RESUME_NAME : "Select a resume"}
@@ -325,7 +325,7 @@ function MiniSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.14 }}
-            className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-950"
+            className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg"
           >
             {RESUME_OPTIONS.map((option, index) => (
               <span
@@ -333,7 +333,7 @@ function MiniSelect({
                 data-cursor-target={index === 0 ? optionTargetKey : undefined}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 text-[11px]",
-                  index === 0 ? "bg-primary/5 font-semibold text-zinc-900 dark:text-zinc-100" : "text-zinc-500",
+                  index === 0 ? "bg-primary/5 font-semibold text-zinc-900" : "text-zinc-500",
                 )}
               >
                 <FileText className="size-3 shrink-0 text-zinc-400" />
@@ -352,21 +352,21 @@ function JobHunterPreview({ state }: { state: DemoState }) {
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
       <aside data-cursor-target="hunter-form" className="space-y-3 lg:col-span-2">
-        <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-xl border border-zinc-200 bg-white p-3.5">
           <MiniSelect label="Score against" targetKey="hunter-select" optionTargetKey="hunter-select-option" open={state.selectOpen} selected={state.selected} />
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-xl border border-zinc-200 bg-white p-3.5">
           <p className="text-xs font-semibold">Add a job</p>
-          <div className="mt-3 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
-            <span className="flex-1 rounded-md bg-white px-2 py-1.5 text-center text-[11px] font-semibold shadow-sm dark:bg-zinc-800">Paste details</span>
+          <div className="mt-3 flex rounded-lg bg-zinc-100 p-1">
+            <span className="flex-1 rounded-md bg-white px-2 py-1.5 text-center text-[11px] font-semibold shadow-sm">Paste details</span>
             <span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Job URL</span>
           </div>
-          <p className="mt-3 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Job title</p>
-          <div data-cursor-target="hunter-title" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "hunterTitle" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700")}>
+          <p className="mt-3 text-[11px] font-medium text-zinc-600">Job title</p>
+          <div data-cursor-target="hunter-title" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "hunterTitle" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200")}>
             <Typed value={typed.hunterTitle} placeholder="Paste or type the job title" typing={typingField === "hunterTitle"} />
           </div>
-          <p className="mt-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Job description</p>
-          <div data-cursor-target="hunter-desc" className={cn("mt-1.5 min-h-16 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "hunterDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}>
+          <p className="mt-2 text-[11px] font-medium text-zinc-600">Job description</p>
+          <div data-cursor-target="hunter-desc" className={cn("mt-1.5 min-h-16 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "hunterDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15" : "border-zinc-200 text-zinc-700")}>
             <Typed value={typed.hunterDesc} placeholder="Paste the job description..." typing={typingField === "hunterDesc"} />
           </div>
           <span data-cursor-target="hunter-submit" className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-semibold text-white"><Plus className="size-3.5" />Add and score job</span>
@@ -375,19 +375,19 @@ function JobHunterPreview({ state }: { state: DemoState }) {
 
       <div data-cursor-target="hunter-result" className="min-w-0 space-y-3 lg:col-span-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex rounded-lg bg-zinc-200/60 p-1 dark:bg-zinc-800"><span className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-950">Jobs</span><span className="px-3 py-1.5 text-[11px] text-zinc-500">Scheduled hunts (1)</span></div>
-          <div className="hidden items-center rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700 sm:flex"><span className="rounded-md bg-zinc-100 p-1.5 dark:bg-zinc-800"><List className="size-3" /></span><span className="p-1.5 text-zinc-400"><Grid className="size-3" /></span></div>
+          <div className="flex rounded-lg bg-zinc-200/60 p-1"><span className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold shadow-sm">Jobs</span><span className="px-3 py-1.5 text-[11px] text-zinc-500">Scheduled hunts (1)</span></div>
+          <div className="hidden items-center rounded-lg border border-zinc-200 p-0.5 sm:flex"><span className="rounded-md bg-zinc-100 p-1.5"><List className="size-3" /></span><span className="p-1.5 text-zinc-400"><Grid className="size-3" /></span></div>
         </div>
-        <div className="relative"><Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-zinc-400" /><div className="h-9 rounded-lg border border-zinc-200 bg-white pl-9 pt-2 text-[11px] text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950">Search title, company, location, or keyword</div></div>
+        <div className="relative"><Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-zinc-400" /><div className="h-9 rounded-lg border border-zinc-200 bg-white pl-9 pt-2 text-[11px] text-zinc-400">Search title, company, location, or keyword</div></div>
         <AnimatePresence mode="wait">
           {step === 0 ? (
-            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/50 p-7 text-center dark:border-zinc-700 dark:bg-zinc-950/40"><Target className="size-7 text-zinc-400" /><p className="mt-3 text-sm font-semibold">Add a job to your pipeline</p><p className="mt-1 max-w-xs text-xs leading-relaxed text-zinc-500">Craftiv will compare the posting with your selected resume.</p></motion.div>
+            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/50 p-7 text-center"><Target className="size-7 text-zinc-400" /><p className="mt-3 text-sm font-semibold">Add a job to your pipeline</p><p className="mt-1 max-w-xs text-xs leading-relaxed text-zinc-500">Craftiv will compare the posting with your selected resume.</p></motion.div>
           ) : (
-            <motion.article key="match" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <motion.article key="match" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-zinc-200 bg-white p-4">
               <div className="flex items-start justify-between gap-4"><div className="min-w-0"><h4 className="truncate text-sm font-semibold">Executive Virtual Assistant</h4><p className="mt-1 text-xs text-zinc-500">Northstar Commerce · Remote</p><div className="mt-2 flex gap-4 text-[11px]"><span><span className="text-zinc-400">Type </span>Full-time</span><span><span className="text-zinc-400">Hours </span>40 / week</span></div></div><div className="rounded-lg bg-success-surface px-3 py-2 text-center text-success-surface-foreground"><span className="block text-xl font-bold tabular-nums">86</span><span className="block text-[10px] font-semibold">Strong</span></div></div>
-              <span data-cursor-target="hunter-why" className="mt-3 flex w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left dark:border-zinc-800 dark:bg-zinc-900"><span><span className="block text-xs font-semibold">Why this score?</span><span className="mt-0.5 block text-[11px] text-zinc-500">6 matched and 2 missing keywords</span></span><ChevronDown className={cn("size-3.5 text-zinc-400 transition-transform", step === 2 && "rotate-180")} /></span>
-              <AnimatePresence initial={false}>{step === 2 ? <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden"><div className="grid gap-2 pt-3 sm:grid-cols-3">{[["Keywords", "88"], ["Experience", "84"], ["Formatting", "91"]].map(([label, score]) => <div key={label} className="rounded-lg bg-zinc-50 p-2.5 dark:bg-zinc-900"><div className="flex justify-between text-[11px]"><span>{label}</span><strong>{score}</strong></div></div>)}</div><div className="mt-3 flex flex-wrap gap-1.5">{["calendar management", "CRM", "client communication"].map((keyword) => <span key={keyword} className="rounded-md bg-success-surface px-2 py-1 text-[10px] font-medium text-success-surface-foreground">{keyword}</span>)}</div></motion.div> : null}</AnimatePresence>
-              <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-white">Tailor application</span><span className="rounded-lg border border-zinc-200 px-3 py-2 text-[11px] font-semibold dark:border-zinc-700">Move to applied</span></div>
+              <span data-cursor-target="hunter-why" className="mt-3 flex w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-left"><span><span className="block text-xs font-semibold">Why this score?</span><span className="mt-0.5 block text-[11px] text-zinc-500">6 matched and 2 missing keywords</span></span><ChevronDown className={cn("size-3.5 text-zinc-400 transition-transform", step === 2 && "rotate-180")} /></span>
+              <AnimatePresence initial={false}>{step === 2 ? <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden"><div className="grid gap-2 pt-3 sm:grid-cols-3">{[["Keywords", "88"], ["Experience", "84"], ["Formatting", "91"]].map(([label, score]) => <div key={label} className="rounded-lg bg-zinc-50 p-2.5"><div className="flex justify-between text-[11px]"><span>{label}</span><strong>{score}</strong></div></div>)}</div><div className="mt-3 flex flex-wrap gap-1.5">{["calendar management", "CRM", "client communication"].map((keyword) => <span key={keyword} className="rounded-md bg-success-surface px-2 py-1 text-[10px] font-medium text-success-surface-foreground">{keyword}</span>)}</div></motion.div> : null}</AnimatePresence>
+              <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-lg bg-primary px-3 py-2 text-[11px] font-semibold text-white">Tailor application</span><span className="rounded-lg border border-zinc-200 px-3 py-2 text-[11px] font-semibold">Move to applied</span></div>
             </motion.article>
           )}
         </AnimatePresence>
@@ -400,16 +400,16 @@ function AtsPreview({ state }: { state: DemoState }) {
   const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
-      <aside data-cursor-target="ats-form" className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
-        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>What should we check?</p><div className="mt-3 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900"><span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-800"><FileText className="size-3" />Saved resume</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Upload a file</span></div><div className="mt-2"><MiniSelect label="Resume" targetKey="ats-select" optionTargetKey="ats-select-option" open={state.selectOpen} selected={state.selected} /></div></div>
-        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>Target job description</p><div data-cursor-target="ats-desc" className={cn("mt-2 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "atsDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}><Typed value={typed.atsDesc} placeholder="Paste the job description for sharper matching..." typing={typingField === "atsDesc"} /></div></div>
+      <aside data-cursor-target="ats-form" className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 lg:col-span-2">
+        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>What should we check?</p><div className="mt-3 flex rounded-lg bg-zinc-100 p-1"><span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm"><FileText className="size-3" />Saved resume</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Upload a file</span></div><div className="mt-2"><MiniSelect label="Resume" targetKey="ats-select" optionTargetKey="ats-select-option" open={state.selectOpen} selected={state.selected} /></div></div>
+        <div><p className="flex items-center gap-2 text-xs font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>Target job description</p><div data-cursor-target="ats-desc" className={cn("mt-2 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "atsDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15" : "border-zinc-200 text-zinc-700")}><Typed value={typed.atsDesc} placeholder="Paste the job description for sharper matching..." typing={typingField === "atsDesc"} /></div></div>
         <span data-cursor-target="ats-submit" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <ScanSearch className="size-3.5" />}{step === 1 ? "Analyzing resume" : "Run ATS check"}</span>
       </aside>
       <div data-cursor-target="ats-result" className="min-w-0 lg:col-span-3">
         <AnimatePresence mode="wait">
-          {step === 0 ? <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-[25rem] flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center dark:border-zinc-700 dark:bg-zinc-950/40"><span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"><ScanSearch className="size-6" /></span><p className="mt-4 text-sm font-semibold">Your report will appear here</p><p className="mt-2 max-w-xs text-xs leading-relaxed text-zinc-500">Run the check for an overall score, keyword gaps, and specific rewrites.</p></motion.div> : null}
-          {step === 1 ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3"><div className="flex items-center gap-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"><div className="size-24 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" /><div className="flex-1 space-y-3"><div className="h-3 w-24 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-8 w-36 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-14 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" /></div></div><div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" /><div className="h-36 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" /></motion.div> : null}
-          {step === 2 ? <motion.div key="report" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3"><div className="flex items-center gap-5 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950"><div className="flex size-24 shrink-0 items-center justify-center rounded-full border-[7px] border-success-border"><div className="text-center"><strong className="block text-2xl tabular-nums">86</strong><span className="text-[10px] text-zinc-500">Strong</span></div></div><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Parser compatibility</p><span className="mt-2 inline-flex items-center gap-1 rounded-md bg-success-surface px-2 py-1 text-[11px] font-semibold text-success-surface-foreground"><Check className="size-3" />Excellent</span><div className="mt-3 rounded-lg bg-zinc-50 p-2.5 dark:bg-zinc-900"><p className="text-[10px] font-semibold text-zinc-500">Do this first</p><p className="mt-1 text-xs font-medium">Add reporting outcomes to your latest role.</p></div></div></div><div className="flex rounded-lg bg-zinc-200/60 p-1 dark:bg-zinc-800"><span className="flex-1 rounded-md bg-white px-2 py-1.5 text-center text-[11px] font-semibold shadow-sm dark:bg-zinc-950">Overview</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Keywords 8</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Fixes 3</span></div><div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Section scores</p><div className="mt-3 space-y-2">{[["Experience", "84", "Add measurable outcomes"], ["Keywords", "88", "Strong role alignment"], ["Formatting", "91", "Clean ATS reading order"]].map(([label, score, note]) => <div key={label} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 px-3 py-2 dark:border-zinc-800"><div><p className="text-[11px] font-semibold">{label}</p><p className="text-[10px] text-zinc-500">{note}</p></div><strong className="text-xs tabular-nums">{score}</strong></div>)}</div></div></motion.div> : null}
+          {step === 0 ? <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-[25rem] flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white/50 p-8 text-center"><span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"><ScanSearch className="size-6" /></span><p className="mt-4 text-sm font-semibold">Your report will appear here</p><p className="mt-2 max-w-xs text-xs leading-relaxed text-zinc-500">Run the check for an overall score, keyword gaps, and specific rewrites.</p></motion.div> : null}
+          {step === 1 ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3"><div className="flex items-center gap-6 rounded-xl border border-zinc-200 bg-white p-6"><div className="size-24 animate-pulse rounded-full bg-zinc-100" /><div className="flex-1 space-y-3"><div className="h-3 w-24 animate-pulse rounded bg-zinc-100" /><div className="h-8 w-36 animate-pulse rounded bg-zinc-100" /><div className="h-14 animate-pulse rounded-lg bg-zinc-100" /></div></div><div className="h-10 animate-pulse rounded-lg bg-zinc-100" /><div className="h-36 animate-pulse rounded-xl bg-zinc-100" /></motion.div> : null}
+          {step === 2 ? <motion.div key="report" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3"><div className="flex items-center gap-5 rounded-xl border border-zinc-200 bg-white p-5"><div className="flex size-24 shrink-0 items-center justify-center rounded-full border-[7px] border-success-border"><div className="text-center"><strong className="block text-2xl tabular-nums">86</strong><span className="text-[10px] text-zinc-500">Strong</span></div></div><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Parser compatibility</p><span className="mt-2 inline-flex items-center gap-1 rounded-md bg-success-surface px-2 py-1 text-[11px] font-semibold text-success-surface-foreground"><Check className="size-3" />Excellent</span><div className="mt-3 rounded-lg bg-zinc-50 p-2.5"><p className="text-[10px] font-semibold text-zinc-500">Do this first</p><p className="mt-1 text-xs font-medium">Add reporting outcomes to your latest role.</p></div></div></div><div className="flex rounded-lg bg-zinc-200/60 p-1"><span className="flex-1 rounded-md bg-white px-2 py-1.5 text-center text-[11px] font-semibold shadow-sm">Overview</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Keywords 8</span><span className="flex-1 px-2 py-1.5 text-center text-[11px] text-zinc-500">Fixes 3</span></div><div className="rounded-xl border border-zinc-200 bg-white p-4"><p className="text-xs font-semibold">Section scores</p><div className="mt-3 space-y-2">{[["Experience", "84", "Add measurable outcomes"], ["Keywords", "88", "Strong role alignment"], ["Formatting", "91", "Clean ATS reading order"]].map(([label, score, note]) => <div key={label} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 px-3 py-2"><div><p className="text-[11px] font-semibold">{label}</p><p className="text-[10px] text-zinc-500">{note}</p></div><strong className="text-xs tabular-nums">{score}</strong></div>)}</div></div></motion.div> : null}
         </AnimatePresence>
       </div>
     </div>
@@ -420,19 +420,19 @@ function AssistantPreview({ state }: { state: DemoState }) {
   const { step, typed, focusField, typingField } = state;
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-5 lg:items-start">
-      <aside data-cursor-target="assistant-form" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
+      <aside data-cursor-target="assistant-form" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 lg:col-span-2">
         <MiniSelect label="Working on" targetKey="assistant-select" optionTargetKey="assistant-select-option" open={state.selectOpen} selected={state.selected} />
-        <div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Target role</p><div data-cursor-target="assistant-role" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "assistantRole" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200 dark:border-zinc-700")}><Typed value={typed.assistantRole} placeholder="e.g. Senior Frontend Engineer" typing={typingField === "assistantRole"} /></div></div>
-        <div><p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">Job description</p><div data-cursor-target="assistant-desc" className={cn("mt-1.5 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "assistantDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15 dark:text-zinc-300" : "border-zinc-200 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300")}><Typed value={typed.assistantDesc} placeholder="Paste the job description to tailor the output..." typing={typingField === "assistantDesc"} /></div></div>
+        <div><p className="text-[11px] font-semibold text-zinc-700">Target role</p><div data-cursor-target="assistant-role" className={cn("mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors", focusField === "assistantRole" ? "border-primary ring-2 ring-primary/15" : "border-zinc-200")}><Typed value={typed.assistantRole} placeholder="e.g. Senior Frontend Engineer" typing={typingField === "assistantRole"} /></div></div>
+        <div><p className="text-[11px] font-semibold text-zinc-700">Job description</p><div data-cursor-target="assistant-desc" className={cn("mt-1.5 min-h-24 rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors", focusField === "assistantDesc" ? "border-primary text-zinc-700 ring-2 ring-primary/15" : "border-zinc-200 text-zinc-700")}><Typed value={typed.assistantDesc} placeholder="Paste the job description to tailor the output..." typing={typingField === "assistantDesc"} /></div></div>
       </aside>
       <div data-cursor-target="assistant-result" className="min-w-0 space-y-3 lg:col-span-3">
-        <div className="flex rounded-lg bg-zinc-200/60 p-1 dark:bg-zinc-800"><span className="flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm dark:bg-zinc-950"><Sparkles className="size-3" />Resume Improver</span><span className="flex flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500"><Target className="size-3" />Keywords</span><span className="hidden flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500 sm:flex"><Trophy className="size-3" />Achievements</span></div>
+        <div className="flex rounded-lg bg-zinc-200/60 p-1"><span className="flex flex-1 items-center justify-center gap-1 rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold shadow-sm"><Sparkles className="size-3" />Resume Improver</span><span className="flex flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500"><Target className="size-3" />Keywords</span><span className="hidden flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] text-zinc-500 sm:flex"><Trophy className="size-3" />Achievements</span></div>
         <p className="text-[11px] text-zinc-500">Rewrite your summary, experience, or the whole resume.</p>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Goal</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{[["Rewrite summary", FileText], ["Improve experience", Briefcase], ["Full resume", Sparkles]].map(([label, Icon], index) => { const GoalIcon = Icon as typeof FileText; return <div key={label as string} className={cn("rounded-lg border p-3", index === 1 ? "border-primary bg-primary/5" : "border-zinc-200 dark:border-zinc-700")}><GoalIcon className={cn("size-3.5", index === 1 ? "text-primary" : "text-zinc-400")} /><span className="mt-2 block text-[11px] font-semibold">{label as string}</span></div>; })}</div><span data-cursor-target="assistant-submit" className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}{step === 1 ? "Improving" : "Improve resume"}</span></div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4"><p className="text-xs font-semibold">Goal</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{[["Rewrite summary", FileText], ["Improve experience", Briefcase], ["Full resume", Sparkles]].map(([label, Icon], index) => { const GoalIcon = Icon as typeof FileText; return <div key={label as string} className={cn("rounded-lg border p-3", index === 1 ? "border-primary bg-primary/5" : "border-zinc-200")}><GoalIcon className={cn("size-3.5", index === 1 ? "text-primary" : "text-zinc-400")} /><span className="mt-2 block text-[11px] font-semibold">{label as string}</span></div>; })}</div><span data-cursor-target="assistant-submit" className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white">{step === 1 ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}{step === 1 ? "Improving" : "Improve resume"}</span></div>
         <AnimatePresence mode="wait">
-          {step === 0 ? <motion.div key="current" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"><p className="text-xs font-semibold">Current experience</p><p className="mt-2 text-xs leading-relaxed text-zinc-500">Helped my manager with schedules, emails, CRM updates, and weekly tasks.</p></motion.div> : null}
-          {step === 1 ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800"><div className="h-9 animate-pulse bg-zinc-100 dark:bg-zinc-800" /><div className="space-y-2 p-4"><div className="h-3 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-3 w-11/12 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /><div className="h-3 w-4/5 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" /></div></motion.div> : null}
-          {step === 2 ? <motion.div key="result" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-xl border border-primary/35 bg-white dark:bg-zinc-950"><div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-900"><p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Experience · Executive Assistant</p><span className="inline-flex items-center gap-1 text-[11px] font-semibold"><Check className="size-3" />Apply</span></div><div className="p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Before</p><p className="mt-1.5 text-xs leading-relaxed text-zinc-500">Helped my manager with schedules, emails, CRM updates, and weekly tasks.</p></div><div className="border-t border-success-border bg-success-surface/50 p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-success-surface-foreground">After</p><p className="mt-1.5 text-xs font-medium leading-relaxed">Coordinated executive calendars, client communication, and CRM updates across a remote team, keeping weekly priorities on schedule.</p></div></motion.div> : null}
+          {step === 0 ? <motion.div key="current" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-xl border border-zinc-200 bg-white p-4"><p className="text-xs font-semibold">Current experience</p><p className="mt-2 text-xs leading-relaxed text-zinc-500">Helped my manager with schedules, emails, CRM updates, and weekly tasks.</p></motion.div> : null}
+          {step === 1 ? <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="overflow-hidden rounded-xl border border-zinc-200"><div className="h-9 animate-pulse bg-zinc-100" /><div className="space-y-2 p-4"><div className="h-3 animate-pulse rounded bg-zinc-100" /><div className="h-3 w-11/12 animate-pulse rounded bg-zinc-100" /><div className="h-3 w-4/5 animate-pulse rounded bg-zinc-100" /></div></motion.div> : null}
+          {step === 2 ? <motion.div key="result" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-xl border border-primary/35 bg-white"><div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Experience · Executive Assistant</p><span className="inline-flex items-center gap-1 text-[11px] font-semibold"><Check className="size-3" />Apply</span></div><div className="p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Before</p><p className="mt-1.5 text-xs leading-relaxed text-zinc-500">Helped my manager with schedules, emails, CRM updates, and weekly tasks.</p></div><div className="border-t border-success-border bg-success-surface/50 p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-success-surface-foreground">After</p><p className="mt-1.5 text-xs font-medium leading-relaxed">Coordinated executive calendars, client communication, and CRM updates across a remote team, keeping weekly priorities on schedule.</p></div></motion.div> : null}
         </AnimatePresence>
       </div>
     </div>
@@ -505,16 +505,16 @@ function MiniResume({
   // then described jobs (25), 3+ skills (15), a 50+ character summary (15), education (15), languages (2) and certifications (3).
   const score = 8 + [first, last, title].filter(Boolean).length * 4 + (filled ? 75 : 0);
   return (
-    <div className="overflow-hidden rounded-lg bg-white shadow-[0_16px_32px_-20px_rgb(24_24_27/0.35)] dark:bg-zinc-950">
+    <div className="light-scope overflow-hidden rounded-lg bg-white shadow-[0_16px_32px_-20px_rgb(24_24_27/0.35)]">
       {withScore ? (
-        <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center gap-2 border-b bg-gray-50 px-3 py-2">
           <span className="rounded bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">{score}%</span>
-          <span className="text-[10px] text-gray-600 dark:text-zinc-400">Profile completeness</span>
+          <span className="text-[10px] text-gray-600">Profile completeness</span>
         </div>
       ) : null}
       <div className="p-4">
-      <p className="text-center text-base font-bold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
-        {name || <span className="text-zinc-900 dark:text-zinc-100">Your Name</span>}
+      <p className="text-center text-base font-bold uppercase tracking-wide text-zinc-900">
+        {name || <span className="text-zinc-900">Your Name</span>}
         {typing === "createFirst" || typing === "createLast" ? <TypingCaret /> : null}
       </p>
       <p className="mt-0.5 text-center text-[10px] text-zinc-500">
@@ -524,49 +524,49 @@ function MiniResume({
       {title || name ? <p className="mt-1 text-center text-[9px] text-zinc-400">{RESUME_EMAIL} · {RESUME_PHONE}</p> : null}
       {filled ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Summary</p>
-          <p className="mt-1.5 text-[9px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.summary}</p>
-          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Experience</p>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">Summary</p>
+          <p className="mt-1.5 text-[9px] leading-relaxed text-zinc-600">{RESUME_BODY.summary}</p>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">Experience</p>
           {RESUME_BODY.experience.map((job) => (
             <div key={job.role} className="mt-1.5">
               <div className="flex items-baseline justify-between gap-2">
-                <p className="text-[9px] font-semibold text-zinc-800 dark:text-zinc-200">{job.role}</p>
+                <p className="text-[9px] font-semibold text-zinc-800">{job.role}</p>
                 <p className="shrink-0 text-[8px] text-zinc-400">{job.dates}</p>
               </div>
               <p className="text-[8px] text-zinc-500">{job.org}</p>
-              <ul className="mt-0.5 list-disc space-y-0.5 pl-3 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+              <ul className="mt-0.5 list-disc space-y-0.5 pl-3 text-[8px] leading-relaxed text-zinc-600">
                 {job.bullets.map((bullet) => (
                   <li key={bullet}>{bullet}</li>
                 ))}
               </ul>
             </div>
           ))}
-          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Skills</p>
-          <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.skills.join(" · ")}</p>
-          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Education</p>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">Skills</p>
+          <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600">{RESUME_BODY.skills.join(" · ")}</p>
+          <p className="mt-3 border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">Education</p>
           <div className="mt-1.5 flex items-baseline justify-between gap-2">
-            <p className="text-[9px] font-semibold text-zinc-800 dark:text-zinc-200">{RESUME_BODY.education.degree}</p>
+            <p className="text-[9px] font-semibold text-zinc-800">{RESUME_BODY.education.degree}</p>
             <p className="shrink-0 text-[8px] text-zinc-400">{RESUME_BODY.education.dates}</p>
           </div>
           <p className="text-[8px] text-zinc-500">{RESUME_BODY.education.school}</p>
           <div className="mt-3 grid grid-cols-2 gap-4">
             <div>
-              <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Certifications</p>
-              <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.certifications.join(" · ")}</p>
+              <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">Certifications</p>
+              <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600">{RESUME_BODY.certifications.join(" · ")}</p>
             </div>
             <div>
-              <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">Languages</p>
-              <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600 dark:text-zinc-400">{RESUME_BODY.languages.join(" · ")}</p>
+              <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">Languages</p>
+              <p className="mt-1.5 text-[8px] leading-relaxed text-zinc-600">{RESUME_BODY.languages.join(" · ")}</p>
             </div>
           </div>
         </motion.div>
       ) : (
         ["Summary", "Experience", "Skills"].map((section) => (
           <div key={section} className="mt-3">
-            <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">{section}</p>
+            <p className="border-b border-zinc-200 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-700">{section}</p>
             <div className="mt-1.5 space-y-1">
-              <div className="h-1.5 w-full rounded bg-zinc-100 dark:bg-zinc-800" />
-              <div className="h-1.5 w-5/6 rounded bg-zinc-100 dark:bg-zinc-800" />
+              <div className="h-1.5 w-full rounded bg-zinc-100" />
+              <div className="h-1.5 w-5/6 rounded bg-zinc-100" />
             </div>
           </div>
         ))
@@ -581,12 +581,12 @@ function CreatePreview({ state }: { state: DemoState }) {
   const filled = typed.createTitle === CREATE_TITLE && typingField !== "createTitle";
   const field = (key: string, target: string, label: string, placeholder: string) => (
     <div>
-      <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">{label}</p>
+      <p className="text-[11px] font-medium text-zinc-700">{label}</p>
       <div
         data-cursor-target={target}
         className={cn(
           "mt-1.5 rounded-lg border px-3 py-2 text-xs transition-colors",
-          focusField === key ? "border-primary bg-white ring-2 ring-primary/15 dark:bg-zinc-950" : "border-transparent bg-zinc-100 dark:bg-zinc-900",
+          focusField === key ? "border-primary bg-white ring-2 ring-primary/15" : "border-transparent bg-zinc-100",
         )}
       >
         <Typed value={typed[key]} placeholder={placeholder} typing={typingField === key} />
@@ -600,21 +600,21 @@ function CreatePreview({ state }: { state: DemoState }) {
           <div className="flex items-center justify-center gap-3 text-[11px]">
             {["Choose template", "Enter your details", "Download resume"].map((label, i) => (
               <span key={label} className="flex items-center gap-2">
-                {i > 0 ? <span className="h-px w-6 bg-zinc-200 dark:bg-zinc-700" /> : null}
-                <span className={cn("flex size-5 items-center justify-center rounded-full text-[10px] font-semibold", i === 0 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800")}>{i + 1}</span>
-                <span className={cn("hidden sm:inline", i === 0 ? "font-semibold text-zinc-900 dark:text-zinc-100" : "text-zinc-500")}>{label}</span>
+                {i > 0 ? <span className="h-px w-6 bg-zinc-200" /> : null}
+                <span className={cn("flex size-5 items-center justify-center rounded-full text-[10px] font-semibold", i === 0 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-500")}>{i + 1}</span>
+                <span className={cn("hidden sm:inline", i === 0 ? "font-semibold text-zinc-900" : "text-zinc-500")}>{label}</span>
               </span>
             ))}
           </div>
           <p className="mt-5 text-center font-display text-xl font-bold">Resume templates</p>
-          <div className="mt-3 flex justify-center gap-4 border-b border-zinc-200 text-[11px] dark:border-zinc-800">
+          <div className="mt-3 flex justify-center gap-4 border-b border-zinc-200 text-[11px]">
             {["All Templates", "Simple", "Modern", "Professional", "ATS Friendly", "Creative"].map((tab, i) => (
-              <span key={tab} className={cn("pb-2", i === 0 ? "border-b-2 border-primary font-semibold text-zinc-900 dark:text-zinc-100" : "hidden text-zinc-500 sm:inline")}>{tab}</span>
+              <span key={tab} className={cn("pb-2", i === 0 ? "border-b-2 border-primary font-semibold text-zinc-900" : "hidden text-zinc-500 sm:inline")}>{tab}</span>
             ))}
           </div>
           <div className="mx-auto mt-4 grid max-w-2xl grid-cols-3 gap-3">
             {CREATE_TEMPLATES.map((template, i) => (
-              <div key={template.id} data-cursor-target={i === 0 ? "create-template" : undefined} className="relative overflow-hidden rounded-lg bg-white shadow-sm dark:bg-zinc-950">
+              <div key={template.id} data-cursor-target={i === 0 ? "create-template" : undefined} className="relative overflow-hidden rounded-lg bg-white shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`/resume-templates/${template.id}.webp`} alt="" className="aspect-[3/4] w-full object-cover object-top" loading="lazy" />
                 <AnimatePresence>
@@ -627,21 +627,21 @@ function CreatePreview({ state }: { state: DemoState }) {
                     </motion.div>
                   ) : null}
                 </AnimatePresence>
-                <span className="absolute inset-x-0 bottom-0 bg-white/95 px-2 py-1 text-[10px] font-medium text-zinc-700 dark:bg-zinc-950/95 dark:text-zinc-300">{template.name}</span>
+                <span className="absolute inset-x-0 bottom-0 bg-white/95 px-2 py-1 text-[10px] font-medium text-zinc-700">{template.name}</span>
               </div>
             ))}
           </div>
         </motion.div>
       ) : step === 1 ? (
-        <motion.div key="editor" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="bg-white dark:bg-zinc-950">
+        <motion.div key="editor" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="bg-white">
           {/* Same chrome as the real editor (app/resume/section): back link, title, saved state, preview toggle. */}
-          <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2.5 dark:border-zinc-800">
+          <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2.5">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1 text-[11px] text-zinc-500">
                 <ChevronLeft className="size-3" />
                 Dashboard
               </span>
-              <span className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+              <span className="h-4 w-px bg-zinc-200" />
               <span className="font-display text-sm font-bold">Create Your Resume</span>
             </div>
             <div className="flex items-center gap-2">
@@ -649,18 +649,18 @@ function CreatePreview({ state }: { state: DemoState }) {
                 <Check className="size-3 text-emerald-600" />
                 Saved
               </span>
-              <span className="hidden rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] font-medium sm:inline dark:border-zinc-700">Hide Preview</span>
+              <span className="hidden rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] font-medium sm:inline">Hide Preview</span>
             </div>
           </div>
           <div className="grid lg:grid-cols-2">
-            <div data-cursor-target="create-form" className="border-zinc-200 lg:border-r dark:border-zinc-800">
-              <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
+            <div data-cursor-target="create-form" className="border-zinc-200 lg:border-r">
+              <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3">
                 {RESUME_STEPS.map((label, i) => (
                   <span key={label} className="flex flex-col items-center gap-1">
                     <span
                       className={cn(
                         "flex size-5 items-center justify-center rounded-full text-[9px] font-semibold",
-                        i === 0 ? "bg-primary text-white" : "border border-zinc-300 text-zinc-500 dark:border-zinc-700",
+                        i === 0 ? "bg-primary text-white" : "border border-zinc-300 text-zinc-500",
                       )}
                     >
                       {i + 1}
@@ -672,7 +672,7 @@ function CreatePreview({ state }: { state: DemoState }) {
               <div className="px-6 py-4">
                 <p className="font-display text-lg font-bold">Contact Information</p>
                 <p className="mt-0.5 text-[10px] text-zinc-500">Let employers know how to reach you. This information will appear at the top of your resume.</p>
-                <div className="mt-3 flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
                   <span>
                     <span className="block text-[10px] font-medium">Show Profile Photo</span>
                     <span className="block text-[9px] text-zinc-500">Turn this on to upload and display a photo in your resume.</span>
@@ -682,7 +682,7 @@ function CreatePreview({ state }: { state: DemoState }) {
                   </span>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-700">
+                  <span className="flex size-10 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-400">
                     <Upload className="size-3.5" />
                   </span>
                   <span>
@@ -700,16 +700,16 @@ function CreatePreview({ state }: { state: DemoState }) {
                 </div>
                 <div className="mt-2.5 grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">Phone Number</p>
-                    <div className="mt-1.5 rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{RESUME_PHONE}</div>
+                    <p className="text-[11px] font-medium text-zinc-700">Phone Number</p>
+                    <div className="mt-1.5 rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700">{RESUME_PHONE}</div>
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">Email Address</p>
-                    <div className="mt-1.5 truncate rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{RESUME_EMAIL}</div>
+                    <p className="text-[11px] font-medium text-zinc-700">Email Address</p>
+                    <div className="mt-1.5 truncate rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700">{RESUME_EMAIL}</div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between border-t border-zinc-200 px-5 py-2.5 dark:border-zinc-800">
+              <div className="flex items-center justify-between border-t border-zinc-200 px-5 py-2.5">
                 <span className="rounded-full px-3 py-1.5 text-[11px] text-zinc-400">Back</span>
                 <span data-cursor-target="create-next" className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-1.5 text-[11px] font-semibold text-white">
                   Next
@@ -717,7 +717,7 @@ function CreatePreview({ state }: { state: DemoState }) {
                 </span>
               </div>
             </div>
-            <div data-cursor-target="create-preview" className="hidden bg-zinc-50 p-5 lg:block dark:bg-zinc-900">
+            <div data-cursor-target="create-preview" className="hidden bg-zinc-50 p-5 lg:block">
               <MiniResume first={typed.createFirst} last={typed.createLast} title={typed.createTitle} typing={typingField} filled={filled} withScore />
             </div>
           </div>
@@ -735,10 +735,10 @@ function SharePreview({ state }: { state: DemoState }) {
   const { step, selected } = state;
   return (
     <div className="relative min-h-[38rem] p-4 sm:min-h-[35rem] sm:p-5">
-      <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 dark:bg-zinc-950">
+      <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
         <p className="text-xs font-semibold">Angela - Virtual Assistant</p>
         <div className="flex gap-2">
-          <span data-cursor-target="share-open" className="rounded-lg border border-zinc-200 px-3 py-1.5 text-[11px] font-semibold dark:border-zinc-700">Share</span>
+          <span data-cursor-target="share-open" className="rounded-lg border border-zinc-200 px-3 py-1.5 text-[11px] font-semibold">Share</span>
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-white"><Download className="size-3" />Download Resume</span>
         </div>
       </div>
@@ -752,13 +752,13 @@ function SharePreview({ state }: { state: DemoState }) {
               data-cursor-target="share-dialog"
               initial={{ opacity: 0, scale: 0.96, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="w-[22rem] max-w-[90%] rounded-2xl bg-white p-5 shadow-xl dark:bg-zinc-950"
+              className="w-[22rem] max-w-[90%] rounded-2xl bg-white p-5 shadow-xl"
             >
               <p className="text-sm font-semibold">Share your resume</p>
               <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">Anyone with the link can view this resume. It updates as you edit and is hidden from search engines.</p>
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xs font-medium">Public link</span>
-                <span data-cursor-target="share-switch" className={cn("flex h-5 w-9 items-center rounded-full p-0.5 transition-colors", selected ? "bg-primary" : "bg-zinc-200 dark:bg-zinc-700")}>
+                <span data-cursor-target="share-switch" className={cn("flex h-5 w-9 items-center rounded-full p-0.5 transition-colors", selected ? "bg-primary" : "bg-zinc-200")}>
                   <span className={cn("size-4 rounded-full bg-white shadow transition-transform", selected && "translate-x-4")} />
                 </span>
               </div>
@@ -766,14 +766,14 @@ function SharePreview({ state }: { state: DemoState }) {
                 {selected ? (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
                     <div className="mt-4 flex gap-2">
-                      <span className="min-w-0 flex-1 truncate rounded-lg border border-zinc-200 px-3 py-2 text-[11px] text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">{SHARE_URL}</span>
-                      <span data-cursor-target="share-copy" className="flex size-8 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700">
+                      <span className="min-w-0 flex-1 truncate rounded-lg border border-zinc-200 px-3 py-2 text-[11px] text-zinc-700">{SHARE_URL}</span>
+                      <span data-cursor-target="share-copy" className="flex size-8 items-center justify-center rounded-lg border border-zinc-200">
                         {step >= 2 ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
                       </span>
                     </div>
                     <div data-cursor-target="share-views" className="mt-3 grid grid-cols-2 gap-2">
                       {["Total views", "Last 30 days"].map((label) => (
-                        <div key={label} className="rounded-lg border border-zinc-200 p-2.5 dark:border-zinc-700">
+                        <div key={label} className="rounded-lg border border-zinc-200 p-2.5">
                           <AnimatePresence mode="popLayout" initial={false}>
                             <motion.p key={step >= 3 ? 1 : 0} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-lg font-semibold tabular-nums">
                               {step >= 3 ? 1 : 0}
@@ -795,7 +795,7 @@ function SharePreview({ state }: { state: DemoState }) {
       </AnimatePresence>
       <AnimatePresence>
         {step === 2 ? (
-          <motion.span initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-6 right-6 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-[11px] font-medium shadow-lg dark:bg-zinc-950">
+          <motion.span initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-6 right-6 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-[11px] font-medium shadow-lg">
             <Check className="size-3.5 text-success-surface-foreground" />
             Link copied.
           </motion.span>
@@ -908,9 +908,9 @@ export function FeatureDemo() {
   }
 
   return (
-    <section id="features" className="relative bg-white py-20 font-sans dark:bg-zinc-950 lg:py-28">
+    <section id="features" className="relative bg-white py-20 font-sans lg:py-28">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl"><h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl lg:text-5xl"><BlurInText text="One workspace for the whole job search" /></h2><p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg"><BlurInText text="Find better-fit roles, check every application, and improve your resume with focused AI help." delay={0.4} stagger={0.01} /></p></div>
+        <div className="max-w-3xl"><h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl"><BlurInText text="One workspace for the whole job search" /></h2><p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-600 sm:text-lg"><BlurInText text="Find better-fit roles, check every application, and improve your resume with focused AI help." delay={0.4} stagger={0.01} /></p></div>
         {/* The bottom of the card dissolves into the page. This is a mask rather
             than a white overlay on top: an overlay cannot fade the side borders,
             which kept running to the bottom edge and stopping dead. Masking the
@@ -918,13 +918,13 @@ export function FeatureDemo() {
             to transparent it needs no colour of its own -- the page background
             shows through, correct in light and dark alike. */}
         <BlurFade delay={0.2}>
-        <div className="mt-10 overflow-hidden rounded-t-2xl border-x border-t border-zinc-200 bg-zinc-50 [-webkit-mask-image:linear-gradient(to_bottom,#000_calc(100%-13rem),transparent_100%)] [mask-image:linear-gradient(to_bottom,#000_calc(100%-13rem),transparent_100%)] dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex min-h-14 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-950 sm:px-4">
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2 scrollbar-none" role="tablist" aria-label="Craftiv product tour">{features.map((feature) => { const Icon = feature.icon; const selected = feature.id === active; return <button key={feature.id} type="button" role="tab" aria-selected={selected} onClick={() => selectFeature(feature.id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition active:translate-y-px sm:text-sm", selected ? "bg-primary text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100")}><Icon className="size-4" />{feature.name}</button>; })}</div>
-            <button type="button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause autoplay" : "Play autoplay"} className="hidden shrink-0 items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 active:translate-y-px dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900 sm:inline-flex">{playing ? <span className="flex gap-0.5"><span className="h-3 w-0.5 rounded bg-current" /><span className="h-3 w-0.5 rounded bg-current" /></span> : <Play className="size-3.5" />}{playing ? "Pause" : "Play"}</button>
+        <div className="mt-10 overflow-hidden rounded-t-2xl border-x border-t border-zinc-200 bg-zinc-50 [-webkit-mask-image:linear-gradient(to_bottom,#000_calc(100%-13rem),transparent_100%)] [mask-image:linear-gradient(to_bottom,#000_calc(100%-13rem),transparent_100%)]">
+          <div className="flex min-h-14 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-3 sm:px-4">
+            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2 scrollbar-none" role="tablist" aria-label="Craftiv product tour">{features.map((feature) => { const Icon = feature.icon; const selected = feature.id === active; return <button key={feature.id} type="button" role="tab" aria-selected={selected} onClick={() => selectFeature(feature.id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition active:translate-y-px sm:text-sm", selected ? "bg-primary text-white" : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900")}><Icon className="size-4" />{feature.name}</button>; })}</div>
+            <button type="button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause autoplay" : "Play autoplay"} className="hidden shrink-0 items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 active:translate-y-px sm:inline-flex">{playing ? <span className="flex gap-0.5"><span className="h-3 w-0.5 rounded bg-current" /><span className="h-3 w-0.5 rounded bg-current" /></span> : <Play className="size-3.5" />}{playing ? "Pause" : "Play"}</button>
           </div>
-          <div className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:flex sm:items-center sm:justify-between sm:px-5"><div><h3 className="text-base font-semibold">{activeFeature.name}</h3><p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 sm:text-sm">{activeFeature.description}</p></div><div className="mt-3 flex items-center justify-between gap-4 sm:mt-0 sm:justify-end"><TourSteps step={state.step} /><Link href={activeFeature.href} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline dark:text-zinc-200">{activeFeature.cta}<ArrowRight className="size-3.5" /></Link></div></div>
-          <div className="relative min-h-[38rem] overflow-hidden bg-zinc-50 dark:bg-zinc-900 sm:min-h-[35rem]">
+          <div className="border-b border-zinc-200 bg-white px-4 py-4 sm:flex sm:items-center sm:justify-between sm:px-5"><div><h3 className="text-base font-semibold">{activeFeature.name}</h3><p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500 sm:text-sm">{activeFeature.description}</p></div><div className="mt-3 flex items-center justify-between gap-4 sm:mt-0 sm:justify-end"><TourSteps step={state.step} /><Link href={activeFeature.href} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline">{activeFeature.cta}<ArrowRight className="size-3.5" /></Link></div></div>
+          <div className="light-scope relative min-h-[38rem] overflow-hidden bg-zinc-50 sm:min-h-[35rem]">
             {/* The ref sits on the transformed element, not its parent, so the
                 cursor and the framing share one coordinate space. */}
             <motion.div
