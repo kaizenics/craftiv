@@ -11,7 +11,6 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 import {
   LayoutDashboard,
-  Briefcase,
   FileText,
   ScanSearch,
   Sparkles,
@@ -21,7 +20,6 @@ import {
   ChevronDown,
   ScrollText,
   Mail,
-  ArrowUpRight,
   Target,
   CheckCircle2,
   UserCircle,
@@ -83,11 +81,6 @@ const appItems: SidebarItem[] = [
     name: "AI Resume Assistant",
     href: "/dashboard/ai-resume",
     icon: Sparkles,
-  },
-  {
-    name: "Portfolio Builder",
-    href: "/coming-soon",
-    icon: Briefcase,
   },
 ];
 
@@ -284,9 +277,6 @@ export function DashboardSidebar() {
                     <Badge className="ml-auto h-5 border-transparent bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary">
                       {item.badge}
                     </Badge>
-                  ) : null}
-                  {item.name === "Portfolio Builder" ? (
-                    <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
                   ) : null}
                 </button>
               );
