@@ -82,7 +82,7 @@ export function CoverLetterPreview({ data, className }: CoverLetterPreviewProps)
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[640px] overflow-hidden rounded-sm bg-white shadow-lg",
+        "light-scope mx-auto w-full max-w-[640px] overflow-hidden rounded-sm bg-white shadow-lg",
         (isModernAts || isCleanBlock || isSidebarContact || isExecutive || isElegantLine)
           ? "border border-zinc-200"
           : "",

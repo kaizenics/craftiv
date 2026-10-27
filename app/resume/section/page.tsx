@@ -501,7 +501,7 @@ export default function ResumeSectionPage() {
 
           {/* Preview Section - Independent */}
           <div
-            className={`hidden lg:block h-full overflow-hidden bg-zinc-50 dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800 transition-all duration-300 ease-in-out ${
+            className={`hidden lg:block h-full overflow-hidden bg-zinc-50 border-l border-zinc-200/80 transition-all duration-300 ease-in-out ${
               showPreview
                 ? "lg:w-1/2 opacity-100 translate-x-0"
                 : "lg:w-0 opacity-0 translate-x-3 border-l-0 pointer-events-none"

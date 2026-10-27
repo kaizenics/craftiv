@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 import {
@@ -182,7 +183,7 @@ export function DashboardSidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/craftiv.png" alt="logo" width={30} height={30} sizes="30px" />
+          <Image src="/craftiv.png" alt="logo" width={30} height={30} sizes="30px" className="dark:brightness-0 dark:invert" />
           <span className="font-display text-lg font-bold">Craftiv</span>
         </Link>
         {isMobile && (
@@ -313,6 +314,10 @@ export function DashboardSidebar() {
           </div>
         </div>
       ) : null}
+
+      <div className="px-3 pt-3">
+        <ThemeToggle />
+      </div>
 
       {/* Signed-in account: who you are, and the way to your profile. */}
       {account ? (

@@ -746,7 +746,7 @@ export default function FinalResumePage() {
       {/* Header */}
       <header className={cn("border-b bg-background px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between shrink-0", compactEditorEnabled && "sm:py-2")}>
         <div className="flex items-center gap-2">
-          <span className="font-display text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+          <span className="font-display text-lg sm:text-xl font-bold text-zinc-900">
             Craftiv
           </span>
         </div>
@@ -807,7 +807,7 @@ export default function FinalResumePage() {
               className={cn(
                 "flex flex-col items-center gap-1 p-4 rounded-lg transition-colors w-24 text-center",
                 activeTab === tab.id
-                  ? "text-zinc-900 bg-zinc-100 dark:text-zinc-100 dark:bg-zinc-800"
+                  ? "text-zinc-900 bg-zinc-100"
                   : "text-muted-foreground hover:bg-accent"
               )}
             >
@@ -827,7 +827,7 @@ export default function FinalResumePage() {
                 className={cn(
                   "flex min-w-20 shrink-0 flex-col items-center gap-1 rounded-md py-2 px-1 transition-colors",
                   activeTab === tab.id
-                    ? "text-zinc-900 bg-zinc-100 dark:text-zinc-100 dark:bg-zinc-800"
+                    ? "text-zinc-900 bg-zinc-100"
                     : "text-muted-foreground"
                 )}
               >
@@ -915,7 +915,7 @@ export default function FinalResumePage() {
         </div>
 
         {/* Desktop Preview */}
-        <main className="hidden lg:block flex-1 bg-gray-100 dark:bg-gray-900 p-8 overflow-auto">
+        <main className="hidden lg:block flex-1 bg-gray-100 p-8 overflow-auto">
           <div className="max-w-3xl mx-auto">
             {/* Resume Name */}
             <div className="flex items-center gap-2 mb-4">
@@ -927,13 +927,13 @@ export default function FinalResumePage() {
                   onKeyDown={(e) =>
                     e.key === "Enter" && setIsEditingName(false)
                   }
-                  className="w-48 h-8 text-zinc-900 dark:text-zinc-100 font-medium"
+                  className="w-48 h-8 text-zinc-900 font-medium"
                   autoFocus
                 />
               ) : (
                 <button
                   onClick={() => setIsEditingName(true)}
-                  className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-medium hover:underline"
+                  className="flex items-center gap-2 text-zinc-900 font-medium hover:underline"
                 >
                   {resumeName}
                   <Pencil className="h-4 w-4" />

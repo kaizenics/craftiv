@@ -302,7 +302,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
           </div>
 
           {!isNew && form.status === "interview" ? (
-            <div className="grid gap-3 rounded-xl bg-sky-50 p-4 dark:bg-sky-950/30">
+            <div className="grid gap-3 rounded-xl bg-sky-50 p-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">Prep for this interview</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">

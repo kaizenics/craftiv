@@ -72,7 +72,7 @@ export function HeroHeadline() {
   }, [layout, handoff, reduceMotion]);
 
   return (
-    <div ref={ref} className="relative font-display text-zinc-900 dark:text-white">
+    <div ref={ref} className="relative font-display text-zinc-900">
       {/* Always present for SEO and screen readers; visible until the canvas takes over. */}
       <h1
         style={layout ? { fontSize: layout.size, lineHeight: LEADING } : undefined}

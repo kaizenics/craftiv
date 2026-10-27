@@ -38,14 +38,14 @@ export async function Hero() {
   const jobs = await loadFeed();
 
   return (
-    <section className="flex min-h-[100dvh] flex-col overflow-x-clip bg-white font-sans dark:bg-zinc-950">
+    <section className="flex min-h-[100dvh] flex-col overflow-x-clip bg-white font-sans">
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-end px-4 pt-32 pb-10 sm:px-6 lg:px-8 lg:pb-14">
         <HeroHeadline />
 
         <div className="mt-10 grid gap-10 border-t border-zinc-200 pt-8 lg:mt-14 lg:grid-cols-12 lg:gap-8">
           {/* CSS fades, not BlurFade: they start at first paint instead of waiting for hydration, which held LCP back on phones. */}
           <div className="hero-in lg:col-span-6" style={{ animationDelay: "0.5s" }}>
-            <p className="max-w-lg text-base leading-relaxed text-pretty text-zinc-600 sm:text-lg dark:text-zinc-400">
+            <p className="max-w-lg text-base leading-relaxed text-pretty text-zinc-600 sm:text-lg">
               Craftiv matches roles to your resume, tailors each application,
               and tracks it all the way to the offer.
             </p>

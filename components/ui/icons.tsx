@@ -16,6 +16,8 @@ import {
   CheckmarkBadge01Icon,
   CheckmarkCircle02Icon,
   Clock01Icon,
+  Sun03Icon,
+  Moon02Icon,
   LockIcon,
   SquareUnlock02Icon,
   SentIcon,
@@ -141,6 +143,8 @@ export const ChevronRight = createIcon(ArrowRight01Icon);
 export const ChevronUp = createIcon(ArrowUp01Icon);
 export const CircleDashed = createIcon(DashedLineCircleIcon);
 export const Clock = createIcon(Clock01Icon);
+export const Sun = createIcon(Sun03Icon);
+export const Moon = createIcon(Moon02Icon);
 export const Lock = createIcon(LockIcon);
 export const Unlock = createIcon(SquareUnlock02Icon);
 export const Send = createIcon(SentIcon);

@@ -31,8 +31,8 @@ export function TemplateForm({ selectedTemplateId, onChange }: TemplateFormProps
               className={cn(
                 "rounded-xl border p-4 text-left transition-all",
                 isSelected
-                  ? "border-zinc-900 bg-zinc-50 shadow-sm dark:border-zinc-200 dark:bg-zinc-900"
-                  : "border-border bg-card hover:border-zinc-400/70 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/70"
+                  ? "border-zinc-900 bg-zinc-50 shadow-sm"
+                  : "border-border bg-card hover:border-zinc-400/70 hover:bg-zinc-50/70"
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -41,7 +41,7 @@ export function TemplateForm({ selectedTemplateId, onChange }: TemplateFormProps
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[11px] font-medium",
                     isSelected
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      ? "bg-zinc-900 text-white"
                       : "bg-muted text-muted-foreground"
                   )}
                 >

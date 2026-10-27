@@ -9,7 +9,7 @@ export function SharedPageShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/craftiv.png" alt="Craftiv" width={28} height={28} className="h-7 w-7" />
+            <Image src="/craftiv.png" alt="Craftiv" width={28} height={28} className="h-7 w-7 dark:brightness-0 dark:invert" />
             <span className="text-sm font-semibold text-zinc-900">Craftiv</span>
           </Link>
           <Link

@@ -41,7 +41,7 @@ export function TemplatesTab({
               className={cn(
                 "w-9 h-9 rounded-full border-2 transition-all hover:scale-110",
                 selectedColor === color
-                  ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
+                  ? "border-zinc-900 ring-2 ring-zinc-300"
                   : "border-zinc-200 hover:border-zinc-400",
               )}
               style={{ backgroundColor: color }}
@@ -54,7 +54,7 @@ export function TemplatesTab({
                 className={cn(
                   "w-9 h-9 rounded-full border-2 cursor-pointer flex items-center justify-center transition-all hover:scale-110",
                   !templateColors.includes(selectedColor)
-                    ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
+                    ? "border-zinc-900 ring-2 ring-zinc-300"
                     : "border-zinc-200 hover:border-zinc-400",
                 )}
                 style={{
@@ -88,7 +88,7 @@ export function TemplatesTab({
             className={cn(
               "relative aspect-3/4 border-2 rounded-lg overflow-hidden transition-all hover:shadow-lg text-left",
               resumeData.templateId === template.id
-                ? "border-zinc-900 ring-2 ring-zinc-300 dark:border-zinc-100 dark:ring-zinc-700"
+                ? "border-zinc-900 ring-2 ring-zinc-300"
                 : "border-gray-200 hover:border-gray-300",
             )}
           >
@@ -111,7 +111,7 @@ export function TemplatesTab({
               </div>
             )}
             {resumeData.templateId === template.id && (
-              <div className="absolute top-1 right-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-full p-0.5">
+              <div className="absolute top-1 right-1 bg-zinc-900 text-white rounded-full p-0.5">
                 <Check className="h-3 w-3" />
               </div>
             )}
