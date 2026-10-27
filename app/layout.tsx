@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { TRPCProvider } from "@/trpc/client";
 import { cn } from "@/lib/utils";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/lib/seo";
 import { ChatbotLoader } from "@/components/chatbot/chatbot-loader";
 
@@ -86,9 +86,8 @@ export default function RootLayout({
           <AuthProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="light"
-              forcedTheme="light"
-              enableSystem={false}
+              defaultTheme="system"
+              enableSystem
               disableTransitionOnChange
             >
               {children}
