@@ -22,11 +22,11 @@ export function TemplateCard({ template }: TemplateCardProps) {
     <div className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/50">
       {/* Template Preview */}
       <div 
-        className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+        className="relative aspect-[3/4] w-full overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100"
       >
         {/* Placeholder Resume Preview */}
         <div 
-          className="absolute inset-4 rounded-lg bg-white shadow-md dark:bg-gray-900 p-4 flex flex-col"
+          className="absolute inset-4 rounded-lg bg-white shadow-md p-4 flex flex-col"
           style={{ borderTop: `4px solid ${template.primaryColor}` }}
         >
           {/* Header section */}
@@ -35,13 +35,13 @@ export function TemplateCard({ template }: TemplateCardProps) {
               className="h-3 w-3/4 rounded"
               style={{ backgroundColor: template.primaryColor }}
             />
-            <div className="h-2 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="h-2 w-1/2 rounded bg-gray-200" />
           </div>
           
           {/* Contact info placeholder */}
           <div className="flex gap-2 mb-3">
-            <div className="h-1.5 w-16 rounded bg-gray-200 dark:bg-gray-700" />
-            <div className="h-1.5 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="h-1.5 w-16 rounded bg-gray-200" />
+            <div className="h-1.5 w-20 rounded bg-gray-200" />
           </div>
 
           {/* Section placeholder */}
@@ -51,9 +51,9 @@ export function TemplateCard({ template }: TemplateCardProps) {
               style={{ backgroundColor: template.primaryColor, opacity: 0.7 }}
             />
             <div className="space-y-1">
-              <div className="h-1.5 w-full rounded bg-gray-200 dark:bg-gray-700" />
-              <div className="h-1.5 w-5/6 rounded bg-gray-200 dark:bg-gray-700" />
-              <div className="h-1.5 w-4/5 rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-1.5 w-full rounded bg-gray-200" />
+              <div className="h-1.5 w-5/6 rounded bg-gray-200" />
+              <div className="h-1.5 w-4/5 rounded bg-gray-200" />
             </div>
             
             <div 
@@ -61,8 +61,8 @@ export function TemplateCard({ template }: TemplateCardProps) {
               style={{ backgroundColor: template.primaryColor, opacity: 0.7 }}
             />
             <div className="space-y-1">
-              <div className="h-1.5 w-full rounded bg-gray-200 dark:bg-gray-700" />
-              <div className="h-1.5 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-1.5 w-full rounded bg-gray-200" />
+              <div className="h-1.5 w-3/4 rounded bg-gray-200" />
             </div>
           </div>
         </div>

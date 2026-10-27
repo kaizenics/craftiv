@@ -387,7 +387,7 @@ export default function Dashboard() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl bg-card p-5">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10 dark:bg-muted/800">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10">
                 <span className="text-lg font-bold text-foreground">1</span>
               </div>
               <h3 className="font-medium text-foreground">Choose a Template</h3>
@@ -396,7 +396,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="rounded-xl bg-card p-5">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10 dark:bg-muted/800">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10">
                 <span className="text-lg font-bold text-foreground">2</span>
               </div>
               <h3 className="font-medium text-foreground">Fill in Your Details</h3>
@@ -405,7 +405,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="rounded-xl bg-card p-5">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10 dark:bg-muted/800">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/10">
                 <span className="text-lg font-bold text-foreground">3</span>
               </div>
               <h3 className="font-medium text-foreground">Download & Apply</h3>
