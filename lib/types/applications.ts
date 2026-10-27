@@ -19,15 +19,16 @@ export const TRACKER_STATUS_LABELS: Record<TrackerStatus, string> = {
 };
 
 /** Soft fills only (no tinted borders), so each stage reads at a glance. */
+// A colour per stage in both themes. Dark mode remaps blues to grey, so Interview uses violet there instead of sky.
 export const TRACKER_STATUS_STYLES: Record<TrackerStatus, string> = {
   saved: "bg-muted text-muted-foreground",
-  applied: "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200",
-  screening: "bg-lime-100 text-lime-900 dark:bg-lime-950/50 dark:text-lime-200",
-  interview: "bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-200",
+  applied: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200",
+  screening: "bg-lime-100 text-lime-900 dark:bg-lime-950/60 dark:text-lime-200",
+  interview: "bg-sky-100 text-sky-900 dark:bg-violet-950/60 dark:text-violet-200",
   offer: "bg-success-surface text-success-surface-foreground",
   rejected: "bg-destructive-surface text-destructive-surface-foreground",
-  ghosted: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200",
-  dropped: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+  ghosted: "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-200",
+  dropped: "bg-zinc-200 text-zinc-700 dark:bg-foreground/10 dark:text-muted-foreground",
 };
 
 export const TRACKER_LIMITS = {

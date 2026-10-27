@@ -18,6 +18,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useTheme } from "next-themes";
 import type { inferRouterOutputs } from "@trpc/server";
 import { toast } from "sonner";
 
@@ -212,7 +213,7 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
         <button
           type="button"
           onClick={() => openApp(app)}
-          className="nodrag flex w-full items-center gap-1.5 rounded-b-xl bg-sky-50 px-3 py-2 text-left text-xs font-medium text-sky-900 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-200"
+          className="nodrag flex w-full items-center gap-1.5 rounded-b-xl bg-sky-50 px-3 py-2 text-left text-xs font-medium text-sky-900 hover:bg-sky-100"
         >
           <Users className="size-3.5" aria-hidden="true" />
           Prep for this interview
@@ -303,6 +304,7 @@ type CanvasProps = {
 function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProps) {
   const utils = trpc.useUtils();
   const flow = useReactFlow();
+  const { resolvedTheme } = useTheme();
   useEffect(() => {
     if (!fitKey) return;
     // A beat for the new layout to render and be measured first.
@@ -631,7 +633,7 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
 
   return (
     <ActionsContext.Provider value={{ ...actions, saveItem }}>
-      <div ref={wrapper} className="relative h-full overflow-hidden bg-muted/60">
+      <div ref={wrapper} className="relative h-full overflow-hidden bg-muted/60 dark:bg-black/40">
         <ReactFlow
           nodes={nodes}
           nodeTypes={nodeTypes}
@@ -648,6 +650,8 @@ function Canvas({ apps, items, hunter, fitKey, boardId, ...actions }: CanvasProp
             remove.mutate({ ids: removed });
           }}
           nodesConnectable={false}
+          // React Flow's own dark styles for the controls, minimap and dot grid.
+          colorMode={resolvedTheme === "dark" ? "dark" : "light"}
           deleteKeyCode={["Backspace", "Delete"]}
           // Keep stacking fixed: a selected frame must not jump in front of the cards inside it.
           elevateNodesOnSelect={false}
