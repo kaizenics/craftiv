@@ -7,6 +7,7 @@ const navigation = {
     { name: "Features", href: "/#features" },
     { name: "Pricing", href: "/pricing" },
     { name: "Templates", href: "/resume/templates" },
+    { name: "Resume Examples", href: "/resume-examples" },
   ],
   company: [
     { name: "Privacy Policy", href: "/privacy" },

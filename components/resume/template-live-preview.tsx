@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ResumePreview } from '@/components/resume/resume-preview';
 import { createSampleResumeForTemplate } from '@/lib/data/templates';
+import type { ResumeData } from '@/lib/types/resume';
 
 const A4_WIDTH_PX = (210 / 25.4) * 96;
 const A4_HEIGHT_PX = (297 / 25.4) * 96;
@@ -11,15 +12,17 @@ interface TemplateLivePreviewProps {
   templateId: string;
   color: string;
   showPhoto?: boolean;
+  /** Resume to render instead of the generic sample (e.g. a job-specific example). */
+  data?: ResumeData;
 }
 
-export function TemplateLivePreview({ templateId, color, showPhoto = false }: TemplateLivePreviewProps) {
+export function TemplateLivePreview({ templateId, color, showPhoto = false, data }: TemplateLivePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.2);
 
   const sampleData = useMemo(
-    () => createSampleResumeForTemplate(templateId, showPhoto),
-    [templateId, showPhoto]
+    () => data ?? createSampleResumeForTemplate(templateId, showPhoto),
+    [data, templateId, showPhoto]
   );
 
   useEffect(() => {
