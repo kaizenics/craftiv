@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -41,7 +42,7 @@ export default function SignInPage() {
   const redirectTo = useMemo(() => {
     if (typeof window === "undefined") return "/";
     const redirectParam = new URLSearchParams(window.location.search).get("redirect");
-    return redirectParam?.startsWith("/") ? redirectParam : "/";
+    return safeRedirectPath(redirectParam);
   }, []);
 
   const form = useForm<SignInFormValues>({

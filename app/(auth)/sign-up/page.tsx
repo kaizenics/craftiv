@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
@@ -84,7 +85,7 @@ export default function SignUpPage() {
     const intent = params.get("intent");
 
     return {
-      redirectTo: redirectParam?.startsWith("/") ? redirectParam : "/",
+      redirectTo: safeRedirectPath(redirectParam),
       fromResumeUpload: intent === "resume-upload",
     };
   }, []);
