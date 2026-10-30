@@ -43,6 +43,8 @@ import { buildJobDigestEmail, type DigestJob, type DigestMovedJob } from "./dige
 const MAX_JOBS_PER_RUN = 25;
 /** Matches re-scored per run after a resume edit. */
 const MAX_RESCORES_PER_RUN = 100;
+/** Hunts a dispatch runs at once. */
+const HUNT_CONCURRENCY = 5;
 
 export type RunHuntResult = {
   huntId: string;
@@ -175,6 +177,8 @@ export async function runHunt(params: {
   hunt: HuntRow;
   now?: Date;
   trigger?: "schedule" | "manual";
+  /** Per-tick memo of source searches, shared by every hunt in one dispatch. */
+  searchCache?: Map<string, Promise<NormalizedJob[]>>;
 }): Promise<RunHuntResult> {
   const db = params.db ?? defaultDb;
   const now = params.now ?? new Date();
@@ -234,10 +238,18 @@ export async function runHunt(params: {
         if (!adapter.search) continue;
 
         try {
-          const jobs = await adapter.search(
-            { query: hunt.query, location: hunt.location, limit: MAX_JOBS_PER_RUN },
-            AbortSignal.timeout(30_000),
-          );
+          // Hunts sharing a search in one tick share one request (and its promise,
+          // so concurrent hunts don't race to fetch it twice).
+          const searchKey = JSON.stringify([sourceId, hunt.query, hunt.location]);
+          let search = params.searchCache?.get(searchKey);
+          if (!search) {
+            search = adapter.search(
+              { query: hunt.query, location: hunt.location, limit: MAX_JOBS_PER_RUN },
+              AbortSignal.timeout(30_000),
+            );
+            params.searchCache?.set(searchKey, search);
+          }
+          const jobs = await search;
           result.jobsFetched += jobs.length;
 
           for (const job of jobs) {
@@ -470,23 +482,35 @@ export async function dispatchDueHunts(params: {
     budgetExhausted: false,
   };
 
-  for (const hunt of batch) {
-    if (Date.now() > deadline) {
-      result.budgetExhausted = true;
-      result.remaining += 1;
-      continue;
-    }
+  // shortcut: the memo lives for one tick, so each distinct search still costs one
+  // Remotive request per tick; once distinct searches outgrow Remotive's daily
+  // budget, cache feed results across ticks (e.g. a table refreshed a few times a day).
+  const searchCache = new Map<string, Promise<NormalizedJob[]>>();
 
-    const run = await runHunt({ db, hunt, now, trigger: "schedule" });
-    if (!run.claimed) {
-      result.skipped += 1;
-      continue;
-    }
+  // A small worker pool: hunts run concurrently, and a worker only starts the
+  // next hunt while there is budget left.
+  let next = 0;
+  const worker = async () => {
+    while (next < batch.length) {
+      const hunt = batch[next++];
+      if (Date.now() > deadline) {
+        result.budgetExhausted = true;
+        result.remaining += 1;
+        continue;
+      }
 
-    result.claimed += 1;
-    if (run.status === "succeeded") result.succeeded += 1;
-    else if (run.status === "failed") result.failed += 1;
-  }
+      const run = await runHunt({ db, hunt, now, trigger: "schedule", searchCache });
+      if (!run.claimed) {
+        result.skipped += 1;
+        continue;
+      }
+
+      result.claimed += 1;
+      if (run.status === "succeeded") result.succeeded += 1;
+      else if (run.status === "failed") result.failed += 1;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(HUNT_CONCURRENCY, batch.length) }, worker));
 
   return result;
 }

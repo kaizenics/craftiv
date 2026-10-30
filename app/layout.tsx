@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/lib/seo";
 import { ChatbotLoader } from "@/components/chatbot/chatbot-loader";
+import { Analytics } from "@vercel/analytics/next";
 
 const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
@@ -96,6 +97,7 @@ export default function RootLayout({
             </ThemeProvider>
           </AuthProvider>
         </TRPCProvider>
+        <Analytics />
       </body>
     </html>
   );

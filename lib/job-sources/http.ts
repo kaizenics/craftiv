@@ -48,9 +48,9 @@ async function waitForTurn(host: string, crawlDelaySeconds: number, source: JobS
   const delayMs = Math.max(0, crawlDelaySeconds * 1000);
   if (delayMs === 0) return;
 
-  const sharedWaitMs = await reserveCrawlSlot(host, delayMs);
+  const sharedWaitMs = await reserveCrawlSlot(host, delayMs, MAX_QUEUE_WAIT_MS);
   if (sharedWaitMs !== null) {
-    if (sharedWaitMs > MAX_QUEUE_WAIT_MS) {
+    if (sharedWaitMs === "busy") {
       throw new JobSourceError(source, "TRANSIENT", "The job board is busy right now. Try again in a minute.");
     }
     if (sharedWaitMs > 0) await sleep(sharedWaitMs);

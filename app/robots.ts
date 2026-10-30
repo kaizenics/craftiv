@@ -10,6 +10,7 @@ export default function robots(): MetadataRoute.Robots {
           "/",
           "/pricing",
           "/resume/templates",
+          "/resume-examples",
           "/resume/upload",
           "/cover-letter/templates",
           "/privacy",
