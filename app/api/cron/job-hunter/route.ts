@@ -29,7 +29,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const WALL_CLOCK_BUDGET_MS = 45_000;
-const MAX_HUNTS_PER_TICK = 5;
+// Run 5 at a time (HUNT_CONCURRENCY in the runner); the budget stops claiming early if hunts are slow.
+const MAX_HUNTS_PER_TICK = 50;
 const MIN_SECRET_LENGTH = 32;
 
 /**
