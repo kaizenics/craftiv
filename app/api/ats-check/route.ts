@@ -8,6 +8,7 @@ import { resumes, type ResumeDataJSON } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { callWithFallback, extractJsonObject } from "@/lib/ai";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants/files";
+import { PROMPT_INPUT_LIMITS } from "@/lib/constants/prompt-limits";
 import { extractTextFromFile, getUploadKind } from "@/lib/file-parsing";
 import { analyzeResumeData, analyzeResumeText, formatResumeDataForAts, type AtsReport } from "@/lib/ats";
 import {
@@ -166,7 +167,9 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const resumeId = (formData.get("resumeId") as string | null)?.trim() || "";
-    const jobDescription = (formData.get("jobDescription") as string | null)?.trim() || "";
+    // Capped: it goes into a fixed-price prompt and the scorer.
+    const jobDescription =
+      (formData.get("jobDescription") as string | null)?.trim().slice(0, PROMPT_INPUT_LIMITS.jobDescription) || "";
     const requestId = crypto.randomUUID();
     // Recorded for support correlation only. It used to seed the charge key,
     // which let a caller replay one value and never be charged again.
