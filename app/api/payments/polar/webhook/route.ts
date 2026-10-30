@@ -27,6 +27,17 @@ function isSupportedEvent(eventType: string): eventType is SupportedEvent {
   return eventType === "order.paid" || eventType === "order.refunded";
 }
 
+/** The `type` field of an already signature-checked body, without schema validation. */
+function rawEventType(rawBody: string): string {
+  try {
+    const parsed: unknown = JSON.parse(rawBody);
+    const type = (parsed as { type?: unknown } | null)?.type;
+    return typeof type === "string" ? type : "";
+  } catch {
+    return "";
+  }
+}
+
 /** The credits each pack grants, in credit units (100 units = 1 credit). */
 function getCreditsForPlan(plan: InternalPlan): number {
   const pack = CREDIT_PACKS.find((candidate) => candidate.plan === plan);
@@ -157,8 +168,14 @@ export async function POST(request: Request) {
       securityLog("webhook_signature_invalid", { requestId, route: ROUTE }, "warn");
       return Response.json({ error: "Invalid signature" }, { status: 401 });
     }
-    // Signature was fine but the payload is an event shape this SDK version does
-    // not know. Acknowledge it so Polar stops retrying something we ignore.
+    // Signature was fine but this SDK version cannot parse the payload. For an
+    // event that moves credits, answering 200 would make Polar stop retrying and
+    // lose a real payment, so fail loudly and let Polar retry after an SDK update.
+    if (isSupportedEvent(rawEventType(rawBody))) {
+      securityLog("webhook_payload_unparseable", { requestId, route: ROUTE }, "error");
+      return Response.json({ error: "Unreadable payload" }, { status: 500 });
+    }
+    // Anything else is an event we ignore anyway; acknowledge it so Polar stops.
     securityLog("webhook_payload_unrecognized", { requestId, route: ROUTE }, "warn");
     return Response.json({ received: true, ignored: true });
   }
