@@ -28,12 +28,21 @@ export function CompanyMarquee() {
           <div className="marquee-track flex w-max items-center gap-10 sm:gap-12">
             {items.map((logo, idx) => (
               <div key={`${logo.alt}-${idx}`} className="shrink-0">
+                {/* Original colors on light theme; pre-rendered white variant on dark (no CSS filter). */}
                 <Image
                   src={logo.src}
                   alt={logo.alt}
                   width={180}
                   height={56}
-                  className="h-7 w-auto object-contain sm:h-10"
+                  className="h-7 w-auto object-contain sm:h-10 dark:hidden"
+                  sizes="180px"
+                />
+                <Image
+                  src={logo.src.replace("/marquee/", "/marquee/white/").replace(/\.\w+$/, ".png")}
+                  alt={logo.alt}
+                  width={180}
+                  height={56}
+                  className="hidden h-7 w-auto object-contain sm:h-10 dark:block"
                   sizes="180px"
                 />
               </div>

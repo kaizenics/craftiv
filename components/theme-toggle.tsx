@@ -14,6 +14,27 @@ const OPTIONS = [
 
 const noSubscribe = () => () => {};
 
+/** Compact light/dark flip for tight spots like the navbar. */
+export function ThemeSwitch({ className }: { className?: string }) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const dark = mounted && resolvedTheme === "dark";
+  const Icon = dark ? Sun : Moon;
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className={cn(
+        "inline-flex size-10 items-center justify-center rounded-xl text-zinc-800 transition-colors hover:bg-white/70",
+        className,
+      )}
+    >
+      <Icon className="size-4" aria-hidden="true" />
+    </button>
+  );
+}
+
 /** Light / Dark / System. The stored choice is only known in the browser, so nothing is marked until then. */
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
