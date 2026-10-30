@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLenis } from "lenis/react";
 
 import { useAuth } from "@/components/auth-provider";
+import { ThemeSwitch } from "@/components/theme-toggle";
 import { trpc } from "@/trpc/client";
 import { NavbarLogo } from "@/components/ui/resizable-navbar";
 import { Coins } from "lucide-react";
@@ -155,6 +156,7 @@ export function NavbarComponent() {
                   <NavLink key={item.label} {...item} pathname={pathname} onClick={closeMenu} />
                 ))}
                 <div className="mt-2 flex items-center gap-2 border-t border-zinc-200 pt-3">
+                  <ThemeSwitch />
                   {session ? (
                     <>
                       <CreditsPill credits={credits} />
@@ -177,6 +179,7 @@ export function NavbarComponent() {
         </div>
 
         <div className={cn(panel, "hidden h-14 items-center gap-1 p-2 lg:flex")}>
+          <ThemeSwitch />
           {session ? (
             <>
               <CreditsPill credits={credits} />
