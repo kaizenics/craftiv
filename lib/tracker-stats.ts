@@ -36,14 +36,40 @@ export function trackerStats(cards: Card[]) {
   return { sent: sent.length, responseRate: rate(REPLIED), interviewRate: rate(INTERVIEWED), avgDays };
 }
 
-/** Whole days an Applied card has waited for a reply: from the application date if typed, else from entering the column. */
-export function daysWaiting(card: Card, now = Date.now()): number | null {
-  if (card.status !== "applied") return null;
+/** When an Applied card started waiting for a reply: the application date if typed, else when it entered the column. */
+function waitingSince(card: Card): number | undefined {
+  if (card.status !== "applied") return undefined;
   const typed = card.appliedOn ? new Date(`${card.appliedOn}T00:00:00`).getTime() : NaN;
-  const entered = card.statusHistory.findLast((entry) => entry.status === "applied")?.at;
-  const since = Number.isNaN(typed) ? entered : typed;
+  return Number.isNaN(typed) ? card.statusHistory.findLast((entry) => entry.status === "applied")?.at : typed;
+}
+
+/**
+ * Applications sent since Monday 00:00 local time, for the weekly goal. A card counts on its typed
+ * application date, else on the day it first entered a sent column.
+ */
+export function sentThisWeek(cards: Card[], now = new Date()): number {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+  return cards.filter((card) => {
+    const typed = card.appliedOn ? new Date(`${card.appliedOn}T00:00:00`).getTime() : NaN;
+    const sentAt = Number.isNaN(typed) ? card.statusHistory.find((entry) => SENT.includes(entry.status))?.at : typed;
+    return sentAt !== undefined && sentAt >= start && sentAt <= now.getTime();
+  }).length;
+}
+
+/** Whole days an Applied card has waited for a reply. */
+export function daysWaiting(card: Card, now = Date.now()): number | null {
+  const since = waitingSince(card);
   return since === undefined ? null : Math.max(0, Math.floor((now - since) / DAY));
 }
 
 export const FOLLOW_UP_AFTER_DAYS = 7;
+
+/** The day a follow-up is due on an Applied card, or null once it has moved on. */
+export function followUpDue(card: Card): Date | null {
+  const since = waitingSince(card);
+  if (since === undefined) return null;
+  const due = new Date(since);
+  due.setDate(due.getDate() + FOLLOW_UP_AFTER_DAYS);
+  return due;
+}
 export const GHOSTED_AFTER_DAYS = 30;

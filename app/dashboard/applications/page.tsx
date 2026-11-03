@@ -8,13 +8,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, Kanban, LayoutTemplate, Plus, Search, Table, Target } from "@/components/ui/icons";
+import { ArrowUpRight, CalendarIcon, Kanban, LayoutTemplate, Plus, Search, Table, Target } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
+import { sentThisWeek, TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
 import { ApplicationSheet, emptyDraft, type ApplicationDraft } from "@/components/dashboard/application-sheet";
 import { ApplicationCanvas, type TrackedApp } from "@/components/dashboard/application-canvas";
 import { ApplicationTable } from "@/components/dashboard/application-table";
+import { TrackerMenu } from "@/components/dashboard/tracker-menu";
+import { ApplicationCalendar } from "@/components/dashboard/application-calendar";
 import { BoardTemplatesDialog } from "@/components/dashboard/board-templates-dialog";
 import { BoardTabs } from "@/components/dashboard/board-tabs";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
@@ -26,8 +28,10 @@ import { cn } from "@/lib/utils";
 
 // "Show Job Hunter jobs" and the board/table choice are remembered per browser.
 const SHOW_HUNTER_KEY = "craftiv:tracker-show-hunter";
+const SHOW_ARCHIVED_KEY = "craftiv:tracker-show-archived";
 const VIEW_KEY = "craftiv:tracker-view";
-type TrackerView = "board" | "table";
+const TRACKER_VIEWS = ["board", "table", "calendar"] as const;
+type TrackerView = (typeof TRACKER_VIEWS)[number];
 const prefListeners = new Set<() => void>();
 const readPref = (key: string) => {
   try {
@@ -49,7 +53,8 @@ const writePref = (key: string, value: string) => {
   prefListeners.forEach((listener) => listener());
 };
 const readShowHunter = () => readPref(SHOW_HUNTER_KEY) === "1";
-const readView = (): TrackerView => (readPref(VIEW_KEY) === "table" ? "table" : "board");
+const readShowArchived = () => readPref(SHOW_ARCHIVED_KEY) === "1";
+const readView = (): TrackerView => TRACKER_VIEWS.find((view) => view === readPref(VIEW_KEY)) ?? "board";
 
 export default function ApplicationsPage() {
   const router = useRouter();
@@ -103,6 +108,11 @@ export default function ApplicationsPage() {
   });
 
   const apps = useMemo(() => appsQuery.data ?? [], [appsQuery.data]);
+  const storedShowArchived = useSyncExternalStore(subscribePref, readShowArchived, () => false);
+  const [showArchivedOverride, setShowArchivedOverride] = useState<boolean | null>(null);
+  const showArchived = showArchivedOverride ?? storedShowArchived;
+  // Archived cards leave every view but still count in the stats, which describe the whole search.
+  const visibleApps = useMemo(() => (showArchived ? apps : apps.filter((app) => !app.archivedAt)), [apps, showArchived]);
   const trackedMatchIds = useMemo(() => new Set(apps.map((app) => app.matchId).filter(Boolean)), [apps]);
   // Scraped jobs already copied into the tracker are not shown twice.
   const hunterJobs = useMemo(
@@ -113,6 +123,10 @@ export default function ApplicationsPage() {
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
   const stats = useMemo(() => trackerStats(apps), [apps]);
+  // The goal is per user, so progress counts every tab, not just the open one.
+  const goal = trpc.user.preferences.useQuery().data?.weeklyApplicationGoal ?? 0;
+  const allAppsQuery = trpc.applications.list.useQuery(undefined, { enabled: goal > 0 });
+  const sentWeek = useMemo(() => sentThisWeek(allAppsQuery.data ?? []), [allAppsQuery.data]);
 
   // One-click column change (the "Move to Ghosted" nudge); the card restacks in its new frame.
   const ghost = useCallback(
@@ -177,6 +191,28 @@ export default function ApplicationsPage() {
     <div className="fixed inset-x-0 bottom-0 top-16 z-30 flex flex-col bg-card lg:left-64 lg:top-0">
       <header className="flex items-center gap-x-4 gap-y-2 bg-card px-4 pt-3 pb-1 sm:flex-wrap sm:px-6">
         <h1 className="font-display text-xl font-bold text-foreground">Applications</h1>
+        {goal > 0 && allAppsQuery.data ? (
+          <Link
+            href="/dashboard/settings/preferences"
+            title="Change your weekly goal"
+            className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-1 hover:bg-muted"
+          >
+            <span className="text-xs text-muted-foreground">This week</span>
+            <span
+              role="progressbar"
+              aria-label="Weekly application goal"
+              aria-valuemin={0}
+              aria-valuemax={goal}
+              aria-valuenow={Math.min(sentWeek, goal)}
+              className="h-1.5 w-14 overflow-hidden rounded-full bg-background"
+            >
+              <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (sentWeek / goal) * 100)}%` }} />
+            </span>
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {sentWeek}/{goal}
+            </span>
+          </Link>
+        ) : null}
         {apps.length > 0 ? (
           <dl className="hidden flex-wrap gap-1.5 md:flex">
             {[
@@ -232,6 +268,19 @@ export default function ApplicationsPage() {
               </Button>
             </>
           ) : null}
+          {activeBoard ? (
+            <TrackerMenu
+              boardId={boardId}
+              boardName={activeBoard.name}
+              apps={visibleApps}
+              archivedCount={apps.filter((app) => app.archivedAt).length}
+              showArchived={showArchived}
+              onShowArchived={(next) => {
+                setShowArchivedOverride(next);
+                writePref(SHOW_ARCHIVED_KEY, next ? "1" : "0");
+              }}
+            />
+          ) : null}
           <Button size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => openDraft(emptyDraft())}>
             <Plus className="size-4" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">New application</span>
@@ -252,6 +301,10 @@ export default function ApplicationsPage() {
                 <Table className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Table</span>
               </TabsTrigger>
+              <TabsTrigger value="calendar" aria-label="Calendar view">
+                <CalendarIcon className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Calendar</span>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -262,10 +315,12 @@ export default function ApplicationsPage() {
       <div className="relative min-h-0 flex-1">
         {!boardId || appsQuery.isLoading || boardQuery.isLoading ? (
           <Skeleton className="h-full w-full rounded-none" />
+        ) : view === "calendar" ? (
+          <ApplicationCalendar apps={visibleApps} needle={needle} openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })} />
         ) : view === "table" ? (
           <ApplicationTable
             boardId={boardId}
-            apps={apps}
+            apps={visibleApps}
             needle={needle}
             openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })}
             addApp={() => openDraft(emptyDraft())}
@@ -274,7 +329,7 @@ export default function ApplicationsPage() {
           <ApplicationCanvas
             key={boardId}
             boardId={boardId}
-            apps={apps}
+            apps={visibleApps}
             items={boardQuery.data ?? []}
             hunter={hunterCards}
             needle={needle}

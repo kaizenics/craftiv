@@ -16,13 +16,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
+import { Archive, ArrowUpRight, CalendarIcon, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
+import { buildIcs } from "@/lib/ics";
+import { downloadFile } from "@/lib/download";
+import { FOLLOW_UP_AFTER_DAYS } from "@/lib/tracker-stats";
 import { interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
-import { TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
+import { parseTags, TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
 
 export type ApplicationDraft = {
@@ -42,6 +46,8 @@ export type ApplicationDraft = {
   // Set when the card is linked to a Job Hunter job, which is what interview prep runs on.
   matchId?: string | null;
   customFields: CustomField[];
+  tags: string[];
+  archivedAt?: Date | null;
 };
 
 export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft => ({
@@ -57,6 +63,7 @@ export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft =>
   salary: "",
   location: "",
   customFields: [],
+  tags: [],
 });
 
 type ApplicationSheetProps = {
@@ -73,6 +80,8 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
   const utils = trpc.useUtils();
   const [form, setForm] = useState<ApplicationDraft>(draft ?? emptyDraft());
   const [targetBoard, setTargetBoard] = useState(boardId);
+  // Typed as free text and split on save, so a trailing comma does not vanish mid-word.
+  const [tagText, setTagText] = useState((draft?.tags ?? []).join(", "));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
   const [prepResume, setPrepResume] = useState("");
@@ -110,7 +119,27 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
     },
     onError: (e) => toast.error(e.message),
   });
-  const pending = create.isPending || update.isPending || remove.isPending;
+  const archive = trpc.applications.update.useMutation({
+    onSuccess: (_, input) => done(input.archived ? "Archived. Turn on Show archived to see it again." : "Back on the board."),
+    onError: (e) => toast.error(e.message),
+  });
+  const pending = create.isPending || update.isPending || remove.isPending || archive.isPending;
+  const [reminderDate, setReminderDate] = useState(() => {
+    // A week after the application date, the same nudge the board gives; a week from today without one.
+    const start = draft?.appliedOn ? new Date(`${draft.appliedOn}T00:00:00`) : new Date();
+    start.setDate(start.getDate() + FOLLOW_UP_AFTER_DAYS);
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+  });
+  const addReminder = () => {
+    const job = [form.title, form.company].filter(Boolean).join(" at ") || "this application";
+    const ics = buildIcs({
+      uid: `${form.id}-${reminderDate}`,
+      date: reminderDate,
+      title: `Follow up: ${job}`,
+      description: [form.contact && `Contact: ${form.contact}`, form.postingUrl].filter(Boolean).join("\n"),
+    });
+    downloadFile(`follow-up-${reminderDate}.ics`, ics, "text/calendar;charset=utf-8");
+  };
 
   const set = <K extends keyof ApplicationDraft>(key: K, value: ApplicationDraft[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const setCustom = (index: number, patch: Partial<CustomField>) =>
@@ -124,10 +153,11 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
       toast.error("Add at least a company or a job title.");
       return;
     }
-    const { id, status, followUpEmail, ...rest } = form;
+    const { id, status, followUpEmail, archivedAt, ...rest } = form;
+    void archivedAt; // Changed only by the Archive button.
     void followUpEmail; // AI-written, saved by its own mutation, never sent back through update.
     // Unnamed custom fields are dropped rather than rejected.
-    const payload = { ...rest, customFields: rest.customFields.filter((field) => field.label.trim()) };
+    const payload = { ...rest, tags: parseTags(tagText), customFields: rest.customFields.filter((field) => field.label.trim()) };
     if (!id) {
       create.mutate({ ...payload, status, boardId: targetBoard });
       return;
@@ -185,7 +215,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="app-date">Application date</Label>
-              <Input id="app-date" type="date" value={form.appliedOn} onChange={(event) => set("appliedOn", event.target.value)} />
+              <DatePicker id="app-date" value={form.appliedOn} onChange={(value) => set("appliedOn", value)} />
             </div>
           </div>
 
@@ -236,6 +266,17 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
           <div className="grid gap-4 sm:grid-cols-2">
             {textField("salary", "Salary", "$60k to $70k")}
             {textField("location", "Location", "Remote, Manila...")}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="app-tags">Tags</Label>
+            <Input
+              id="app-tags"
+              value={tagText}
+              maxLength={TRACKER_LIMITS.tags * (TRACKER_LIMITS.tagLength + 2)}
+              placeholder="remote, referral, dream job"
+              onChange={(event) => setTagText(event.target.value)}
+            />
           </div>
 
           <div className="grid gap-1.5">
@@ -363,6 +404,20 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
 
           {!isNew ? (
             <div className="grid gap-2 rounded-xl bg-muted/60 p-4">
+              <Label htmlFor="app-reminder">Calendar reminder</Label>
+              <div className="flex gap-2">
+                <DatePicker id="app-reminder" className="bg-card" value={reminderDate} onChange={setReminderDate} />
+                <Button variant="outline" className="bg-card" disabled={!reminderDate} onClick={addReminder}>
+                  <CalendarIcon className="size-4" aria-hidden="true" />
+                  Add to calendar
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Downloads a file that Google Calendar, Apple Calendar or Outlook opens.</p>
+            </div>
+          ) : null}
+
+          {!isNew ? (
+            <div className="grid gap-2 rounded-xl bg-muted/60 p-4">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium">Follow-up email</p>
                 <Button
@@ -417,7 +472,18 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
             {!isNew ? (
               <Button
                 variant="ghost"
-                className="ml-auto text-muted-foreground hover:text-destructive-surface-foreground"
+                className="ml-auto text-muted-foreground"
+                disabled={pending}
+                onClick={() => form.id && archive.mutate({ id: form.id, archived: !form.archivedAt })}
+              >
+                <Archive className="size-4" aria-hidden="true" />
+                {form.archivedAt ? "Unarchive" : "Archive"}
+              </Button>
+            ) : null}
+            {!isNew ? (
+              <Button
+                variant="ghost"
+                className="text-muted-foreground hover:text-destructive-surface-foreground"
                 disabled={pending}
                 onClick={() => setConfirmDelete(true)}
               >

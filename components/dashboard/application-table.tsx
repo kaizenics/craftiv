@@ -1,27 +1,37 @@
 "use client";
 
-import { useMemo, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Maximize, Plus } from "@/components/ui/icons";
+import { ArrowUpRight, ChevronDown, ChevronUp, Maximize, Plus } from "@/components/ui/icons";
 import { matchesNeedle, type TrackedApp } from "@/components/dashboard/application-canvas";
-import { TRACKER_LIMITS, TRACKER_STATUSES, TRACKER_STATUS_LABELS, TRACKER_STATUS_STYLES, type TrackerStatus } from "@/lib/types/applications";
+import { parseTags, TRACKER_LIMITS, TRACKER_STATUSES, TRACKER_STATUS_LABELS, TRACKER_STATUS_STYLES, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 
-type Field = "company" | "title" | "location" | "salary" | "contact" | "appliedOn" | "postingUrl";
+type Field = "company" | "title" | "tags" | "location" | "salary" | "contact" | "appliedOn" | "postingUrl";
+
+// Tags edit as one comma-separated cell, the way people already type them into a sheet.
+const cellValue = (app: TrackedApp, field: Field) => (field === "tags" ? app.tags.join(", ") : app[field]);
 
 const COLUMNS: { field: Field; label: string; width: string; type?: "date" | "url" }[] = [
   { field: "company", label: "Company", width: "w-48" },
   { field: "title", label: "Role", width: "w-60" },
+  { field: "tags", label: "Tags", width: "w-48" },
   { field: "appliedOn", label: "Applied on", width: "w-40", type: "date" },
   { field: "location", label: "Location", width: "w-40" },
   { field: "salary", label: "Salary", width: "w-32" },
   { field: "contact", label: "Contact", width: "w-40" },
   { field: "postingUrl", label: "Link", width: "w-56", type: "url" },
 ];
+
+type SortKey = Field | "status";
+type Sort = { key: SortKey; dir: 1 | -1 };
+
+const cell = "border-b border-r border-border";
 
 type Props = {
   boardId: string;
@@ -39,19 +49,52 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
   const update = trpc.applications.update.useMutation({ onError, onSettled });
   const move = trpc.applications.move.useMutation({ onError, onSettled });
 
-  // Grouped in board column order, so the table reads like the board top to bottom.
-  const rows = useMemo(
-    () =>
-      apps
-        .filter((app) => matchesNeedle(app, needle))
-        .sort((a, b) => TRACKER_STATUSES.indexOf(a.status) - TRACKER_STATUSES.indexOf(b.status)),
-    [apps, needle],
+  const [sort, setSort] = useState<Sort | null>(null);
+  // Click a header to sort A to Z, again for Z to A, a third time to go back to board order.
+  const toggleSort = (key: SortKey) =>
+    setSort((current) => (current?.key !== key ? { key, dir: 1 } : current.dir === 1 ? { key, dir: -1 } : null));
+
+  const rows = useMemo(() => {
+    const byStatus = (a: TrackedApp, b: TrackedApp) => TRACKER_STATUSES.indexOf(a.status) - TRACKER_STATUSES.indexOf(b.status);
+    const filtered = apps.filter((app) => matchesNeedle(app, needle));
+    // Without a sort the rows are grouped in board column order, so the table reads like the board top to bottom.
+    if (!sort) return filtered.sort(byStatus);
+    if (sort.key === "status") return filtered.sort((a, b) => byStatus(a, b) * sort.dir);
+    const key = sort.key;
+    return filtered.sort((a, b) => {
+      const [x, y] = [cellValue(a, key), cellValue(b, key)];
+      // Empty cells stay at the bottom in both directions.
+      if (!x || !y) return Number(!x) - Number(!y);
+      return x.localeCompare(y, undefined, { numeric: true, sensitivity: "base" }) * sort.dir;
+    });
+  }, [apps, needle, sort]);
+
+  const sortHeader = (key: SortKey, label: string, width: string) => (
+    <th
+      key={key}
+      aria-sort={sort?.key === key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
+      className={cn(cell, width, "p-0 text-left text-xs font-semibold text-muted-foreground")}
+    >
+      <button type="button" onClick={() => toggleSort(key)} className="flex h-full w-full items-center gap-1 px-3 py-2 hover:text-foreground">
+        {label}
+        {sort?.key === key ? (
+          sort.dir === 1 ? <ChevronUp className="size-3.5" aria-hidden="true" /> : <ChevronDown className="size-3.5" aria-hidden="true" />
+        ) : null}
+      </button>
+    </th>
   );
 
   const patch = (id: string, changes: Partial<TrackedApp>) =>
     utils.applications.list.setData({ boardId }, (prev) => prev?.map((item) => (item.id === id ? { ...item, ...changes } : item)));
 
   const commit = (app: TrackedApp, field: Field, value: string) => {
+    if (field === "tags") {
+      const tags = parseTags(value);
+      if (tags.join(", ") === app.tags.join(", ")) return;
+      patch(app.id, { tags });
+      update.mutate({ id: app.id, tags });
+      return;
+    }
     const next = field === "appliedOn" ? value : value.trim();
     if (next === app[field]) return;
     patch(app.id, { [field]: next });
@@ -76,25 +119,20 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
     }
   };
 
-  const cell = "border-b border-r border-border";
   return (
     <div className="h-full overflow-auto bg-card">
       <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
         <thead className="sticky top-0 z-10 bg-muted">
           <tr>
             <th className={cn(cell, "sticky left-0 z-10 w-10 bg-muted")} aria-label="Row" />
-            <th className={cn(cell, "w-44 px-3 py-2 text-left text-xs font-semibold text-muted-foreground")}>Status</th>
-            {COLUMNS.map((column) => (
-              <th key={column.field} className={cn(cell, column.width, "px-3 py-2 text-left text-xs font-semibold text-muted-foreground")}>
-                {column.label}
-              </th>
-            ))}
+            {sortHeader("status", "Status", "w-44")}
+            {COLUMNS.map((column) => sortHeader(column.field, column.label, column.width))}
             <th className={cn(cell, "w-12")} aria-label="Details" />
           </tr>
         </thead>
         <tbody>
           {rows.map((app, row) => (
-            <tr key={app.id} className="group">
+            <tr key={app.id} className={cn("group", app.archivedAt && "opacity-60")} title={app.archivedAt ? "Archived" : undefined}>
               <td className={cn(cell, "sticky left-0 bg-muted text-center text-xs tabular-nums text-muted-foreground")}>{row + 1}</td>
               <td className={cn(cell, "px-1.5")}>
                 <Select value={app.status} onValueChange={(value) => setStatus(app, value as TrackerStatus)}>
@@ -115,14 +153,23 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
                 </Select>
               </td>
               {COLUMNS.map((column, col) => {
-                const value = app[column.field];
+                const value = cellValue(app, column.field);
                 return (
                   <td key={column.field} className={cn(cell, "relative p-0")}>
+                    {column.type === "date" ? (
+                      <DatePicker
+                        value={value}
+                        placeholder=""
+                        aria-label={`${column.label} for ${app.company || "application"}`}
+                        onChange={(next) => commit(app, column.field, next)}
+                        className="h-9 rounded-none border-0 bg-transparent px-3 hover:bg-muted/60 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:bg-transparent"
+                      />
+                    ) : (
                     <input
                       // Remounts when saved data changes, so the cell never shows a stale value.
                       key={value}
                       data-cell={`${row}:${col}`}
-                      type={column.type === "date" ? "date" : "text"}
+                      type="text"
                       defaultValue={value}
                       maxLength={column.type === "url" ? TRACKER_LIMITS.url : TRACKER_LIMITS.text}
                       aria-label={`${column.label} for ${app.company || "application"}`}
@@ -133,6 +180,7 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
                         column.type === "url" && value && "pr-8 text-primary",
                       )}
                     />
+                    )}
                     {column.type === "url" && /^https?:\/\//i.test(value) ? (
                       <a
                         href={value}

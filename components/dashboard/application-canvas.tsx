@@ -48,7 +48,7 @@ export type HunterCard = { id: string; status: TrackerStatus };
 
 /** True when the filter is empty or matches one of the card's searchable fields. */
 export const matchesNeedle = (app: TrackedApp, needle: string) =>
-  !needle || [app.company, app.title, app.location, app.salary].some((value) => value.toLowerCase().includes(needle));
+  !needle || [app.company, app.title, app.location, app.salary, ...app.tags].some((value) => value.toLowerCase().includes(needle));
 
 type Actions = {
   openApp: (app: TrackedApp) => void;
@@ -163,7 +163,11 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
   const nudge = waiting !== null && waiting >= FOLLOW_UP_AFTER_DAYS;
   const dimmed = !matchesNeedle(app, needle);
   return (
-    <div className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed && "opacity-25")} style={{ width: CARD_WIDTH }}>
+    <div
+      className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed ? "opacity-25" : app.archivedAt && "opacity-60")}
+      title={app.archivedAt ? "Archived" : undefined}
+      style={{ width: CARD_WIDTH }}
+    >
       <button
         type="button"
         onClick={() => openApp(app)}
@@ -176,6 +180,15 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
           </span>
         </div>
         <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{app.title || "No title"}</p>
+        {app.tags.length ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {app.tags.map((tag) => (
+              <span key={tag} className="rounded-md bg-card px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {app.appliedOn || app.interviewStage ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {app.appliedOn ? (

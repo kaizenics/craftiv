@@ -46,6 +46,7 @@ const fields = z.object({
     )
     .max(TRACKER_LIMITS.customFields)
     .optional(),
+  tags: z.array(z.string().trim().min(1).max(TRACKER_LIMITS.tagLength)).max(TRACKER_LIMITS.tags).optional(),
 });
 const status = z.enum(TRACKER_STATUSES);
 const boardId = z.string().min(1).max(200);
@@ -96,8 +97,46 @@ export const applicationsRouter = createTRPCRouter({
     return { id };
   }),
 
-  update: protectedProcedure.input(fields.extend({ id: z.string().min(1), boardId: boardId.optional() })).mutation(async ({ ctx, input }) => {
-    const { id, boardId: toBoard, ...changes } = input;
+  /** Adds rows from an imported spreadsheet to one tab, all or nothing, each at the bottom of its column. */
+  importMany: protectedProcedure
+    .input(
+      z.object({
+        boardId: boardId.optional(),
+        rows: z
+          .array(fields.omit({ customFields: true }).extend({ status }))
+          .min(1)
+          .max(TRACKER_LIMITS.importRows),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const limit = await enforceRouteRateLimits({
+        category: "global",
+        route: "/api/trpc/applications.importMany",
+        requestHeaders: ctx.requestHeaders,
+        userId: ctx.user.id,
+      });
+      if (!limit.allowed) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: `Rate limit exceeded. Retry after ${limit.retryAfterSeconds} second(s).` });
+      }
+      const onBoard = await resolveBoard(ctx.db, ctx.user.id, input.boardId);
+      const tops = new Map<TrackerStatus, number>();
+      const at = Date.now();
+      const values: (typeof applications.$inferInsert)[] = [];
+      for (const row of input.rows) {
+        const position = tops.get(row.status) ?? (await nextPosition(ctx.db, ctx.user.id, row.status));
+        tops.set(row.status, position + 1);
+        values.push({ ...row, id: randomUUID(), userId: ctx.user.id, boardId: onBoard, position, statusHistory: [{ status: row.status, at }] });
+      }
+      // Chunked to stay under SQLite's bound-parameter limit; the transaction keeps a failed import from leaving half its rows.
+      await ctx.db.transaction(async (tx) => {
+        for (let i = 0; i < values.length; i += 100) await tx.insert(applications).values(values.slice(i, i + 100));
+      });
+      return { count: values.length };
+    }),
+
+  update: protectedProcedure.input(fields.extend({ id: z.string().min(1), boardId: boardId.optional(), archived: z.boolean().optional() })).mutation(async ({ ctx, input }) => {
+    const { id, boardId: toBoard, archived, ...rest } = input;
+    const changes = archived === undefined ? rest : { ...rest, archivedAt: archived ? new Date() : null };
     await getOwned(ctx.db, id, ctx.user.id);
     // Moving to another tab: the card restacks in that tab's frame for its status.
     const tabMove = toBoard ? { boardId: await resolveBoard(ctx.db, ctx.user.id, toBoard), canvasX: null, canvasY: null } : {};
