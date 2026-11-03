@@ -882,6 +882,7 @@ export default function FinalResumePage() {
             {activeTab === "contentquality" && (
               <ContentQualityTab
                 stats={coreQualityStats}
+                resumeData={resumeData}
                 onOpenAssistant={() => router.push("/dashboard/ai-resume")}
                 onOpenAts={() => router.push("/dashboard/ats-checker")}
                 onRunSpellCheck={() => setActiveTab("spellcheck")}
