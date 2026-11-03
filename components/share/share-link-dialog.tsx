@@ -14,6 +14,7 @@ import {
 import { Copy, RefreshCw } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { isValidShareSlug, normalizeShareSlug } from "@/lib/share-slug";
 import { trpc } from "@/trpc/client";
 
 export type ShareableKind = "resume" | "coverLetter";
@@ -47,9 +48,27 @@ export function ShareLinkDialog({
   const regenerate = trpc.share.regenerate.useMutation();
   const [confirmingRegenerate, setConfirmingRegenerate] = useState(false);
 
+  const setSlug = trpc.share.setSlug.useMutation();
+  const [slugDraft, setSlugDraft] = useState<string | null>(null);
+
   const enabled = share.data?.enabled ?? false;
-  const token = share.data?.token ?? null;
-  const isBusy = setEnabled.isPending || regenerate.isPending;
+  // The custom link, when set, is the one to hand out; the token link keeps working beside it.
+  const token = share.data?.slug ?? share.data?.token ?? null;
+  const isBusy = setEnabled.isPending || regenerate.isPending || setSlug.isPending;
+  const slugValue = slugDraft ?? share.data?.slug ?? "";
+  const slugPreview = normalizeShareSlug(slugValue);
+  const slugInvalid = slugPreview !== "" && !isValidShareSlug(slugPreview);
+
+  const handleSaveSlug = async () => {
+    try {
+      const { slug } = await setSlug.mutateAsync({ id, slug: slugValue });
+      setSlugDraft(null);
+      await refresh();
+      toast.success(slug ? "Custom link saved." : "Custom link removed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save the link. Please try again.");
+    }
+  };
 
   const refresh = () =>
     Promise.all([
@@ -98,7 +117,10 @@ export function ShareLinkDialog({
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
-        if (!next) setConfirmingRegenerate(false);
+        if (!next) {
+          setConfirmingRegenerate(false);
+          setSlugDraft(null);
+        }
       }}
     >
       <DialogContent className="sm:max-w-md">
@@ -128,6 +150,43 @@ export function ShareLinkDialog({
                   </Button>
                 </div>
 
+                {kind === "resume" ? (
+                  <div className="space-y-1.5">
+                    <label htmlFor="share-slug" className="text-sm font-medium">
+                      Custom link
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="flex min-w-0 flex-1 items-center rounded-md border border-input bg-background pl-3 text-sm focus-within:ring-[3px] focus-within:ring-ring/50">
+                        <span className="shrink-0 text-muted-foreground">/{path}/</span>
+                        <input
+                          id="share-slug"
+                          value={slugValue}
+                          maxLength={60}
+                          placeholder="your-name"
+                          aria-invalid={slugInvalid}
+                          onChange={(event) => setSlugDraft(event.target.value)}
+                          className="h-9 min-w-0 flex-1 bg-transparent pr-3 outline-none"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleSaveSlug}
+                        disabled={isBusy || slugInvalid || slugPreview === (share.data?.slug ?? "")}
+                      >
+                        {setSlug.isPending ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {slugInvalid
+                        ? "Use 3 to 40 letters, numbers or hyphens."
+                        : slugPreview && slugPreview !== slugValue
+                          ? `Will be saved as /${path}/${slugPreview}.`
+                          : "Easier to read on a printed resume. Anyone who guesses it can open it while sharing is on."}
+                    </p>
+                  </div>
+                ) : null}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border p-3">
                     <p className="text-2xl font-semibold">{share.data?.totalViews ?? 0}</p>
@@ -147,7 +206,10 @@ export function ShareLinkDialog({
 
                 {confirmingRegenerate ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950">
-                    <p>The current link will stop working for everyone you sent it to.</p>
+                    <p>
+                      The current link{share.data?.slug ? ", including your custom link," : ""} will stop working for everyone
+                      you sent it to.
+                    </p>
                     <div className="mt-3 flex gap-2">
                       <Button size="sm" onClick={handleRegenerate} disabled={isBusy}>
                         {regenerate.isPending ? "Creating..." : "Create new link"}

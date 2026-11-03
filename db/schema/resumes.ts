@@ -40,6 +40,8 @@ export const resumes = sqliteTable("resumes", {
   
   /** Random id for the public /r/<token> link; null until sharing is first enabled. */
   shareToken: text("share_token").unique(),
+  // Optional readable alias for the token link (/r/john-smith); unique across all users.
+  shareSlug: text("share_slug").unique(),
   shareEnabled: integer("share_enabled", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

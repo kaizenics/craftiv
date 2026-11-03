@@ -6,16 +6,26 @@ import { db } from "@/db";
 import { resumes } from "@/db/schema";
 import { createPageMetadata } from "@/lib/seo";
 import { isValidShareToken } from "@/lib/share";
+import { isValidShareSlug } from "@/lib/share-slug";
 import { SharedResumeView } from "./shared-resume-view";
 
 // Always read fresh: the owner can switch sharing off at any time.
 export const dynamic = "force-dynamic";
 
-const loadSharedResume = cache(async (token: string) => {
-  if (!isValidShareToken(token)) return null;
+const columns = { title: true, templateId: true, data: true, shareToken: true } as const;
+
+/** `/r/<x>` is either the random token or the owner's custom link; both only resolve while sharing is on. */
+const loadSharedResume = cache(async (key: string) => {
+  const byToken = isValidShareToken(key)
+    ? await db.query.resumes.findFirst({
+        columns,
+        where: and(eq(resumes.shareToken, key), eq(resumes.shareEnabled, true)),
+      })
+    : undefined;
+  if (byToken || !isValidShareSlug(key)) return byToken ?? null;
   return db.query.resumes.findFirst({
-    columns: { title: true, templateId: true, data: true },
-    where: and(eq(resumes.shareToken, token), eq(resumes.shareEnabled, true)),
+    columns,
+    where: and(eq(resumes.shareSlug, key), eq(resumes.shareEnabled, true)),
   });
 });
 
@@ -40,11 +50,12 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function SharedResumePage({ params }: PageProps) {
   const { token } = await params;
   const resume = await loadSharedResume(token);
-  if (!resume?.data) notFound();
+  if (!resume?.data || !resume.shareToken) notFound();
 
   return (
     <SharedResumeView
-      token={token}
+      // Views are counted against the token, whichever link the visitor used.
+      token={resume.shareToken}
       templateId={resume.data.templateId ?? resume.templateId}
       data={resume.data}
     />
