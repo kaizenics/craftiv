@@ -11,12 +11,13 @@ import { isValidShareSlug } from "@/lib/share-slug";
  * in by custom link learns nothing that outlives that link.
  */
 export async function resolveSharedResumeId(key: string): Promise<string | null> {
+  // Token-shaped keys are only ever tokens: no fallback, so a switched-off token can't land on a custom link.
   if (isValidShareToken(key)) {
     const byToken = await db.query.resumes.findFirst({
       columns: { id: true },
       where: and(eq(resumes.shareToken, key), eq(resumes.shareEnabled, true)),
     });
-    if (byToken) return byToken.id;
+    return byToken?.id ?? null;
   }
   if (!isValidShareSlug(key)) return null;
 

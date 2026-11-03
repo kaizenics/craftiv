@@ -13,6 +13,15 @@ export function normalizeShareSlug(input: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+// Share tokens are exactly 10 letters or digits (lib/share.ts). A custom link of that shape could stand in for
+// someone's token once their sharing is off, so the two kinds of link never overlap.
+const TOKEN_SHAPED = /^[a-z0-9]{10}$/;
+
 export function isValidShareSlug(value: string): boolean {
-  return value.length >= SHARE_SLUG_LIMITS.min && value.length <= SHARE_SLUG_LIMITS.max && SLUG_PATTERN.test(value);
+  return (
+    value.length >= SHARE_SLUG_LIMITS.min &&
+    value.length <= SHARE_SLUG_LIMITS.max &&
+    SLUG_PATTERN.test(value) &&
+    !TOKEN_SHAPED.test(value)
+  );
 }
