@@ -10,8 +10,12 @@ import { Button } from '@/components/ui/button';
 import {
   AuroraDesign,
   BoldDesign,
+  MeridianDesign,
   MetroDesign,
   PulseDesign,
+  SLATE_RAIL_MM,
+  SlateDesign,
+  slateRailColor,
   ZenithDesign,
 } from '@/components/resume/template-designs';
 import Image from 'next/image';
@@ -315,6 +319,10 @@ export function ResumePreview({
         return <MetroDesign {...templateDesignProps} />;
       case 'bold':
         return <BoldDesign {...templateDesignProps} />;
+      case 'meridian':
+        return <MeridianDesign {...templateDesignProps} />;
+      case 'slate':
+        return <SlateDesign {...templateDesignProps} />;
       case 'boardroom':
         return renderBoardroomLayout();
     }
@@ -1697,7 +1705,9 @@ export function ResumePreview({
             width: '100%',
             background: isSidebarLayout
               ? `linear-gradient(to right, #374151 0mm, #374151 ${SIDEBAR_WIDTH_MM}mm, #ffffff ${SIDEBAR_WIDTH_MM}mm, #ffffff ${A4_PAGE_WIDTH_MM}mm)`
-              : undefined
+              : templateId === 'slate'
+                ? `linear-gradient(to right, ${slateRailColor(activeColor)} 0mm, ${slateRailColor(activeColor)} ${SLATE_RAIL_MM}mm, #ffffff ${SLATE_RAIL_MM}mm, #ffffff ${A4_PAGE_WIDTH_MM}mm)`
+                : undefined
           }}
         >
           {renderResumeContent()}

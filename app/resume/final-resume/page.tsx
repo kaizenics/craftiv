@@ -84,14 +84,21 @@ type LegacyLocalSnapshot = {
   selectedColor: string;
 };
 
-// Color options for templates
+// Color options for templates: darker shades first, since they print and photocopy well.
 const templateColors = [
-  "#1e3a5f",
-  "#f97316",
-  "#3b82f6",
-  "#71717a",
   "#000",
+  "#1e3a5f",
+  "#334155",
+  "#0f766e",
+  "#166534",
+  "#7f1d1d",
+  "#6d28d9",
+  "#3b82f6",
+  "#0891b2",
+  "#b45309",
+  "#f97316",
   "#f472b6",
+  "#71717a",
 ];
 const BOARDROOM_FIXED_COLOR = "#fbfbfa";
 const COLOR_LOCKED_TEMPLATE_IDS = new Set(["orbit", "boardroom", "harvard"]);
@@ -882,6 +889,7 @@ export default function FinalResumePage() {
             {activeTab === "contentquality" && (
               <ContentQualityTab
                 stats={coreQualityStats}
+                resumeData={resumeData}
                 onOpenAssistant={() => router.push("/dashboard/ai-resume")}
                 onOpenAts={() => router.push("/dashboard/ats-checker")}
                 onRunSpellCheck={() => setActiveTab("spellcheck")}
@@ -909,6 +917,7 @@ export default function FinalResumePage() {
                 onDescriptionChange={setJobTargetDescription}
                 onUseInAssistant={pushJobTargetToAssistant}
                 onUseInAts={openAtsCheckerWithTarget}
+                resumeData={resumeData}
               />
             )}
           </div>

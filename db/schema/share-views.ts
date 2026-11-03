@@ -1,7 +1,8 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { coverLetters } from "./cover-letters";
 import { resumes } from "./resumes";
+import { users } from "./users";
 
 /**
  * One row per visitor per day for a shared resume. `visitorHash` is a salted
@@ -51,5 +52,27 @@ export const coverLetterShareViews = sqliteTable(
       table.visitorHash,
       table.viewedOn,
     ),
+  ],
+);
+
+/**
+ * Custom resume links (/r/john-smith). A link stays reserved to the user who first
+ * claimed it, even after it is taken off a resume or the account is deleted, so a
+ * link someone has already printed or sent can never start showing another person.
+ * `resumeId` is the resume it currently opens; null means reserved but unused.
+ */
+export const shareSlugs = sqliteTable(
+  "share_slugs",
+  {
+    slug: text("slug").primaryKey(),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    resumeId: text("resume_id").references(() => resumes.id, { onDelete: "set null" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("share_slugs_resume_unique").on(table.resumeId),
+    index("share_slugs_user_idx").on(table.userId),
   ],
 );

@@ -9,6 +9,8 @@ import { enforceRouteRateLimits } from "@/lib/security/guards";
 import { securityRequestId } from "@/lib/security/logging";
 import { getClientIpFromHeaders } from "@/lib/security/request";
 import { isLikelyBot, isValidShareToken, shareVisitorHash, utcDay } from "@/lib/share";
+import { resolveSharedResumeId } from "@/lib/share-lookup";
+import { isValidShareSlug } from "@/lib/share-slug";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +24,9 @@ const ROUTE = "/api/share/view";
  */
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  if (!isValidShareToken(token)) {
+  const isCoverLetter = new URL(request.url).searchParams.get("kind") === "coverLetter";
+  // Resumes may also be opened by custom link; cover letters only by token.
+  if (!isValidShareToken(token) && (isCoverLetter || !isValidShareSlug(token))) {
     return Response.json({ counted: false }, { status: 404 });
   }
 
@@ -42,16 +46,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     return Response.json({ counted: false });
   }
 
-  const isCoverLetter = new URL(request.url).searchParams.get("kind") === "coverLetter";
+  const resumeId = isCoverLetter ? null : await resolveSharedResumeId(token);
   const shared = isCoverLetter
     ? await db.query.coverLetters.findFirst({
         columns: { id: true, userId: true },
         where: and(eq(coverLetters.shareToken, token), eq(coverLetters.shareEnabled, true)),
       })
-    : await db.query.resumes.findFirst({
-        columns: { id: true, userId: true },
-        where: and(eq(resumes.shareToken, token), eq(resumes.shareEnabled, true)),
-      });
+    : resumeId
+      ? await db.query.resumes.findFirst({ columns: { id: true, userId: true }, where: eq(resumes.id, resumeId) })
+      : undefined;
   if (!shared) {
     return Response.json({ counted: false }, { status: 404 });
   }
