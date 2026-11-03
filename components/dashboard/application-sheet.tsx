@@ -20,7 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
+import { ArrowUpRight, CalendarIcon, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
+import { buildIcs } from "@/lib/ics";
+import { downloadFile } from "@/lib/download";
+import { FOLLOW_UP_AFTER_DAYS } from "@/lib/tracker-stats";
 import { interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
 import { TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
@@ -111,6 +114,22 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
     onError: (e) => toast.error(e.message),
   });
   const pending = create.isPending || update.isPending || remove.isPending;
+  const [reminderDate, setReminderDate] = useState(() => {
+    // A week after the application date, the same nudge the board gives; a week from today without one.
+    const start = draft?.appliedOn ? new Date(`${draft.appliedOn}T00:00:00`) : new Date();
+    start.setDate(start.getDate() + FOLLOW_UP_AFTER_DAYS);
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+  });
+  const addReminder = () => {
+    const job = [form.title, form.company].filter(Boolean).join(" at ") || "this application";
+    const ics = buildIcs({
+      uid: `${form.id}-${reminderDate}`,
+      date: reminderDate,
+      title: `Follow up: ${job}`,
+      description: [form.contact && `Contact: ${form.contact}`, form.postingUrl].filter(Boolean).join("\n"),
+    });
+    downloadFile(`follow-up-${reminderDate}.ics`, ics, "text/calendar;charset=utf-8");
+  };
 
   const set = <K extends keyof ApplicationDraft>(key: K, value: ApplicationDraft[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const setCustom = (index: number, patch: Partial<CustomField>) =>
@@ -358,6 +377,26 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
                 )}
                 Prep for this interview
               </Button>
+            </div>
+          ) : null}
+
+          {!isNew ? (
+            <div className="grid gap-2 rounded-xl bg-muted/60 p-4">
+              <Label htmlFor="app-reminder">Calendar reminder</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="app-reminder"
+                  type="date"
+                  className="bg-card"
+                  value={reminderDate}
+                  onChange={(event) => setReminderDate(event.target.value)}
+                />
+                <Button variant="outline" className="bg-card" disabled={!reminderDate} onClick={addReminder}>
+                  <CalendarIcon className="size-4" aria-hidden="true" />
+                  Add to calendar
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Downloads a file that Google Calendar, Apple Calendar or Outlook opens.</p>
             </div>
           ) : null}
 

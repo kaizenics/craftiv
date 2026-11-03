@@ -13,6 +13,7 @@ import {
 import { Download, MoreVertical, Upload } from "@/components/ui/icons";
 import type { TrackedApp } from "@/components/dashboard/application-canvas";
 import { parseCsv, rowsToApplications, toCsv } from "@/lib/tracker-csv";
+import { downloadFile } from "@/lib/download";
 import { trpc } from "@/trpc/client";
 
 // Far above any real tracker; stops a wrong file from freezing the tab while it parses.
@@ -32,15 +33,12 @@ export function TrackerMenu({ boardId, boardName, apps }: Props) {
     onError: (error) => toast.error(error.message),
   });
 
-  const exportCsv = () => {
-    const blob = new Blob([toCsv(apps)], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${boardName.replace(/[^\w-]+/g, "-").toLowerCase() || "applications"}-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportCsv = () =>
+    downloadFile(
+      `${boardName.replace(/[^\w-]+/g, "-").toLowerCase() || "applications"}-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCsv(apps),
+      "text/csv;charset=utf-8",
+    );
 
   const importFile = async (file: File) => {
     if (file.size > MAX_FILE_BYTES) {
