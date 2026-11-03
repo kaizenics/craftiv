@@ -13,9 +13,9 @@ import {
 } from '@/lib/types/resume';
 
 /**
- * Document designs for Aurora, Zenith, Pulse, Metro and Bold.
+ * Document designs for Aurora, Zenith, Pulse, Metro, Bold, Meridian and Slate.
  *
- * These five share one section engine so spacing, hierarchy and wording stay
+ * These share one section engine so spacing, hierarchy and wording stay
  * consistent, and differ in the parts a recruiter actually notices: the
  * masthead, the column structure, the section headings and how an experience
  * entry is set. Everything is plain DOM — the PDF export clones the preview and
@@ -1115,6 +1115,141 @@ export function BoldDesign({ data, design, accent, showPhoto = false }: Template
             education: 'stacked',
           }}
           keys={sectionKeys(data)}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Meridian ────────────────────────────────────────────────────────────────
+
+/**
+ * Centred single column: the name and contact line sit on the page's axis and each
+ * heading is framed by hairlines to either side. Calm, symmetrical, one reading order.
+ */
+export function MeridianDesign({ data, design, accent, showPhoto = false }: TemplateDesignProps) {
+  const heading = (title: string) => (
+    <div
+      className="flex items-center gap-3"
+      style={{ marginBottom: `${design.paragraphSpacing}px` }}
+    >
+      <span className="flex-1" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: HAIRLINE }} />
+      <h2
+        className="text-[0.76em] font-semibold uppercase tracking-[0.26em]"
+        style={{ color: accent }}
+      >
+        {title}
+      </h2>
+      <span className="flex-1" style={{ borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: HAIRLINE }} />
+    </div>
+  );
+
+  return (
+    <div className="bg-white" style={pageStyle(design)}>
+      <header className="flex flex-col items-center px-12 pb-6 pt-11 text-center">
+        <Photo data={data} show={showPhoto} size={72} rounded="full" />
+        <h1
+          className={cn(
+            'text-[2.2em] font-semibold leading-[1.1] tracking-tight text-zinc-900',
+            showPhoto && data.contact.photoUrl && 'mt-4',
+          )}
+        >
+          {fullName(data)}
+        </h1>
+        {data.contact.desiredJobTitle && (
+          <p className="mt-1.5 text-[1em] text-zinc-600">{data.contact.desiredJobTitle}</p>
+        )}
+        <ContactLine data={data} className="mt-2.5" />
+        <AccentBar className="mt-5" color={accent} width="56px" height="2px" radius="2px" />
+      </header>
+
+      <div className="px-14 pb-10 pt-2">
+        <SectionBlocks
+          kit={{
+            data,
+            design,
+            accent,
+            heading,
+            density: 'main',
+            education: 'stacked',
+            skills: 'inline',
+          }}
+          keys={sectionKeys(data)}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Slate ───────────────────────────────────────────────────────────────────
+
+/**
+ * Left rail: a tinted reference column holds contact, skills and lists beside a wide
+ * reading column, with the experience set on a date rail. Dense without feeling boxed.
+ */
+export const SLATE_RAIL_MM = 68;
+
+/** The rail's tint. The page behind the design paints it, so it runs the full height of every page. */
+export const slateRailColor = (accent: string) => `color-mix(in srgb, ${accent} 6%, white)`;
+
+export function SlateDesign({ data, design, accent, showPhoto = false }: TemplateDesignProps) {
+  const mainHeading = (title: string) => (
+    <h2
+      className="border-b pb-1 text-[0.78em] font-bold uppercase tracking-[0.16em] text-zinc-900"
+      style={{ borderColor: accent, marginBottom: `${design.paragraphSpacing}px` }}
+    >
+      {title}
+    </h2>
+  );
+
+  const sideHeading = (title: string) => (
+    <h2
+      className="text-[0.72em] font-bold uppercase tracking-[0.2em]"
+      style={{ color: accent, marginBottom: `${Math.max(6, design.paragraphSpacing - 2)}px` }}
+    >
+      {title}
+    </h2>
+  );
+
+  const base = { data, design, accent, education: 'stacked' as const };
+  const contact = [data.contact.email, data.contact.phone].filter(Boolean) as string[];
+
+  return (
+    <div className="grid" style={{ ...pageStyle(design), gridTemplateColumns: `${SLATE_RAIL_MM}mm 1fr` }}>
+      <aside className="px-8 py-11">
+        <Photo data={data} show={showPhoto} size={84} rounded="sm" />
+        {contact.length > 0 && (
+          <div style={{ marginTop: showPhoto && data.contact.photoUrl ? '20px' : 0, marginBottom: `${design.sectionSpacing}px` }}>
+            {sideHeading('Contact')}
+            <div className="space-y-1 text-[0.9em] text-zinc-700">
+              {contact.map((item) => (
+                <p key={item} className="break-all">
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+        <SectionBlocks
+          kit={{ ...base, heading: sideHeading, density: 'side', skills: 'stack' }}
+          keys={sectionKeys(data, SIDE_COLUMN_KEYS)}
+        />
+      </aside>
+
+      <div className="px-10 py-11">
+        <header style={{ marginBottom: `${design.sectionSpacing + 4}px` }}>
+          <h1 className="text-[2.2em] font-bold leading-[1.05] tracking-tight text-zinc-900">
+            {fullName(data)}
+          </h1>
+          {data.contact.desiredJobTitle && (
+            <p className="mt-2 text-[0.88em] font-semibold uppercase tracking-[0.18em]" style={{ color: accent }}>
+              {data.contact.desiredJobTitle}
+            </p>
+          )}
+        </header>
+        <SectionBlocks
+          kit={{ ...base, heading: mainHeading, density: 'main', experience: 'date-rail', education: 'date-rail' }}
+          keys={sectionKeys(data, MAIN_COLUMN_KEYS)}
         />
       </div>
     </div>

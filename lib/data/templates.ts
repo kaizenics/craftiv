@@ -347,4 +347,22 @@ export const templates: TemplateData[] = [
     category: ["all", "professional", "ats"],
     layout: "classic",
   },
+  {
+    id: "meridian",
+    name: "Meridian",
+    description: "A centred single column with hairline-framed headings. Calm, balanced and easy to scan.",
+    thumbnail: "/templates/meridian.png",
+    primaryColor: "#0f766e",
+    category: ["all", "simple", "professional", "ats"],
+    layout: "minimal",
+  },
+  {
+    id: "slate",
+    name: "Slate",
+    description: "A tinted left rail for contact and skills beside a wide column with dates lined up down the page.",
+    thumbnail: "/templates/slate.png",
+    primaryColor: "#334155",
+    category: ["all", "modern", "professional"],
+    layout: "sidebar",
+  },
 ];
