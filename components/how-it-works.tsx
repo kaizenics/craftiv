@@ -68,7 +68,7 @@ export function HowItWorks() {
   }, []);
 
   return (
-    <section id="how-it-works" className="scroll-mt-24 border-t border-zinc-200 bg-zinc-50 py-24 font-sans lg:py-32">
+    <section id="how-it-works" className="scroll-mt-24 bg-zinc-50 py-24 font-sans lg:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 className="max-w-2xl font-display text-4xl font-semibold tracking-tight text-balance text-zinc-900 sm:text-5xl">
           <BlurInText text="From job post to offer, in one place" />
