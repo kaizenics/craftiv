@@ -1,31 +1,23 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { resumes } from "@/db/schema";
 import { createPageMetadata } from "@/lib/seo";
-import { isValidShareToken } from "@/lib/share";
-import { isValidShareSlug } from "@/lib/share-slug";
+import { resolveSharedResumeId } from "@/lib/share-lookup";
 import { SharedResumeView } from "./shared-resume-view";
 
 // Always read fresh: the owner can switch sharing off at any time.
 export const dynamic = "force-dynamic";
 
-const columns = { title: true, templateId: true, data: true, shareToken: true } as const;
-
 /** `/r/<x>` is either the random token or the owner's custom link; both only resolve while sharing is on. */
 const loadSharedResume = cache(async (key: string) => {
-  const byToken = isValidShareToken(key)
-    ? await db.query.resumes.findFirst({
-        columns,
-        where: and(eq(resumes.shareToken, key), eq(resumes.shareEnabled, true)),
-      })
-    : undefined;
-  if (byToken || !isValidShareSlug(key)) return byToken ?? null;
+  const id = await resolveSharedResumeId(key);
+  if (!id) return null;
   return db.query.resumes.findFirst({
-    columns,
-    where: and(eq(resumes.shareSlug, key), eq(resumes.shareEnabled, true)),
+    columns: { title: true, templateId: true, data: true },
+    where: eq(resumes.id, id),
   });
 });
 
@@ -50,12 +42,12 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function SharedResumePage({ params }: PageProps) {
   const { token } = await params;
   const resume = await loadSharedResume(token);
-  if (!resume?.data || !resume.shareToken) notFound();
+  if (!resume?.data) notFound();
 
   return (
     <SharedResumeView
-      // Views are counted against the token, whichever link the visitor used.
-      token={resume.shareToken}
+      // The key the visitor used, never the token behind a custom link: the view counter resolves either.
+      token={token}
       templateId={resume.data.templateId ?? resume.templateId}
       data={resume.data}
     />
