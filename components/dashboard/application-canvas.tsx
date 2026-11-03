@@ -46,6 +46,10 @@ export type TrackedApp = Outputs["applications"]["list"][number];
 type BoardRow = Outputs["board"]["list"][number];
 export type HunterCard = { id: string; status: TrackerStatus };
 
+/** True when the filter is empty or matches one of the card's searchable fields. */
+export const matchesNeedle = (app: TrackedApp, needle: string) =>
+  !needle || [app.company, app.title, app.location, app.salary].some((value) => value.toLowerCase().includes(needle));
+
 type Actions = {
   openApp: (app: TrackedApp) => void;
   addApp: (status: TrackerStatus) => void;
@@ -157,7 +161,7 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
   const { app } = data;
   const waiting = daysWaiting(app);
   const nudge = waiting !== null && waiting >= FOLLOW_UP_AFTER_DAYS;
-  const dimmed = needle && ![app.company, app.title, app.location, app.salary].some((value) => value.toLowerCase().includes(needle));
+  const dimmed = !matchesNeedle(app, needle);
   return (
     <div className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed && "opacity-25")} style={{ width: CARD_WIDTH }}>
       <button

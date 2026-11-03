@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, LayoutTemplate, Plus, Search, Target } from "@/components/ui/icons";
+import { ArrowUpRight, Kanban, LayoutTemplate, Plus, Search, Table, Target } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
 import { ApplicationSheet, emptyDraft, type ApplicationDraft } from "@/components/dashboard/application-sheet";
 import { ApplicationCanvas, type TrackedApp } from "@/components/dashboard/application-canvas";
+import { ApplicationTable } from "@/components/dashboard/application-table";
 import { BoardTemplatesDialog } from "@/components/dashboard/board-templates-dialog";
 import { BoardTabs } from "@/components/dashboard/board-tabs";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
@@ -22,28 +24,32 @@ import { TRACKER_STATUS_FROM_MATCH, TRACKER_STATUS_LABELS, type TrackerStatus } 
 import { trpc } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 
-// "Show Job Hunter jobs" is off unless the user turns it on; the choice is remembered per browser.
+// "Show Job Hunter jobs" and the board/table choice are remembered per browser.
 const SHOW_HUNTER_KEY = "craftiv:tracker-show-hunter";
-const hunterListeners = new Set<() => void>();
-const readShowHunter = () => {
+const VIEW_KEY = "craftiv:tracker-view";
+type TrackerView = "board" | "table";
+const prefListeners = new Set<() => void>();
+const readPref = (key: string) => {
   try {
-    return window.localStorage.getItem(SHOW_HUNTER_KEY) === "1";
+    return window.localStorage.getItem(key);
   } catch {
-    return false;
+    return null;
   }
 };
-const subscribeShowHunter = (listener: () => void) => {
-  hunterListeners.add(listener);
-  return () => hunterListeners.delete(listener);
+const subscribePref = (listener: () => void) => {
+  prefListeners.add(listener);
+  return () => prefListeners.delete(listener);
 };
-const writeShowHunter = (value: boolean) => {
+const writePref = (key: string, value: string) => {
   try {
-    window.localStorage.setItem(SHOW_HUNTER_KEY, value ? "1" : "0");
+    window.localStorage.setItem(key, value);
   } catch {
     // Storage blocked: the switch still works for this visit.
   }
-  hunterListeners.forEach((listener) => listener());
+  prefListeners.forEach((listener) => listener());
 };
+const readShowHunter = () => readPref(SHOW_HUNTER_KEY) === "1";
+const readView = (): TrackerView => (readPref(VIEW_KEY) === "table" ? "table" : "board");
 
 export default function ApplicationsPage() {
   const router = useRouter();
@@ -55,9 +61,13 @@ export default function ApplicationsPage() {
   const boardId = activeBoard?.id ?? "";
   const appsQuery = trpc.applications.list.useQuery({ boardId }, { enabled: Boolean(boardId) });
   const boardQuery = trpc.board.list.useQuery({ boardId }, { enabled: Boolean(boardId) });
-  const storedShowHunter = useSyncExternalStore(subscribeShowHunter, readShowHunter, () => false);
+  const storedShowHunter = useSyncExternalStore(subscribePref, readShowHunter, () => false);
   const [showHunterOverride, setShowHunterOverride] = useState<boolean | null>(null);
-  const showHunter = showHunterOverride ?? storedShowHunter;
+  const storedView = useSyncExternalStore(subscribePref, readView, () => "board" as const);
+  const [viewOverride, setViewOverride] = useState<TrackerView | null>(null);
+  const view = viewOverride ?? storedView;
+  // The table lists tracked applications only, so Job Hunter jobs show on the board alone.
+  const showHunter = (showHunterOverride ?? storedShowHunter) && view === "board";
   const matchesQuery = trpc.jobHunter.listMatches.useQuery({ limit: 100 }, { enabled: showHunter });
   const preppedQuery = trpc.jobHunter.preppedMatchIds.useQuery(undefined, {
     enabled: showHunter,
@@ -195,33 +205,55 @@ export default function ApplicationsPage() {
               <Input
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
-                placeholder="Filter cards"
+                placeholder={view === "table" ? "Filter rows" : "Filter cards"}
                 aria-label="Filter applications"
                 className="h-9 w-40 pl-9 sm:w-56"
               />
             </div>
           ) : null}
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5">
-            <Switch
-              checked={showHunter}
-              onCheckedChange={(next) => {
-                setShowHunterOverride(next);
-                writeShowHunter(next);
-              }}
-              aria-label="Show Job Hunter jobs"
-            />
-            {/* Phones get the icon alone so the header stays one row; the switch keeps its full accessible name. */}
-            <Target className="size-4 text-primary sm:hidden" aria-hidden="true" />
-            <span className="hidden text-sm font-medium text-foreground sm:inline">Show Job Hunter jobs</span>
-          </label>
-          <Button variant="outline" size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => setTemplatesOpen(true)}>
-            <LayoutTemplate className="size-4" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">Templates</span>
-          </Button>
+          {view === "board" ? (
+            <>
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5">
+                <Switch
+                  checked={showHunter}
+                  onCheckedChange={(next) => {
+                    setShowHunterOverride(next);
+                    writePref(SHOW_HUNTER_KEY, next ? "1" : "0");
+                  }}
+                  aria-label="Show Job Hunter jobs"
+                />
+                {/* Phones get the icon alone so the header stays one row; the switch keeps its full accessible name. */}
+                <Target className="size-4 text-primary sm:hidden" aria-hidden="true" />
+                <span className="hidden text-sm font-medium text-foreground sm:inline">Show Job Hunter jobs</span>
+              </label>
+              <Button variant="outline" size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => setTemplatesOpen(true)}>
+                <LayoutTemplate className="size-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only">Templates</span>
+              </Button>
+            </>
+          ) : null}
           <Button size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => openDraft(emptyDraft())}>
             <Plus className="size-4" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">New application</span>
           </Button>
+          <Tabs
+            value={view}
+            onValueChange={(next) => {
+              setViewOverride(next as TrackerView);
+              writePref(VIEW_KEY, next);
+            }}
+          >
+            <TabsList aria-label="Applications view">
+              <TabsTrigger value="board" aria-label="Board view">
+                <Kanban className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Board</span>
+              </TabsTrigger>
+              <TabsTrigger value="table" aria-label="Table view">
+                <Table className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Table</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </header>
 
@@ -230,6 +262,14 @@ export default function ApplicationsPage() {
       <div className="relative min-h-0 flex-1">
         {!boardId || appsQuery.isLoading || boardQuery.isLoading ? (
           <Skeleton className="h-full w-full rounded-none" />
+        ) : view === "table" ? (
+          <ApplicationTable
+            boardId={boardId}
+            apps={apps}
+            needle={needle}
+            openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })}
+            addApp={() => openDraft(emptyDraft())}
+          />
         ) : (
           <ApplicationCanvas
             key={boardId}
