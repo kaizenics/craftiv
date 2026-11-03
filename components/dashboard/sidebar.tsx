@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
 import {
@@ -304,10 +303,6 @@ export function DashboardSidebar() {
           </div>
         </div>
       ) : null}
-
-      <div className="px-3 pt-3">
-        <ThemeToggle />
-      </div>
 
       {/* Signed-in account: who you are, and the way to your profile. */}
       {account ? (

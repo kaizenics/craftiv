@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { DEFAULT_USER_PREFERENCES, type UserPreferences } from "@/lib/user-preferences";
 import { trpc } from "@/trpc/client";
 
@@ -69,6 +70,15 @@ export default function PreferencesSettings() {
     <div className="py-8">
       <h1 className="font-display text-3xl font-bold text-foreground">Preferences</h1>
       <p className="text-muted-foreground mt-1 mb-8">How Craftiv behaves while you work</p>
+
+      {/* Applies as soon as it is picked, so it sits outside the form and its Save button. */}
+      <div className="mb-4 flex flex-col gap-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div>
+          <p className="text-sm text-foreground">Theme</p>
+          <p className="text-xs text-muted-foreground">Choose light, dark, or match your device</p>
+        </div>
+        <ThemeToggle className="w-full sm:w-72" />
+      </div>
 
       <form
         onSubmit={(event) => {
