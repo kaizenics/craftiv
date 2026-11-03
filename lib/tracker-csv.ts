@@ -1,4 +1,4 @@
-import { TRACKER_LIMITS, TRACKER_STATUSES, TRACKER_STATUS_LABELS, type TrackerStatus } from "@/lib/types/applications";
+import { parseTags, TRACKER_LIMITS, TRACKER_STATUSES, TRACKER_STATUS_LABELS, type TrackerStatus } from "@/lib/types/applications";
 
 /** One application as it travels through a CSV file. */
 export type CsvApplication = {
@@ -11,15 +11,17 @@ export type CsvApplication = {
   contact: string;
   postingUrl: string;
   notes: string;
+  tags: string[];
 };
 
-type TextField = Exclude<keyof CsvApplication, "status">;
+type TextField = Exclude<keyof CsvApplication, "status" | "tags">;
 
 // Export order, plus the header names people use in their own trackers so an existing sheet imports as is.
 const COLUMNS: { field: keyof CsvApplication; label: string; aliases: string[] }[] = [
   { field: "company", label: "Company", aliases: ["employer", "organization", "organisation"] },
   { field: "title", label: "Role", aliases: ["title", "job title", "position", "job"] },
   { field: "status", label: "Status", aliases: ["stage"] },
+  { field: "tags", label: "Tags", aliases: ["tag", "labels", "label"] },
   { field: "appliedOn", label: "Applied on", aliases: ["date applied", "applied", "application date", "date"] },
   { field: "location", label: "Location", aliases: ["city"] },
   { field: "salary", label: "Salary", aliases: ["pay", "compensation"] },
@@ -47,7 +49,9 @@ function escapeCell(value: string) {
 
 /** A CSV file Excel and Google Sheets open directly; the BOM makes Excel read it as UTF-8. */
 export function toCsv(rows: CsvApplication[]) {
-  const lines = [COLUMNS.map((c) => c.label), ...rows.map((row) => COLUMNS.map((c) => (c.field === "status" ? TRACKER_STATUS_LABELS[row.status] : row[c.field])))];
+  const cellFor = (row: CsvApplication, field: keyof CsvApplication) =>
+    field === "status" ? TRACKER_STATUS_LABELS[row.status] : field === "tags" ? row.tags.join("; ") : row[field];
+  const lines = [COLUMNS.map((c) => c.label), ...rows.map((row) => COLUMNS.map((c) => cellFor(row, c.field)))];
   return `﻿${lines.map((line) => line.map(escapeCell).join(",")).join("\r\n")}\r\n`;
 }
 
@@ -125,6 +129,7 @@ export function rowsToApplications(table: string[][]) {
       contact: text("contact"),
       postingUrl: toUrl(value("postingUrl")),
       notes: text("notes"),
+      tags: parseTags(value("tags")),
       status: "saved",
     };
     if (!row.company && !row.title) {

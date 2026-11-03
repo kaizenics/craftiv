@@ -25,7 +25,7 @@ import { buildIcs } from "@/lib/ics";
 import { downloadFile } from "@/lib/download";
 import { FOLLOW_UP_AFTER_DAYS } from "@/lib/tracker-stats";
 import { interviewPrepHref } from "@/components/dashboard/interview-prep-dialog";
-import { TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
+import { parseTags, TRACKER_LIMITS, TRACKER_STATUS_LABELS, TRACKER_STATUSES, type CustomField, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
 
 export type ApplicationDraft = {
@@ -45,6 +45,7 @@ export type ApplicationDraft = {
   // Set when the card is linked to a Job Hunter job, which is what interview prep runs on.
   matchId?: string | null;
   customFields: CustomField[];
+  tags: string[];
 };
 
 export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft => ({
@@ -60,6 +61,7 @@ export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft =>
   salary: "",
   location: "",
   customFields: [],
+  tags: [],
 });
 
 type ApplicationSheetProps = {
@@ -76,6 +78,8 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
   const utils = trpc.useUtils();
   const [form, setForm] = useState<ApplicationDraft>(draft ?? emptyDraft());
   const [targetBoard, setTargetBoard] = useState(boardId);
+  // Typed as free text and split on save, so a trailing comma does not vanish mid-word.
+  const [tagText, setTagText] = useState((draft?.tags ?? []).join(", "));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
   const [prepResume, setPrepResume] = useState("");
@@ -146,7 +150,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
     const { id, status, followUpEmail, ...rest } = form;
     void followUpEmail; // AI-written, saved by its own mutation, never sent back through update.
     // Unnamed custom fields are dropped rather than rejected.
-    const payload = { ...rest, customFields: rest.customFields.filter((field) => field.label.trim()) };
+    const payload = { ...rest, tags: parseTags(tagText), customFields: rest.customFields.filter((field) => field.label.trim()) };
     if (!id) {
       create.mutate({ ...payload, status, boardId: targetBoard });
       return;
@@ -255,6 +259,17 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
           <div className="grid gap-4 sm:grid-cols-2">
             {textField("salary", "Salary", "$60k to $70k")}
             {textField("location", "Location", "Remote, Manila...")}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="app-tags">Tags</Label>
+            <Input
+              id="app-tags"
+              value={tagText}
+              maxLength={TRACKER_LIMITS.tags * (TRACKER_LIMITS.tagLength + 2)}
+              placeholder="remote, referral, dream job"
+              onChange={(event) => setTagText(event.target.value)}
+            />
           </div>
 
           <div className="grid gap-1.5">

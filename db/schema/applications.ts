@@ -41,6 +41,7 @@ export const applications = sqliteTable(
     // The last AI follow-up email, kept so a paid draft is never lost.
     followUpEmail: text("follow_up_email").notNull().default(""),
     customFields: text("custom_fields", { mode: "json" }).$type<CustomField[]>().notNull().default([]),
+    tags: text("tags", { mode: "json" }).$type<string[]>().notNull().default([]),
     // Set when the card was created from a Job Hunter match; the match may later be deleted.
     matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
     createdAt: integer("created_at", { mode: "timestamp" })

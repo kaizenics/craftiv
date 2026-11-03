@@ -7,15 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpRight, ChevronDown, ChevronUp, Maximize, Plus } from "@/components/ui/icons";
 import { matchesNeedle, type TrackedApp } from "@/components/dashboard/application-canvas";
-import { TRACKER_LIMITS, TRACKER_STATUSES, TRACKER_STATUS_LABELS, TRACKER_STATUS_STYLES, type TrackerStatus } from "@/lib/types/applications";
+import { parseTags, TRACKER_LIMITS, TRACKER_STATUSES, TRACKER_STATUS_LABELS, TRACKER_STATUS_STYLES, type TrackerStatus } from "@/lib/types/applications";
 import { trpc } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 
-type Field = "company" | "title" | "location" | "salary" | "contact" | "appliedOn" | "postingUrl";
+type Field = "company" | "title" | "tags" | "location" | "salary" | "contact" | "appliedOn" | "postingUrl";
+
+// Tags edit as one comma-separated cell, the way people already type them into a sheet.
+const cellValue = (app: TrackedApp, field: Field) => (field === "tags" ? app.tags.join(", ") : app[field]);
 
 const COLUMNS: { field: Field; label: string; width: string; type?: "date" | "url" }[] = [
   { field: "company", label: "Company", width: "w-48" },
   { field: "title", label: "Role", width: "w-60" },
+  { field: "tags", label: "Tags", width: "w-48" },
   { field: "appliedOn", label: "Applied on", width: "w-40", type: "date" },
   { field: "location", label: "Location", width: "w-40" },
   { field: "salary", label: "Salary", width: "w-32" },
@@ -57,9 +61,10 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
     if (sort.key === "status") return filtered.sort((a, b) => byStatus(a, b) * sort.dir);
     const key = sort.key;
     return filtered.sort((a, b) => {
+      const [x, y] = [cellValue(a, key), cellValue(b, key)];
       // Empty cells stay at the bottom in both directions.
-      if (!a[key] || !b[key]) return Number(!a[key]) - Number(!b[key]);
-      return a[key].localeCompare(b[key], undefined, { numeric: true, sensitivity: "base" }) * sort.dir;
+      if (!x || !y) return Number(!x) - Number(!y);
+      return x.localeCompare(y, undefined, { numeric: true, sensitivity: "base" }) * sort.dir;
     });
   }, [apps, needle, sort]);
 
@@ -82,6 +87,13 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
     utils.applications.list.setData({ boardId }, (prev) => prev?.map((item) => (item.id === id ? { ...item, ...changes } : item)));
 
   const commit = (app: TrackedApp, field: Field, value: string) => {
+    if (field === "tags") {
+      const tags = parseTags(value);
+      if (tags.join(", ") === app.tags.join(", ")) return;
+      patch(app.id, { tags });
+      update.mutate({ id: app.id, tags });
+      return;
+    }
     const next = field === "appliedOn" ? value : value.trim();
     if (next === app[field]) return;
     patch(app.id, { [field]: next });
@@ -140,7 +152,7 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
                 </Select>
               </td>
               {COLUMNS.map((column, col) => {
-                const value = app[column.field];
+                const value = cellValue(app, column.field);
                 return (
                   <td key={column.field} className={cn(cell, "relative p-0")}>
                     <input

@@ -12,12 +12,13 @@ const app = (overrides: Partial<CsvApplication> = {}): CsvApplication => ({
   contact: "",
   postingUrl: "",
   notes: "",
+  tags: [],
   ...overrides,
 });
 
 describe("tracker CSV", () => {
   it("round-trips commas, quotes, line breaks and formula-looking cells", () => {
-    const original = app({ company: 'Acme, "Inc"', notes: "line one\nline two", salary: "=1+1", contact: "+63 912" });
+    const original = app({ company: 'Acme, "Inc"', notes: "line one\nline two", salary: "=1+1", contact: "+63 912", tags: ["remote", "referral"] });
     const { rows } = rowsToApplications(parseCsv(toCsv([original])));
     expect(rows).toEqual([original]);
   });
@@ -32,6 +33,11 @@ describe("tracker CSV", () => {
     expect(skipped).toBe(0);
     expect(rows[0]).toMatchObject({ company: "Globex", title: "PM", status: "interview", appliedOn: "2026-03-14", postingUrl: "https://www.globex.com/jobs" });
     expect(rows[1]).toMatchObject({ company: "Initech", status: "saved" });
+  });
+
+  it("splits tags on commas or semicolons and drops duplicates", () => {
+    const { rows } = rowsToApplications(parseCsv('Company,Tags\nAcme,"remote, Referral; remote"\n'));
+    expect(rows[0].tags).toEqual(["remote", "Referral"]);
   });
 
   it("drops links that are not web links", () => {

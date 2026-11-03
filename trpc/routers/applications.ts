@@ -46,6 +46,7 @@ const fields = z.object({
     )
     .max(TRACKER_LIMITS.customFields)
     .optional(),
+  tags: z.array(z.string().trim().min(1).max(TRACKER_LIMITS.tagLength)).max(TRACKER_LIMITS.tags).optional(),
 });
 const status = z.enum(TRACKER_STATUSES);
 const boardId = z.string().min(1).max(200);

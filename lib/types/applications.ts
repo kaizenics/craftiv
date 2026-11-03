@@ -39,7 +39,19 @@ export const TRACKER_LIMITS = {
   customLabel: 60,
   customValue: 500,
   importRows: 500,
+  tags: 10,
+  tagLength: 30,
 } as const;
+
+/** "remote, Referral; remote" → ["remote", "Referral"]: trimmed, de-duplicated ignoring case, within the limits. */
+export function parseTags(text: string): string[] {
+  const seen = new Set<string>();
+  return text
+    .split(/[,;]/)
+    .map((tag) => tag.trim().slice(0, TRACKER_LIMITS.tagLength))
+    .filter((tag) => tag && !seen.has(tag.toLowerCase()) && seen.add(tag.toLowerCase()))
+    .slice(0, TRACKER_LIMITS.tags);
+}
 
 export type CustomField = { label: string; value: string };
 
