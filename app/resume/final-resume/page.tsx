@@ -910,6 +910,7 @@ export default function FinalResumePage() {
                 onDescriptionChange={setJobTargetDescription}
                 onUseInAssistant={pushJobTargetToAssistant}
                 onUseInAts={openAtsCheckerWithTarget}
+                resumeData={resumeData}
               />
             )}
           </div>
