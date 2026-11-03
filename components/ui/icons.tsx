@@ -22,6 +22,8 @@ import {
   SquareUnlock02Icon,
   SentIcon,
   StickyNote01Icon,
+  KanbanIcon,
+  Table01Icon,
   TextFontIcon,
   DashboardSquare01Icon,
   Location01Icon,
@@ -149,6 +151,8 @@ export const Lock = createIcon(LockIcon);
 export const Unlock = createIcon(SquareUnlock02Icon);
 export const Send = createIcon(SentIcon);
 export const StickyNote = createIcon(StickyNote01Icon);
+export const Kanban = createIcon(KanbanIcon);
+export const Table = createIcon(Table01Icon);
 export const Type = createIcon(TextFontIcon);
 export const Frame = createIcon(DashboardSquare01Icon);
 export const MapPin = createIcon(Location01Icon);

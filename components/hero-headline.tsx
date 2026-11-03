@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 
 const LINES = ["Find your next", "job, faster."];
 const MAX_SIZE = 152;
-const LEADING = 0.95;
+// Below ~1.0 the "y" descender in "your" runs into the "f" hook in "faster".
+const LEADING = 1.05;
 // TechText centres the text block in its box and fits the ink into 66% of the height,
 // so the box is taller than the type.
-const BOX = 3.1;
+const BOX = 3.6;
 const STAGGER = 0.04;
 const INTRO_SECONDS = 0.1 + (LINES.join("").replace(/ /g, "").length - 1) * STAGGER + 1.1;
 // Each line starts where the previous one's letters end, so the stagger reads as one sentence.
