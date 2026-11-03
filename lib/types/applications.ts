@@ -38,6 +38,7 @@ export const TRACKER_LIMITS = {
   customFields: 12,
   customLabel: 60,
   customValue: 500,
+  importRows: 500,
 } as const;
 
 export type CustomField = { label: string; value: string };

@@ -15,6 +15,7 @@ import { TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
 import { ApplicationSheet, emptyDraft, type ApplicationDraft } from "@/components/dashboard/application-sheet";
 import { ApplicationCanvas, type TrackedApp } from "@/components/dashboard/application-canvas";
 import { ApplicationTable } from "@/components/dashboard/application-table";
+import { TrackerMenu } from "@/components/dashboard/tracker-menu";
 import { BoardTemplatesDialog } from "@/components/dashboard/board-templates-dialog";
 import { BoardTabs } from "@/components/dashboard/board-tabs";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
@@ -232,6 +233,7 @@ export default function ApplicationsPage() {
               </Button>
             </>
           ) : null}
+          {activeBoard ? <TrackerMenu boardId={boardId} boardName={activeBoard.name} apps={apps} /> : null}
           <Button size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => openDraft(emptyDraft())}>
             <Plus className="size-4" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">New application</span>
