@@ -24,6 +24,7 @@ import {
   StickyNote01Icon,
   KanbanIcon,
   Table01Icon,
+  Archive01Icon,
   TextFontIcon,
   DashboardSquare01Icon,
   Location01Icon,
@@ -153,6 +154,7 @@ export const Send = createIcon(SentIcon);
 export const StickyNote = createIcon(StickyNote01Icon);
 export const Kanban = createIcon(KanbanIcon);
 export const Table = createIcon(Table01Icon);
+export const Archive = createIcon(Archive01Icon);
 export const Type = createIcon(TextFontIcon);
 export const Frame = createIcon(DashboardSquare01Icon);
 export const MapPin = createIcon(Location01Icon);

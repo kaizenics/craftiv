@@ -163,7 +163,11 @@ function CardNode({ data }: NodeProps<Node<{ app: TrackedApp }>>) {
   const nudge = waiting !== null && waiting >= FOLLOW_UP_AFTER_DAYS;
   const dimmed = !matchesNeedle(app, needle);
   return (
-    <div className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed && "opacity-25")} style={{ width: CARD_WIDTH }}>
+    <div
+      className={cn("group rounded-xl bg-muted shadow-sm transition-opacity", dimmed ? "opacity-25" : app.archivedAt && "opacity-60")}
+      title={app.archivedAt ? "Archived" : undefined}
+      style={{ width: CARD_WIDTH }}
+    >
       <button
         type="button"
         onClick={() => openApp(app)}

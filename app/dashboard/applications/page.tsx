@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 
 // "Show Job Hunter jobs" and the board/table choice are remembered per browser.
 const SHOW_HUNTER_KEY = "craftiv:tracker-show-hunter";
+const SHOW_ARCHIVED_KEY = "craftiv:tracker-show-archived";
 const VIEW_KEY = "craftiv:tracker-view";
 const TRACKER_VIEWS = ["board", "table", "calendar"] as const;
 type TrackerView = (typeof TRACKER_VIEWS)[number];
@@ -52,6 +53,7 @@ const writePref = (key: string, value: string) => {
   prefListeners.forEach((listener) => listener());
 };
 const readShowHunter = () => readPref(SHOW_HUNTER_KEY) === "1";
+const readShowArchived = () => readPref(SHOW_ARCHIVED_KEY) === "1";
 const readView = (): TrackerView => TRACKER_VIEWS.find((view) => view === readPref(VIEW_KEY)) ?? "board";
 
 export default function ApplicationsPage() {
@@ -106,6 +108,11 @@ export default function ApplicationsPage() {
   });
 
   const apps = useMemo(() => appsQuery.data ?? [], [appsQuery.data]);
+  const storedShowArchived = useSyncExternalStore(subscribePref, readShowArchived, () => false);
+  const [showArchivedOverride, setShowArchivedOverride] = useState<boolean | null>(null);
+  const showArchived = showArchivedOverride ?? storedShowArchived;
+  // Archived cards leave every view but still count in the stats, which describe the whole search.
+  const visibleApps = useMemo(() => (showArchived ? apps : apps.filter((app) => !app.archivedAt)), [apps, showArchived]);
   const trackedMatchIds = useMemo(() => new Set(apps.map((app) => app.matchId).filter(Boolean)), [apps]);
   // Scraped jobs already copied into the tracker are not shown twice.
   const hunterJobs = useMemo(
@@ -261,7 +268,19 @@ export default function ApplicationsPage() {
               </Button>
             </>
           ) : null}
-          {activeBoard ? <TrackerMenu boardId={boardId} boardName={activeBoard.name} apps={apps} /> : null}
+          {activeBoard ? (
+            <TrackerMenu
+              boardId={boardId}
+              boardName={activeBoard.name}
+              apps={visibleApps}
+              archivedCount={apps.filter((app) => app.archivedAt).length}
+              showArchived={showArchived}
+              onShowArchived={(next) => {
+                setShowArchivedOverride(next);
+                writePref(SHOW_ARCHIVED_KEY, next ? "1" : "0");
+              }}
+            />
+          ) : null}
           <Button size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => openDraft(emptyDraft())}>
             <Plus className="size-4" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">New application</span>
@@ -297,11 +316,11 @@ export default function ApplicationsPage() {
         {!boardId || appsQuery.isLoading || boardQuery.isLoading ? (
           <Skeleton className="h-full w-full rounded-none" />
         ) : view === "calendar" ? (
-          <ApplicationCalendar apps={apps} needle={needle} openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })} />
+          <ApplicationCalendar apps={visibleApps} needle={needle} openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })} />
         ) : view === "table" ? (
           <ApplicationTable
             boardId={boardId}
-            apps={apps}
+            apps={visibleApps}
             needle={needle}
             openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })}
             addApp={() => openDraft(emptyDraft())}
@@ -310,7 +329,7 @@ export default function ApplicationsPage() {
           <ApplicationCanvas
             key={boardId}
             boardId={boardId}
-            apps={apps}
+            apps={visibleApps}
             items={boardQuery.data ?? []}
             hunter={hunterCards}
             needle={needle}

@@ -131,7 +131,7 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
         </thead>
         <tbody>
           {rows.map((app, row) => (
-            <tr key={app.id} className="group">
+            <tr key={app.id} className={cn("group", app.archivedAt && "opacity-60")} title={app.archivedAt ? "Archived" : undefined}>
               <td className={cn(cell, "sticky left-0 bg-muted text-center text-xs tabular-nums text-muted-foreground")}>{row + 1}</td>
               <td className={cn(cell, "px-1.5")}>
                 <Select value={app.status} onValueChange={(value) => setStatus(app, value as TrackerStatus)}>

@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowUpRight, CalendarIcon, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
+import { Archive, ArrowUpRight, CalendarIcon, Copy, Loader2, Mail, Plus, Trash2, Users, X } from "@/components/ui/icons";
 import { buildIcs } from "@/lib/ics";
 import { downloadFile } from "@/lib/download";
 import { FOLLOW_UP_AFTER_DAYS } from "@/lib/tracker-stats";
@@ -46,6 +46,7 @@ export type ApplicationDraft = {
   matchId?: string | null;
   customFields: CustomField[];
   tags: string[];
+  archivedAt?: Date | null;
 };
 
 export const emptyDraft = (status: TrackerStatus = "saved"): ApplicationDraft => ({
@@ -117,7 +118,11 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
     },
     onError: (e) => toast.error(e.message),
   });
-  const pending = create.isPending || update.isPending || remove.isPending;
+  const archive = trpc.applications.update.useMutation({
+    onSuccess: (_, input) => done(input.archived ? "Archived. Turn on Show archived to see it again." : "Back on the board."),
+    onError: (e) => toast.error(e.message),
+  });
+  const pending = create.isPending || update.isPending || remove.isPending || archive.isPending;
   const [reminderDate, setReminderDate] = useState(() => {
     // A week after the application date, the same nudge the board gives; a week from today without one.
     const start = draft?.appliedOn ? new Date(`${draft.appliedOn}T00:00:00`) : new Date();
@@ -147,7 +152,8 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
       toast.error("Add at least a company or a job title.");
       return;
     }
-    const { id, status, followUpEmail, ...rest } = form;
+    const { id, status, followUpEmail, archivedAt, ...rest } = form;
+    void archivedAt; // Changed only by the Archive button.
     void followUpEmail; // AI-written, saved by its own mutation, never sent back through update.
     // Unnamed custom fields are dropped rather than rejected.
     const payload = { ...rest, tags: parseTags(tagText), customFields: rest.customFields.filter((field) => field.label.trim()) };
@@ -471,7 +477,18 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
             {!isNew ? (
               <Button
                 variant="ghost"
-                className="ml-auto text-muted-foreground hover:text-destructive-surface-foreground"
+                className="ml-auto text-muted-foreground"
+                disabled={pending}
+                onClick={() => form.id && archive.mutate({ id: form.id, archived: !form.archivedAt })}
+              >
+                <Archive className="size-4" aria-hidden="true" />
+                {form.archivedAt ? "Unarchive" : "Archive"}
+              </Button>
+            ) : null}
+            {!isNew ? (
+              <Button
+                variant="ghost"
+                className="text-muted-foreground hover:text-destructive-surface-foreground"
                 disabled={pending}
                 onClick={() => setConfirmDelete(true)}
               >

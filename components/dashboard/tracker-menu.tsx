@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Download, MoreVertical, Upload } from "@/components/ui/icons";
@@ -19,10 +21,18 @@ import { trpc } from "@/trpc/client";
 // Far above any real tracker; stops a wrong file from freezing the tab while it parses.
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
-type Props = { boardId: string; boardName: string; apps: TrackedApp[] };
+type Props = {
+  boardId: string;
+  boardName: string;
+  /** The cards on screen; the export matches what the user sees. */
+  apps: TrackedApp[];
+  archivedCount: number;
+  showArchived: boolean;
+  onShowArchived: (show: boolean) => void;
+};
 
-/** Less-used tracker actions: spreadsheet export and import for the open tab. */
-export function TrackerMenu({ boardId, boardName, apps }: Props) {
+/** Less-used tracker actions: spreadsheet export and import, and archived cards, for the open tab. */
+export function TrackerMenu({ boardId, boardName, apps, archivedCount, showArchived, onShowArchived }: Props) {
   const utils = trpc.useUtils();
   const fileRef = useRef<HTMLInputElement>(null);
   const importMany = trpc.applications.importMany.useMutation({
@@ -81,6 +91,10 @@ export function TrackerMenu({ boardId, boardName, apps }: Props) {
             <Upload className="size-4" aria-hidden="true" />
             Import from CSV
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem checked={showArchived} onCheckedChange={onShowArchived}>
+            Show archived{archivedCount ? ` (${archivedCount})` : ""}
+          </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <input

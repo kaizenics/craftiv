@@ -134,8 +134,9 @@ export const applicationsRouter = createTRPCRouter({
       return { count: values.length };
     }),
 
-  update: protectedProcedure.input(fields.extend({ id: z.string().min(1), boardId: boardId.optional() })).mutation(async ({ ctx, input }) => {
-    const { id, boardId: toBoard, ...changes } = input;
+  update: protectedProcedure.input(fields.extend({ id: z.string().min(1), boardId: boardId.optional(), archived: z.boolean().optional() })).mutation(async ({ ctx, input }) => {
+    const { id, boardId: toBoard, archived, ...rest } = input;
+    const changes = archived === undefined ? rest : { ...rest, archivedAt: archived ? new Date() : null };
     await getOwned(ctx.db, id, ctx.user.id);
     // Moving to another tab: the card restacks in that tab's frame for its status.
     const tabMove = toBoard ? { boardId: await resolveBoard(ctx.db, ctx.user.id, toBoard), canvasX: null, canvasY: null } : {};
