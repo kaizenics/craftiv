@@ -4,6 +4,7 @@ import { useMemo, useState, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowUpRight, ChevronDown, ChevronUp, Maximize, Plus } from "@/components/ui/icons";
 import { matchesNeedle, type TrackedApp } from "@/components/dashboard/application-canvas";
@@ -155,11 +156,20 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
                 const value = cellValue(app, column.field);
                 return (
                   <td key={column.field} className={cn(cell, "relative p-0")}>
+                    {column.type === "date" ? (
+                      <DatePicker
+                        value={value}
+                        placeholder=""
+                        aria-label={`${column.label} for ${app.company || "application"}`}
+                        onChange={(next) => commit(app, column.field, next)}
+                        className="h-9 rounded-none border-0 bg-transparent px-3 hover:bg-muted/60 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary dark:bg-transparent"
+                      />
+                    ) : (
                     <input
                       // Remounts when saved data changes, so the cell never shows a stale value.
                       key={value}
                       data-cell={`${row}:${col}`}
-                      type={column.type === "date" ? "date" : "text"}
+                      type="text"
                       defaultValue={value}
                       maxLength={column.type === "url" ? TRACKER_LIMITS.url : TRACKER_LIMITS.text}
                       aria-label={`${column.label} for ${app.company || "application"}`}
@@ -170,6 +180,7 @@ export function ApplicationTable({ boardId, apps, needle, openApp, addApp }: Pro
                         column.type === "url" && value && "pr-8 text-primary",
                       )}
                     />
+                    )}
                     {column.type === "url" && /^https?:\/\//i.test(value) ? (
                       <a
                         href={value}

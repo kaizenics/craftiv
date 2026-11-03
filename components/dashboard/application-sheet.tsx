@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -214,7 +215,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="app-date">Application date</Label>
-              <Input id="app-date" type="date" value={form.appliedOn} onChange={(event) => set("appliedOn", event.target.value)} />
+              <DatePicker id="app-date" value={form.appliedOn} onChange={(value) => set("appliedOn", value)} />
             </div>
           </div>
 
@@ -405,13 +406,7 @@ export function ApplicationSheet({ draft, boardId, boards, onClose }: Applicatio
             <div className="grid gap-2 rounded-xl bg-muted/60 p-4">
               <Label htmlFor="app-reminder">Calendar reminder</Label>
               <div className="flex gap-2">
-                <Input
-                  id="app-reminder"
-                  type="date"
-                  className="bg-card"
-                  value={reminderDate}
-                  onChange={(event) => setReminderDate(event.target.value)}
-                />
+                <DatePicker id="app-reminder" className="bg-card" value={reminderDate} onChange={setReminderDate} />
                 <Button variant="outline" className="bg-card" disabled={!reminderDate} onClick={addReminder}>
                   <CalendarIcon className="size-4" aria-hidden="true" />
                   Add to calendar
