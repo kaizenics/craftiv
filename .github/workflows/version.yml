@@ -28,7 +28,12 @@ jobs:
             next=$current
           else
             IFS=. read -r major minor patch <<< "${last#v}"
-            if git log "$last"..HEAD --format=%s | grep -qE '^feat(\(.+\))?!?:'; then
+            log=$(git log "$last"..HEAD --format='%s%n%b')
+            # A breaking change ("feat!:", "fix!:" or a BREAKING CHANGE footer) always bumps the minor.
+            # During the 0.x beta a plain feat is only a patch, so minors stay deliberate.
+            if echo "$log" | grep -qE '^[a-z]+(\(.+\))?!:|^BREAKING[ -]CHANGE:'; then
+              next="$major.$((minor + 1)).0"
+            elif [ "$major" -ge 1 ] && echo "$log" | grep -qE '^feat(\(.+\))?:'; then
               next="$major.$((minor + 1)).0"
             else
               next="$major.$minor.$((patch + 1))"

@@ -136,7 +136,12 @@ The repo ships a [`Dockerfile`](Dockerfile) that builds Next.js in `standalone` 
 
 ## Releases
 
-Versions follow [Semantic Versioning](https://semver.org) and are automated by [`.github/workflows/version.yml`](.github/workflows/version.yml). Every push to `main` bumps the version from the commit messages since the last tag (`feat` → minor, anything else → patch), updates `package.json`, tags it and publishes a GitHub prerelease.
+Versions follow [Semantic Versioning](https://semver.org) and are automated by [`.github/workflows/version.yml`](.github/workflows/version.yml). Every push to `main` bumps the version from the commit messages since the last tag, updates `package.json`, tags it and publishes a GitHub prerelease:
+
+| Commit | During the `0.x` beta | From `1.0.0` |
+|---|---|---|
+| `fix:`, `docs:`, `chore:`, `feat:` … | patch (`0.2.0` → `0.2.1`) | `feat` → minor, others → patch |
+| `feat!:` / `fix!:` or a `BREAKING CHANGE:` footer | minor (`0.2.0` → `0.3.0`) | minor until a deliberate `1.0`/`2.0` |
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org): `feat(scope): …`, `fix(scope): …`, `chore: …`.
 
