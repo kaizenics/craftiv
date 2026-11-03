@@ -43,6 +43,19 @@ function waitingSince(card: Card): number | undefined {
   return Number.isNaN(typed) ? card.statusHistory.findLast((entry) => entry.status === "applied")?.at : typed;
 }
 
+/**
+ * Applications sent since Monday 00:00 local time, for the weekly goal. A card counts on its typed
+ * application date, else on the day it first entered a sent column.
+ */
+export function sentThisWeek(cards: Card[], now = new Date()): number {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+  return cards.filter((card) => {
+    const typed = card.appliedOn ? new Date(`${card.appliedOn}T00:00:00`).getTime() : NaN;
+    const sentAt = Number.isNaN(typed) ? card.statusHistory.find((entry) => SENT.includes(entry.status))?.at : typed;
+    return sentAt !== undefined && sentAt >= start && sentAt <= now.getTime();
+  }).length;
+}
+
 /** Whole days an Applied card has waited for a reply. */
 export function daysWaiting(card: Card, now = Date.now()): number | null {
   const since = waitingSince(card);

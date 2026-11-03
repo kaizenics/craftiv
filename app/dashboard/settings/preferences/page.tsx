@@ -6,10 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { DEFAULT_USER_PREFERENCES, type UserPreferences } from "@/lib/user-preferences";
+import { Input } from "@/components/ui/input";
+import { DEFAULT_USER_PREFERENCES, MAX_WEEKLY_APPLICATION_GOAL, type UserPreferences } from "@/lib/user-preferences";
 import { trpc } from "@/trpc/client";
 
-const PREFERENCE_ROWS: { key: keyof UserPreferences; label: string; description: string }[] = [
+type SwitchKey = { [K in keyof UserPreferences]: UserPreferences[K] extends boolean ? K : never }[keyof UserPreferences];
+
+const PREFERENCE_ROWS: { key: SwitchKey; label: string; description: string }[] = [
   {
     key: "autoSaveDrafts",
     label: "Auto-save drafts",
@@ -114,6 +117,30 @@ export default function PreferencesSettings() {
               />
             </div>
           ))}
+          <div className="flex items-center justify-between gap-4 py-2">
+            <div>
+              <label htmlFor="weekly-goal" className="text-sm text-foreground">
+                Weekly application goal
+              </label>
+              <p className="text-xs text-muted-foreground">Shows your progress on the Applications page. 0 turns it off.</p>
+            </div>
+            <Input
+              id="weekly-goal"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={MAX_WEEKLY_APPLICATION_GOAL}
+              className="w-20 text-right"
+              value={preferences.weeklyApplicationGoal}
+              onChange={(event) => {
+                const goal = Math.round(Number(event.target.value) || 0);
+                setPreferences((current) => ({
+                  ...current,
+                  weeklyApplicationGoal: Math.min(MAX_WEEKLY_APPLICATION_GOAL, Math.max(0, goal)),
+                }));
+              }}
+            />
+          </div>
         </div>
 
         <Button

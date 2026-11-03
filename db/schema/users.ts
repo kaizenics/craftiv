@@ -38,6 +38,8 @@ export const users = sqliteTable("users", {
   compactEditor: integer("compact_editor", { mode: "boolean" })
     .notNull()
     .default(false),
+  // Applications to send per week, shown as progress on the tracker; 0 means no goal.
+  weeklyApplicationGoal: integer("weekly_application_goal").notNull().default(0),
   /**
    * JSON array of the guided tours this account has finished or skipped, e.g.
    * `["dashboard","ats-checker"]`. See lib/onboarding.ts for the keys.

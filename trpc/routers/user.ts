@@ -108,6 +108,7 @@ export const userRouter = createTRPCRouter({
         defaultSpellCheck: true,
         showResumeScore: true,
         compactEditor: true,
+        weeklyApplicationGoal: true,
       },
       where: eq(users.id, ctx.user.id),
     });
@@ -318,6 +319,7 @@ export const userRouter = createTRPCRouter({
           defaultSpellCheck: input.defaultSpellCheck,
           showResumeScore: input.showResumeScore,
           compactEditor: input.compactEditor,
+          weeklyApplicationGoal: input.weeklyApplicationGoal,
           updatedAt: new Date(),
         })
         .where(eq(users.id, ctx.user.id));

@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowUpRight, CalendarIcon, Kanban, LayoutTemplate, Plus, Search, Table, Target } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
+import { sentThisWeek, TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
 import { ApplicationSheet, emptyDraft, type ApplicationDraft } from "@/components/dashboard/application-sheet";
 import { ApplicationCanvas, type TrackedApp } from "@/components/dashboard/application-canvas";
 import { ApplicationTable } from "@/components/dashboard/application-table";
@@ -116,6 +116,10 @@ export default function ApplicationsPage() {
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
   const stats = useMemo(() => trackerStats(apps), [apps]);
+  // The goal is per user, so progress counts every tab, not just the open one.
+  const goal = trpc.user.preferences.useQuery().data?.weeklyApplicationGoal ?? 0;
+  const allAppsQuery = trpc.applications.list.useQuery(undefined, { enabled: goal > 0 });
+  const sentWeek = useMemo(() => sentThisWeek(allAppsQuery.data ?? []), [allAppsQuery.data]);
 
   // One-click column change (the "Move to Ghosted" nudge); the card restacks in its new frame.
   const ghost = useCallback(
@@ -180,6 +184,28 @@ export default function ApplicationsPage() {
     <div className="fixed inset-x-0 bottom-0 top-16 z-30 flex flex-col bg-card lg:left-64 lg:top-0">
       <header className="flex items-center gap-x-4 gap-y-2 bg-card px-4 pt-3 pb-1 sm:flex-wrap sm:px-6">
         <h1 className="font-display text-xl font-bold text-foreground">Applications</h1>
+        {goal > 0 && allAppsQuery.data ? (
+          <Link
+            href="/dashboard/settings/preferences"
+            title="Change your weekly goal"
+            className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-1 hover:bg-muted"
+          >
+            <span className="text-xs text-muted-foreground">This week</span>
+            <span
+              role="progressbar"
+              aria-label="Weekly application goal"
+              aria-valuemin={0}
+              aria-valuemax={goal}
+              aria-valuenow={Math.min(sentWeek, goal)}
+              className="h-1.5 w-14 overflow-hidden rounded-full bg-background"
+            >
+              <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (sentWeek / goal) * 100)}%` }} />
+            </span>
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {sentWeek}/{goal}
+            </span>
+          </Link>
+        ) : null}
         {apps.length > 0 ? (
           <dl className="hidden flex-wrap gap-1.5 md:flex">
             {[
