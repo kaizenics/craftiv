@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { daysWaiting, trackerStats } from "@/lib/tracker-stats";
+import { daysWaiting, followUpDue, trackerStats } from "@/lib/tracker-stats";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -52,4 +52,10 @@ test("daysWaiting prefers the typed application date and ignores other columns",
   assert.equal(daysWaiting({ status: "applied", appliedOn: "2026-10-10", statusHistory: [] }, now), 10);
   assert.equal(daysWaiting({ status: "applied", appliedOn: "", statusHistory: [{ status: "applied", at: now - 3 * DAY }] }, now), 3);
   assert.equal(daysWaiting({ status: "interview", appliedOn: "2026-10-10", statusHistory: [] }, now), null);
+});
+
+test("followUpDue is a week after the typed application date, and only while still in Applied", () => {
+  const due = followUpDue({ status: "applied", appliedOn: "2026-03-14", statusHistory: [{ status: "applied", at: 0 }] });
+  assert.equal(due?.toDateString(), new Date(2026, 2, 21).toDateString());
+  assert.equal(followUpDue({ status: "interview", appliedOn: "2026-03-14", statusHistory: [] }), null);
 });

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, Kanban, LayoutTemplate, Plus, Search, Table, Target } from "@/components/ui/icons";
+import { ArrowUpRight, CalendarIcon, Kanban, LayoutTemplate, Plus, Search, Table, Target } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TIMED_STAGES, trackerStats } from "@/lib/tracker-stats";
@@ -16,6 +16,7 @@ import { ApplicationSheet, emptyDraft, type ApplicationDraft } from "@/component
 import { ApplicationCanvas, type TrackedApp } from "@/components/dashboard/application-canvas";
 import { ApplicationTable } from "@/components/dashboard/application-table";
 import { TrackerMenu } from "@/components/dashboard/tracker-menu";
+import { ApplicationCalendar } from "@/components/dashboard/application-calendar";
 import { BoardTemplatesDialog } from "@/components/dashboard/board-templates-dialog";
 import { BoardTabs } from "@/components/dashboard/board-tabs";
 import { ApplyAssistDialog } from "@/components/dashboard/apply-assist-dialog";
@@ -28,7 +29,8 @@ import { cn } from "@/lib/utils";
 // "Show Job Hunter jobs" and the board/table choice are remembered per browser.
 const SHOW_HUNTER_KEY = "craftiv:tracker-show-hunter";
 const VIEW_KEY = "craftiv:tracker-view";
-type TrackerView = "board" | "table";
+const TRACKER_VIEWS = ["board", "table", "calendar"] as const;
+type TrackerView = (typeof TRACKER_VIEWS)[number];
 const prefListeners = new Set<() => void>();
 const readPref = (key: string) => {
   try {
@@ -50,7 +52,7 @@ const writePref = (key: string, value: string) => {
   prefListeners.forEach((listener) => listener());
 };
 const readShowHunter = () => readPref(SHOW_HUNTER_KEY) === "1";
-const readView = (): TrackerView => (readPref(VIEW_KEY) === "table" ? "table" : "board");
+const readView = (): TrackerView => TRACKER_VIEWS.find((view) => view === readPref(VIEW_KEY)) ?? "board";
 
 export default function ApplicationsPage() {
   const router = useRouter();
@@ -254,6 +256,10 @@ export default function ApplicationsPage() {
                 <Table className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Table</span>
               </TabsTrigger>
+              <TabsTrigger value="calendar" aria-label="Calendar view">
+                <CalendarIcon className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Calendar</span>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -264,6 +270,8 @@ export default function ApplicationsPage() {
       <div className="relative min-h-0 flex-1">
         {!boardId || appsQuery.isLoading || boardQuery.isLoading ? (
           <Skeleton className="h-full w-full rounded-none" />
+        ) : view === "calendar" ? (
+          <ApplicationCalendar apps={apps} needle={needle} openApp={(app) => openDraft({ ...app, customFields: app.customFields ?? [] })} />
         ) : view === "table" ? (
           <ApplicationTable
             boardId={boardId}
