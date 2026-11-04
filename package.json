@@ -70,6 +70,7 @@
     "pdfjs-dist": "^6.2.108",
     "playwright": "^1.58.2",
     "playwright-core": "^1.58.2",
+    "qrcode": "1.5.4",
     "radix-ui": "^1.4.3",
     "react": "19.2.1",
     "react-day-picker": "^9.14.0",
@@ -86,6 +87,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.10.8",
