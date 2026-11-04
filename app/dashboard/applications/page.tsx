@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ const SHOW_ARCHIVED_KEY = "craftiv:tracker-show-archived";
 const VIEW_KEY = "craftiv:tracker-view";
 const TRACKER_VIEWS = ["board", "table", "calendar"] as const;
 type TrackerView = (typeof TRACKER_VIEWS)[number];
+const SHORTCUT_VIEWS: Record<string, TrackerView> = { b: "board", t: "table", c: "calendar" };
 const prefListeners = new Set<() => void>();
 const readPref = (key: string) => {
   try {
@@ -121,6 +122,30 @@ export default function ApplicationsPage() {
   );
 
   const [filter, setFilter] = useState("");
+  const filterRef = useRef<HTMLInputElement>(null);
+
+  const changeView = (next: TrackerView) => {
+    setViewOverride(next);
+    writePref(VIEW_KEY, next);
+  };
+
+  // Single-key shortcuts, ignored while typing or while a sheet, dialog or menu is open.
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+    if (document.querySelector("[role='dialog'], [role='menu'], [role='listbox']")) return;
+    const key = event.key.toLowerCase();
+    if (key === "n") openDraft(emptyDraft());
+    else if (key === "/" && filterRef.current) filterRef.current.focus();
+    else if (key in SHORTCUT_VIEWS) changeView(SHORTCUT_VIEWS[key]);
+    else return;
+    event.preventDefault();
+  });
+  useEffect(() => {
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, []);
   const needle = filter.trim().toLowerCase();
   const stats = useMemo(() => trackerStats(apps), [apps]);
   // The goal is per user, so progress counts every tab, not just the open one.
@@ -239,6 +264,8 @@ export default function ApplicationsPage() {
                 aria-hidden="true"
               />
               <Input
+                ref={filterRef}
+                aria-keyshortcuts="/"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
                 placeholder={view === "table" ? "Filter rows" : "Filter cards"}
@@ -281,27 +308,24 @@ export default function ApplicationsPage() {
               }}
             />
           ) : null}
-          <Button size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" onClick={() => openDraft(emptyDraft())}>
+          <Button size="sm" className="size-9 p-0 sm:h-8 sm:w-auto sm:px-3" title="New application (N)" aria-keyshortcuts="N" onClick={() => openDraft(emptyDraft())}>
             <Plus className="size-4" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">New application</span>
           </Button>
           <Tabs
             value={view}
-            onValueChange={(next) => {
-              setViewOverride(next as TrackerView);
-              writePref(VIEW_KEY, next);
-            }}
+            onValueChange={(next) => changeView(next as TrackerView)}
           >
             <TabsList aria-label="Applications view">
-              <TabsTrigger value="board" aria-label="Board view">
+              <TabsTrigger value="board" aria-label="Board view" title="Board (B)" aria-keyshortcuts="B">
                 <Kanban className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Board</span>
               </TabsTrigger>
-              <TabsTrigger value="table" aria-label="Table view">
+              <TabsTrigger value="table" aria-label="Table view" title="Table (T)" aria-keyshortcuts="T">
                 <Table className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Table</span>
               </TabsTrigger>
-              <TabsTrigger value="calendar" aria-label="Calendar view">
+              <TabsTrigger value="calendar" aria-label="Calendar view" title="Calendar (C)" aria-keyshortcuts="C">
                 <CalendarIcon className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Calendar</span>
               </TabsTrigger>
