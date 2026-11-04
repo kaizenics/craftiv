@@ -896,12 +896,15 @@ export const jobHunterRouter = createTRPCRouter({
       // not worth the user's credits, so it is refunded and nothing is written.
       if (!result.accepted) {
         await refund("no_improvement");
+        const invented = [...new Set(result.factCheckReverted.flatMap((item) => item.figures))];
+        // Say why when the fact check is what left nothing worth keeping.
+        const reason = invented.length
+          ? `Part of the rewrite added figures that aren't in your resume (${invented.slice(0, 5).join(", ")}), so those sections kept your wording, and the rest did not improve your match score`
+          : "The rewrite did not improve your match score";
         return {
           accepted: false as const,
           impact: result.impact,
-          message: charged
-            ? "The rewrite did not improve your match score, so nothing was saved and your credits were returned."
-            : "The rewrite did not improve your match score, so nothing was saved.",
+          message: charged ? `${reason}, so nothing was saved and your credits were returned.` : `${reason}, so nothing was saved.`,
         };
       }
 
@@ -971,6 +974,7 @@ export const jobHunterRouter = createTRPCRouter({
         impact: result.impact,
         changes: result.changes,
         summaryOfChanges: result.summaryOfChanges,
+        factCheckReverted: result.factCheckReverted,
         tailoredResumeId,
         tailoredCoverLetterId,
       };
