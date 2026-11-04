@@ -1,7 +1,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { db } from "@/db";
 import { dispatchDueHunts } from "@/lib/job-hunter/runner";
+import { refreshAtsBoards } from "@/lib/job-sources/ats-boards";
 import { securityLog } from "@/lib/security/logging";
 
 /**
@@ -31,6 +33,9 @@ export const maxDuration = 60;
 const WALL_CLOCK_BUDGET_MS = 45_000;
 // Run 5 at a time (HUNT_CONCURRENCY in the runner); the budget stops claiming early if hunts are slow.
 const MAX_HUNTS_PER_TICK = 50;
+// Boards are refreshed in parallel and each request times out at 20s; at a tick every
+// few minutes, 3 a tick refreshes all ~70 boards well inside their 6-hour window.
+const ATS_BOARDS_PER_TICK = 3;
 const MIN_SECRET_LENGTH = 32;
 
 /**
@@ -60,14 +65,23 @@ async function handle(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    const result = await dispatchDueHunts({
-      limit: MAX_HUNTS_PER_TICK,
-      budgetMs: WALL_CLOCK_BUDGET_MS,
+    // Top up the shared company-board cache first, so this tick's hunts can find
+    // what it brings in. Bounded by its own request timeouts; a failure here must
+    // not cost the hunts their run.
+    const atsBoards = await refreshAtsBoards(db, { maxBoards: ATS_BOARDS_PER_TICK }).catch((error: unknown) => {
+      securityLog("ats_boards_refresh_failed", { message: error instanceof Error ? error.message : "unknown" }, "warn");
+      return null;
     });
 
-    securityLog("job_hunter_cron_tick", { ...result, elapsedMs: Date.now() - startedAt });
+    const result = await dispatchDueHunts({
+      limit: MAX_HUNTS_PER_TICK,
+      // What the refresh used comes out of the hunts' share, so the tick stays inside maxDuration.
+      budgetMs: Math.max(5_000, WALL_CLOCK_BUDGET_MS - (Date.now() - startedAt)),
+    });
 
-    return NextResponse.json({ ...result, elapsedMs: Date.now() - startedAt });
+    securityLog("job_hunter_cron_tick", { ...result, atsBoards, elapsedMs: Date.now() - startedAt });
+
+    return NextResponse.json({ ...result, atsBoards, elapsedMs: Date.now() - startedAt });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
     securityLog("job_hunter_cron_failed", { message }, "error");
