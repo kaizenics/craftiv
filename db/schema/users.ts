@@ -40,6 +40,8 @@ export const users = sqliteTable("users", {
     .default(false),
   // Applications to send per week, shown as progress on the tracker; 0 means no goal.
   weeklyApplicationGoal: integer("weekly_application_goal").notNull().default(0),
+  // The code in this user's invite link (/sign-up?ref=CODE); created the first time they open it.
+  referralCode: text("referral_code").unique(),
   /**
    * JSON array of the guided tours this account has finished or skipped, e.g.
    * `["dashboard","ats-checker"]`. See lib/onboarding.ts for the keys.
