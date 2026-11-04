@@ -22,16 +22,26 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
  * The job-search loop as a checklist that ticks itself off from the account's own data.
  * The first unfinished step is the only one expanded; once every step is done it hides.
  */
-export function ActionPlan({ resumeCount, resumesLoading }: { resumeCount: number; resumesLoading: boolean }) {
+export function ActionPlan({
+  resumeCount,
+  sharedCount,
+  resumesLoading,
+}: {
+  resumeCount: number;
+  sharedCount: number;
+  resumesLoading: boolean;
+}) {
   const { data: stats, isLoading: statsLoading } = trpc.jobHunter.stats.useQuery();
+  const { data: tracked, isLoading: trackedLoading } = trpc.applications.list.useQuery();
 
-  if (resumesLoading || statsLoading || !stats) {
+  if (resumesLoading || statsLoading || trackedLoading || !stats) {
     // Sized like the loaded checklist (phone / desktop), so the cards below do not jump when it arrives.
-    return <Skeleton className="h-[452px] w-full rounded-2xl sm:h-[376px]" />;
+    return <Skeleton className="h-[504px] w-full rounded-2xl sm:h-[428px]" />;
   }
 
   const { byStatus, total, tailored, bestScore } = stats;
-  const moved = byStatus.applied + byStatus.interviewing + byStatus.offer + byStatus.rejected;
+  // A job counts as tracked once it is on the Applications board or has moved past saved in Job Hunter.
+  const trackedCount = (tracked?.length ?? 0) + byStatus.applied + byStatus.interviewing + byStatus.offer + byStatus.rejected;
 
   const steps: Step[] = [
     {
@@ -62,12 +72,20 @@ export function ActionPlan({ resumeCount, resumesLoading }: { resumeCount: numbe
       href: "/dashboard/job-hunter",
     },
     {
-      title: "Track applications",
-      done: moved > 0,
-      meta: `${moved} applied`,
-      detail: "Move each job from saved to applied, interviewing and offer, so you always know where things stand.",
-      cta: "Update statuses",
-      href: "/dashboard/job-hunter",
+      title: "Track your first job",
+      done: trackedCount > 0,
+      meta: `${trackedCount} tracked`,
+      detail: "Add the jobs you are going for to the tracker and move them from saved to applied, interview and offer.",
+      cta: "Open Applications",
+      href: "/dashboard/applications",
+    },
+    {
+      title: "Share a link",
+      done: sharedCount > 0,
+      meta: `${sharedCount} shared`,
+      detail: "Send your resume as a link instead of an attachment and see when it was opened. Use Share on any resume below.",
+      cta: "Go to your resumes",
+      href: "#documents",
     },
   ];
 
