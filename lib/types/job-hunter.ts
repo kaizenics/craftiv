@@ -12,7 +12,7 @@
  * lib/job-sources/onlinejobs-ph.ts for why. The registry's `pollableSources()`
  * is the enforcement point.
  */
-export const JOB_SOURCE_IDS = ["manual", "clipper", "onlinejobs_ph", "remotive"] as const;
+export const JOB_SOURCE_IDS = ["manual", "clipper", "onlinejobs_ph", "remotive", "ats_boards"] as const;
 export type JobSourceId = (typeof JOB_SOURCE_IDS)[number];
 
 /** How a posting was acquired. Determines what Craftiv may legally do with it. */

@@ -32,6 +32,7 @@ export type TailorOutcome =
       impact: AtsImpact;
       changes: { label: string; before: string; after: string }[];
       summaryOfChanges: string[];
+      factCheckReverted: { label: string; figures: string[] }[];
       tailoredResumeId: string;
       tailoredCoverLetterId: string | null;
     }
@@ -143,6 +144,22 @@ export function JobTailorDialog({
                   <li key={line}>{line}</li>
                 ))}
               </ul>
+            ) : null}
+
+            {outcome.factCheckReverted.length > 0 ? (
+              <div className="rounded-lg bg-muted p-3 text-sm">
+                <p className="font-medium text-foreground">Kept your original wording in {outcome.factCheckReverted.length === 1 ? "one section" : `${outcome.factCheckReverted.length} sections`}</p>
+                <p className="mt-1 text-muted-foreground">
+                  The rewrite added figures that aren&apos;t in your resume, so they weren&apos;t used. Add them yourself if they&apos;re true.
+                </p>
+                <ul className="mt-2 space-y-0.5 text-muted-foreground">
+                  {outcome.factCheckReverted.map((item) => (
+                    <li key={item.label}>
+                      <span className="text-foreground">{item.label}:</span> {item.figures.join(", ")}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
 
             {outcome.changes.map((change) => (

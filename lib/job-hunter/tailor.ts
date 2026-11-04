@@ -5,6 +5,7 @@ import { callWithFallback, extractJsonObject, type AiConnection } from "@/lib/ai
 import { buildJobTailorPrompt } from "@/lib/prompts";
 import type { ResumeDataJSON } from "@/db/schema/resumes";
 import { evaluateTailoring } from "./scoring";
+import { knownFigures, unsupportedFigures } from "./fact-check";
 
 /**
  * Tailoring: the only part of the Job Hunter that calls a model.
@@ -51,6 +52,12 @@ export type TailorChange = {
   after: string;
 };
 
+/** A section whose rewrite was dropped because it stated figures the original resume never does. */
+export type FactCheckRevert = {
+  label: string;
+  figures: string[];
+};
+
 export type TailorResult = {
   /** The rewritten resume, safe to persist. */
   resumeData: ResumeDataJSON;
@@ -60,6 +67,8 @@ export type TailorResult = {
   impact: AtsImpact;
   /** False when the rewrite did not improve the score and was discarded. */
   accepted: boolean;
+  /** Sections kept in their original wording because the rewrite invented figures. */
+  factCheckReverted: FactCheckRevert[];
   beforeReport: AtsReport;
   afterReport: AtsReport;
 };
@@ -73,15 +82,27 @@ function clone(data: ResumeDataJSON): ResumeDataJSON {
  *
  * Matching by id rather than array position means a model that reorders or
  * drops entries cannot shift one job's description onto another.
+ *
+ * A rewritten field that states a figure the original resume never does is not
+ * merged: that section keeps its original wording, and the rest of the rewrite
+ * still applies. The scorer then judges what is left.
  */
 function applyNarrative(
   base: ResumeDataJSON,
   patch: z.infer<typeof tailoredResumeSchema>,
-): { data: ResumeDataJSON; changes: TailorChange[] } {
+): { data: ResumeDataJSON; changes: TailorChange[]; reverted: FactCheckRevert[] } {
   const next = clone(base);
   const changes: TailorChange[] = [];
+  const reverted: FactCheckRevert[] = [];
+  const known = knownFigures(base);
+  /** True when the rewrite is safe to keep; records the section otherwise. */
+  const passes = (label: string, after: string) => {
+    const figures = unsupportedFigures(after, known);
+    if (figures.length) reverted.push({ label, figures });
+    return figures.length === 0;
+  };
 
-  if (typeof patch.summary === "string" && patch.summary.trim() && patch.summary !== next.summary) {
+  if (typeof patch.summary === "string" && patch.summary.trim() && patch.summary !== next.summary && passes("Summary", patch.summary)) {
     changes.push({ label: "Summary", before: next.summary, after: patch.summary.trim() });
     next.summary = patch.summary.trim();
   }
@@ -91,11 +112,9 @@ function applyNarrative(
     const after = entry.description?.trim();
     if (!target || !after || after === target.description) continue;
 
-    changes.push({
-      label: `${target.jobTitle || "Experience"}${target.employer ? ` — ${target.employer}` : ""}`,
-      before: target.description,
-      after,
-    });
+    const label = `${target.jobTitle || "Experience"}${target.employer ? ` — ${target.employer}` : ""}`;
+    if (!passes(label, after)) continue;
+    changes.push({ label, before: target.description, after });
     target.description = after;
   }
 
@@ -104,15 +123,13 @@ function applyNarrative(
     const after = entry.description?.trim();
     if (!target || !after || after === target.description) continue;
 
-    changes.push({
-      label: target.degree || target.schoolName || "Education",
-      before: target.description,
-      after,
-    });
+    const label = target.degree || target.schoolName || "Education";
+    if (!passes(label, after)) continue;
+    changes.push({ label, before: target.description, after });
     target.description = after;
   }
 
-  return { data: next, changes };
+  return { data: next, changes, reverted };
 }
 
 export class TailorError extends Error {
@@ -160,7 +177,7 @@ export async function tailorResumeForJob(params: {
     throw new TailorError("INVALID_RESPONSE", "The model returned an unexpected shape.");
   }
 
-  const { data: resumeData, changes } = applyNarrative(params.resumeData, parsed.data.resume);
+  const { data: resumeData, changes, reverted } = applyNarrative(params.resumeData, parsed.data.resume);
   const afterReport = analyzeResumeData(resumeData, params.jobDescription);
   const { accepted, impact } = evaluateTailoring(beforeReport, afterReport);
 
@@ -171,6 +188,7 @@ export async function tailorResumeForJob(params: {
     summaryOfChanges: parsed.data.summaryOfChanges ?? [],
     impact,
     accepted,
+    factCheckReverted: reverted,
     beforeReport,
     afterReport,
   };

@@ -2,6 +2,7 @@ import type { JobSourceAdapter } from "./types";
 import { manualAdapter } from "./manual";
 import { onlineJobsPhAdapter } from "./onlinejobs-ph";
 import { remotiveAdapter } from "./remotive";
+import { atsBoardsAdapter } from "./ats-boards";
 import { safeParseUrl } from "./normalize";
 import type { JobSourceId } from "@/lib/types/job-hunter";
 
@@ -15,6 +16,7 @@ const ADAPTERS: Partial<Record<JobSourceId, JobSourceAdapter>> = {
   manual: manualAdapter,
   onlinejobs_ph: onlineJobsPhAdapter,
   remotive: remotiveAdapter,
+  ats_boards: atsBoardsAdapter,
   // clipper reuses whichever adapter owns the clipped page's host, so it has no
   // adapter of its own -- see resolveAdapterForUrl.
 };

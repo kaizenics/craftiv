@@ -111,6 +111,27 @@ beforeEach(() => {
 });
 
 describe("tailorResumeForJob", () => {
+  it("keeps the original wording where the rewrite invents figures, and applies the rest", async () => {
+    const response = improvingResponse();
+    response.resume.experiences.push({
+      id: "exp-2",
+      description: "Filed documents for a team of 40, cutting retrieval time by 65%.",
+    });
+    respond(response);
+
+    const result = await tailorResumeForJob({
+      resumeData: buildResume(),
+      jobTitle: "Virtual Assistant",
+      companyName: "Acme",
+      jobDescription: JOB_DESCRIPTION,
+    });
+
+    expect(result.factCheckReverted).toEqual([{ label: "Admin Assistant — Beta Corp", figures: ["40", "65%"] }]);
+    expect(result.resumeData.experiences.find((item) => item.id === "exp-2")?.description).toBe("Filed documents.");
+    expect(result.resumeData.experiences.find((item) => item.id === "exp-1")?.description).toContain("HubSpot");
+    expect(result.accepted).toBe(true);
+  });
+
   it("accepts a rewrite that raises the score and reports the impact", async () => {
     respond(improvingResponse());
 
