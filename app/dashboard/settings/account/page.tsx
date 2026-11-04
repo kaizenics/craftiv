@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Download } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -109,6 +110,24 @@ export default function AccountSettings() {
             <p className="text-sm text-muted-foreground">Sign out of Craftiv on this device.</p>
             <Button type="button" variant="outline" onClick={onSignOut} disabled={isSigningOut}>
               {isSigningOut ? "Signing out..." : "Sign out"}
+            </Button>
+          </div>
+        </section>
+
+        <Separator />
+
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">Your data</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="max-w-md text-sm text-muted-foreground">
+              Download everything Craftiv stores about you as one JSON file: profile, resumes, cover letters, tracked
+              applications, job matches and credit history. Passwords and access keys are left out.
+            </p>
+            <Button asChild variant="outline">
+              <a href="/api/account/export" download>
+                <Download className="size-4" aria-hidden="true" />
+                Download my data
+              </a>
             </Button>
           </div>
         </section>
