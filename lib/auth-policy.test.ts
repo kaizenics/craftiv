@@ -52,6 +52,7 @@ beforeAll(async () => {
        credit_balance integer NOT NULL DEFAULT 100, auto_save_drafts integer NOT NULL DEFAULT 1,
        default_spell_check integer NOT NULL DEFAULT 1, show_resume_score integer NOT NULL DEFAULT 1,
        compact_editor integer NOT NULL DEFAULT 0,
+       weekly_application_goal integer NOT NULL DEFAULT 0, referral_code text UNIQUE,
        onboarding_tours_completed text NOT NULL DEFAULT '[]',
        email_verified integer NOT NULL DEFAULT 0,
        image text, created_at integer NOT NULL, updated_at integer NOT NULL)`,
