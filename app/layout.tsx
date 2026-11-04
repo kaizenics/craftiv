@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/lib/seo";
 import { ChatbotLoader } from "@/components/chatbot/chatbot-loader";
 import { Analytics } from "@vercel/analytics/next";
+import { ReferralTracker } from "@/components/referral-tracker";
 
 const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
@@ -93,6 +94,7 @@ export default function RootLayout({
             >
               {children}
               <ChatbotLoader />
+              <ReferralTracker />
               <Toaster richColors position="bottom-right" />
             </ThemeProvider>
           </AuthProvider>

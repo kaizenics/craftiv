@@ -19,6 +19,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { AI_PROVIDERS } from "@/lib/ai-providers";
 import { trpc } from "@/trpc/client";
+import { ReferralCard } from "@/components/dashboard/referral-card";
 
 type SubscriptionPlan = "free" | "active" | "plus" | "pro";
 
@@ -245,6 +246,9 @@ export default function ProfileSettings() {
             coverLettersCreated={subscription?.coverLetterCreatedCount ?? 0}
             benefits={getPlanBenefits(subscriptionPlan)}
           />
+          <div className="mt-4">
+            <ReferralCard />
+          </div>
         </section>
       </div>
 

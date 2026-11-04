@@ -15,6 +15,7 @@ import { Copy, RefreshCw } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { isValidShareSlug, normalizeShareSlug } from "@/lib/share-slug";
+import { ShareQr } from "@/components/share/share-qr";
 import { trpc } from "@/trpc/client";
 
 export type ShareableKind = "resume" | "coverLetter";
@@ -149,6 +150,8 @@ export function ShareLinkDialog({
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
+
+                <ShareQr url={shareUrl(token)} fileName={`${noun.replace(/\s+/g, "-")}-qr-${token}`} />
 
                 {kind === "resume" ? (
                   <div className="space-y-1.5">

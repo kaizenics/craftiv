@@ -359,7 +359,7 @@ export function PricingClient() {
 
 
         </div>
-        <FAQ faqs={pricingFaqs} divider={false} subtitle="Credits, payment and using your own AI key." />
+        <FAQ faqs={pricingFaqs} subtitle="Credits, payment and using your own AI key." />
       </main>
       <Footer />
     </>

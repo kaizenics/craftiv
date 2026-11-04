@@ -588,6 +588,247 @@ export const resumeExamples: ResumeExample[] = [
       skills: ["Calendar management", "Travel coordination", "Microsoft 365", "Google Workspace", "Expense reports", "Meeting minutes", "Data entry", "Confidentiality"],
     },
   ),
+  example(
+    {
+      slug: "virtual-assistant",
+      jobTitle: "Virtual Assistant",
+      description:
+        "A virtual assistant resume example with the remote tools, admin and client keywords clients search for, plus tips for winning remote VA work.",
+      intro:
+        "Clients hiring a virtual assistant can't watch you work, so they hire on proof: the tools you run, the time zones you cover and what you took off someone's plate. This example puts all three up front.",
+      templateId: "meridian",
+      keywords: ["inbox management", "calendar management", "Google Workspace", "Microsoft 365", "CRM", "HubSpot", "data entry", "customer support", "social media scheduling", "Canva", "Asana", "time zone coordination"],
+      tips: [
+        { title: "Lead with the tools", body: "Remote clients filter on software. Name the inbox, calendar, CRM and project tools you use daily, inside the bullets and in your skills." },
+        { title: "Show the hours you saved", body: "\"Managed inbox\" is a task. \"Cut the founder's inbox from 400 to under 30 unread a day\" is a result a client can picture." },
+        { title: "State your availability", body: "Say which time zones and hours you cover. For overseas clients it is often the deciding detail." },
+      ],
+      faqs: [
+        { question: "What should a virtual assistant put on a resume?", answer: "The clients or kinds of businesses you supported, the tasks you owned, the tools you use and measurable results such as hours saved or response times." },
+        { question: "How do I write a VA resume with no experience?", answer: "Use admin, customer service or office work you have done, list the tools you know, and add a short portfolio of sample tasks like a cleaned spreadsheet or a scheduled content calendar." },
+        { question: "Should I list hourly rates on my resume?", answer: "No. Keep rates for the proposal or interview. The resume should make the case for your value first." },
+      ],
+    },
+    {
+      name: ["Maria", "Santos"],
+      title: "Virtual Assistant",
+      summary: "Virtual assistant with 4 years of experience supporting founders and small teams in the US and Australia. Runs inboxes, calendars, CRM updates and customer email so clients can focus on growth.",
+      jobs: [
+        {
+          title: "Executive Virtual Assistant", employer: "Northpeak Coaching (remote, US)", location: "Remote", start: "2022-06", end: "",
+          bullets: [
+            "Manage the founder's inbox and calendar across three time zones, reducing unread email from 400+ to under 30 a day",
+            "Keep 1,200 HubSpot contacts current and send weekly pipeline summaries to the sales lead",
+            "Schedule 60+ coaching sessions a month and handle rescheduling with clients directly",
+            "Plan and post social media content in Canva and Buffer, growing Instagram followers by 35% in a year",
+          ],
+        },
+        {
+          title: "Virtual Assistant", employer: "Harbourside Realty (remote, AU)", location: "Remote", start: "2020-09", end: "2022-05",
+          bullets: [
+            "Answered 50+ customer emails a day with an average reply time under two hours",
+            "Built Google Sheets trackers for listings and open homes used by a team of eight agents",
+            "Prepared invoices and expense reports in Xero each month",
+          ],
+        },
+      ],
+      education: { school: "University of Santo Tomas", degree: "B.S. Business Administration", location: "Manila, Philippines", start: "2015-06", end: "2019-04" },
+      skills: ["Inbox management", "Calendar management", "Google Workspace", "HubSpot CRM", "Canva", "Asana", "Xero", "Customer support"],
+    },
+  ),
+  example(
+    {
+      slug: "graphic-designer",
+      jobTitle: "Graphic Designer",
+      description:
+        "A graphic designer resume example with the design tools and brand keywords recruiters scan for, plus tips for pairing it with your portfolio.",
+      intro:
+        "A designer's resume is read next to their portfolio, so it should do a different job: show the scope, the tools and the results behind the work. This example keeps the layout clean so the projects carry the page.",
+      templateId: "aurora",
+      keywords: ["Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "Figma", "branding", "typography", "layout design", "visual identity", "print production", "social media graphics", "motion graphics", "art direction"],
+      tips: [
+        { title: "Link the portfolio at the top", body: "Put the portfolio URL in your contact details. Many recruiters open it before they finish reading the resume." },
+        { title: "Describe outcomes, not only deliverables", body: "Pair each project with what it changed: a launch, a conversion lift, a rebrand rolled out across 40 stores." },
+        { title: "Keep the resume itself readable", body: "A creative layout is fine, but text in images or unusual columns can confuse ATS. Let the portfolio show your style." },
+      ],
+      faqs: [
+        { question: "Should a graphic designer resume be designed?", answer: "Lightly. Clean typography and a confident layout help, but keep the text selectable and in one reading order so tracking systems can parse it." },
+        { question: "What skills should a graphic designer list?", answer: "The Adobe apps and Figma you actually use, plus disciplines such as branding, typography, layout and print or motion work." },
+        { question: "How many projects should I mention?", answer: "Two to four strong ones in your experience bullets is plenty. The portfolio holds the rest." },
+      ],
+    },
+    {
+      name: ["Kenji", "Watanabe"],
+      title: "Graphic Designer",
+      summary: "Graphic designer with 6 years of experience in brand identity, campaign and packaging design. Comfortable taking a project from concept sketches to print-ready files and social assets.",
+      jobs: [
+        {
+          title: "Senior Graphic Designer", employer: "Lumen Creative Studio", location: "Portland, OR", start: "2021-04", end: "",
+          bullets: [
+            "Led the visual identity refresh for a 40-store coffee chain, from logo system to menus and signage",
+            "Designed a seasonal campaign in Illustrator and Photoshop that lifted online orders 22% over the prior year",
+            "Built a Figma brand library that cut the time to produce social graphics by half",
+            "Art-directed two junior designers and a freelance illustrator",
+          ],
+        },
+        {
+          title: "Graphic Designer", employer: "Greenleaf Foods", location: "Portland, OR", start: "2018-06", end: "2021-03",
+          bullets: [
+            "Designed packaging for 25 products and prepared print-ready files for three printers",
+            "Produced weekly social media graphics and short motion pieces in After Effects",
+            "Created InDesign templates for sales sheets used by the national sales team",
+          ],
+        },
+      ],
+      education: { school: "Pacific Northwest College of Art", degree: "B.F.A. Graphic Design", location: "Portland, OR", start: "2014-09", end: "2018-05" },
+      skills: ["Adobe Illustrator", "Adobe Photoshop", "Adobe InDesign", "Figma", "After Effects", "Branding", "Typography", "Print production"],
+    },
+  ),
+  example(
+    {
+      slug: "human-resources-specialist",
+      jobTitle: "Human Resources Specialist",
+      description:
+        "A human resources specialist resume example with recruiting, onboarding and HRIS keywords, plus tips for showing HR impact with numbers.",
+      intro:
+        "HR hiring managers look for range across the employee lifecycle and for proof you can be trusted with sensitive work. This example covers recruiting, onboarding, policy and systems, each with a measurable result.",
+      templateId: "zenith",
+      keywords: ["recruiting", "onboarding", "employee relations", "HRIS", "Workday", "BambooHR", "benefits administration", "payroll", "compliance", "performance management", "policy development", "applicant tracking system"],
+      tips: [
+        { title: "Cover the whole lifecycle", body: "Show you have touched hiring, onboarding, employee relations and offboarding. Range is what separates a specialist from a coordinator." },
+        { title: "Quantify people outcomes", body: "Time to hire, turnover, onboarding completion and open roles filled are the numbers HR leaders track. Use them." },
+        { title: "Name the systems", body: "Workday, BambooHR, ADP and the applicant tracking systems you have run are frequent filter terms." },
+      ],
+      faqs: [
+        { question: "What should an HR specialist resume include?", answer: "Recruiting volume, onboarding, employee relations, the HR systems you use and any compliance or policy work, with numbers wherever you can." },
+        { question: "Do HR certifications matter?", answer: "They help, especially SHRM-CP or PHR in the US. List them under certifications with the year you earned them." },
+        { question: "How do I show discretion on a resume?", answer: "Mention the sensitive work you handled, such as investigations or payroll, without any identifying details." },
+      ],
+    },
+    {
+      name: ["Aisha", "Rahman"],
+      title: "Human Resources Specialist",
+      summary: "HR specialist with 5 years of experience across recruiting, onboarding and employee relations for teams of 150 to 600. Runs HR systems that keep people data accurate and processes fair.",
+      jobs: [
+        {
+          title: "Human Resources Specialist", employer: "Brightwave Software", location: "Denver, CO", start: "2021-02", end: "",
+          bullets: [
+            "Filled 85 roles a year across engineering and sales, cutting average time to hire from 41 to 28 days",
+            "Redesigned onboarding in BambooHR, raising 90-day retention from 82% to 93%",
+            "Handled employee relations cases and investigations with full confidentiality",
+            "Wrote the remote work and parental leave policies adopted company-wide",
+          ],
+        },
+        {
+          title: "HR Coordinator", employer: "Summit Health Partners", location: "Denver, CO", start: "2019-01", end: "2021-01",
+          bullets: [
+            "Coordinated interviews and offer letters for 40+ clinical hires a quarter",
+            "Processed benefits enrolment and payroll changes for 600 employees in ADP",
+            "Kept I-9 and licensing records audit-ready",
+          ],
+        },
+      ],
+      education: { school: "University of Colorado Denver", degree: "B.S. Human Resource Management", location: "Denver, CO", start: "2014-08", end: "2018-05" },
+      skills: ["Recruiting", "Onboarding", "Employee relations", "BambooHR", "ADP", "Benefits administration", "Compliance", "Policy development"],
+      certifications: [{ name: "SHRM Certified Professional (SHRM-CP)", issuer: "SHRM", date: "2022-06" }],
+    },
+  ),
+  example(
+    {
+      slug: "business-analyst",
+      jobTitle: "Business Analyst",
+      description:
+        "A business analyst resume example with requirements, SQL and process keywords, plus tips for showing how your analysis changed decisions.",
+      intro:
+        "A business analyst is hired to turn messy needs into clear requirements and better decisions. This example shows the stakeholders, the methods and the measurable change behind each project.",
+      templateId: "slate",
+      keywords: ["requirements gathering", "stakeholder management", "SQL", "process mapping", "user stories", "Jira", "Power BI", "Tableau", "gap analysis", "UAT", "agile", "data analysis"],
+      tips: [
+        { title: "Show the decision, not just the report", body: "Say what the business did differently because of your analysis: a process changed, a cost removed, a feature shipped." },
+        { title: "Name your methods", body: "Process mapping, gap analysis, user stories and UAT are the vocabulary of the role, and recruiters filter on them." },
+        { title: "Mention who you worked with", body: "BAs sit between teams. Naming finance, operations or engineering partners shows you can work across them." },
+      ],
+      faqs: [
+        { question: "What skills should a business analyst list?", answer: "Requirements gathering, process mapping, SQL, a BI tool such as Power BI or Tableau, Jira or a similar backlog tool, and stakeholder communication." },
+        { question: "Do business analysts need technical skills?", answer: "Enough SQL and spreadsheet skill to check data yourself is expected. Coding beyond that depends on the role." },
+        { question: "How do I move into business analysis?", answer: "Highlight any time you documented a process, gathered requirements or built a report that changed a decision, even if it was not your job title." },
+      ],
+    },
+    {
+      name: ["Tomás", "Herrera"],
+      title: "Business Analyst",
+      summary: "Business analyst with 5 years of experience in retail and fintech. Turns stakeholder needs into clear requirements and uses SQL and Power BI to show what is really happening in the data.",
+      jobs: [
+        {
+          title: "Business Analyst", employer: "Clearpath Payments", location: "Chicago, IL", start: "2021-07", end: "",
+          bullets: [
+            "Mapped the merchant onboarding process and removed four manual steps, cutting approval time from 5 days to 2",
+            "Wrote 120+ user stories and acceptance criteria in Jira for two agile product teams",
+            "Built Power BI dashboards on SQL data that the operations team uses for daily stand-ups",
+            "Led UAT for a new disputes portal with 30 testers across finance and support",
+          ],
+        },
+        {
+          title: "Junior Business Analyst", employer: "Lakeshore Retail Group", location: "Chicago, IL", start: "2019-06", end: "2021-06",
+          bullets: [
+            "Ran a gap analysis of the returns process that saved $180K a year in write-offs",
+            "Wrote SQL queries to reconcile inventory across 60 stores",
+            "Documented requirements for a new point-of-sale integration",
+          ],
+        },
+      ],
+      education: { school: "University of Illinois Chicago", degree: "B.S. Information and Decision Sciences", location: "Chicago, IL", start: "2015-08", end: "2019-05" },
+      skills: ["Requirements gathering", "Process mapping", "SQL", "Power BI", "Jira", "User stories", "UAT", "Stakeholder management"],
+    },
+  ),
+  example(
+    {
+      slug: "social-media-manager",
+      jobTitle: "Social Media Manager",
+      description:
+        "A social media manager resume example with platform, content and analytics keywords, plus tips for proving growth with real numbers.",
+      intro:
+        "Social media managers are judged on growth, so the resume has to read like a results report: which platforms, what content, and how the audience and revenue moved. This example does exactly that.",
+      templateId: "pulse",
+      keywords: ["content strategy", "Instagram", "TikTok", "LinkedIn", "community management", "social media analytics", "paid social", "Meta Ads", "content calendar", "copywriting", "influencer marketing", "brand voice"],
+      tips: [
+        { title: "Lead with growth numbers", body: "Followers, engagement rate, reach and revenue from social are what hiring managers look for first. Put one in every role." },
+        { title: "Name platforms and formats", body: "Short-form video on TikTok is a different skill from LinkedIn thought leadership. Say which ones you have grown." },
+        { title: "Show paid and organic", body: "Many roles now cover both. Mention ad spend you managed and the return it produced." },
+      ],
+      faqs: [
+        { question: "What should a social media manager resume include?", answer: "The platforms you managed, the content you created, growth and engagement numbers, any paid budget you ran, and the tools you use for scheduling and analytics." },
+        { question: "Should I link to accounts I managed?", answer: "Yes, if the account is public and you are allowed to. A link to real work is more convincing than a description." },
+        { question: "How do I show results if numbers were small?", answer: "Use percentages and timeframes. Growing an account 60% in six months reads well at any size." },
+      ],
+    },
+    {
+      name: ["Chloe", "Bennett"],
+      title: "Social Media Manager",
+      summary: "Social media manager with 5 years of experience growing consumer brands on Instagram, TikTok and LinkedIn. Combines a strong brand voice with weekly analytics to grow audiences and sales.",
+      jobs: [
+        {
+          title: "Social Media Manager", employer: "Bloom & Bark Pet Co.", location: "San Diego, CA", start: "2022-01", end: "",
+          bullets: [
+            "Grew Instagram from 18K to 96K followers and TikTok from zero to 140K in two years",
+            "Managed a $25K monthly Meta Ads budget at a 4.1x return on ad spend",
+            "Ran a monthly content calendar of 60+ posts and short videos with a team of two creators",
+            "Launched an influencer program that drove 12% of online sales in its first quarter",
+          ],
+        },
+        {
+          title: "Social Media Coordinator", employer: "Coastline Outdoor Gear", location: "San Diego, CA", start: "2019-08", end: "2021-12",
+          bullets: [
+            "Raised average engagement rate from 1.9% to 4.6% with a refreshed brand voice",
+            "Answered community comments and messages daily, keeping response time under three hours",
+            "Built weekly social analytics reports for the marketing director",
+          ],
+        },
+      ],
+      education: { school: "San Diego State University", degree: "B.A. Communication", location: "San Diego, CA", start: "2015-08", end: "2019-05" },
+      skills: ["Content strategy", "Instagram", "TikTok", "LinkedIn", "Meta Ads", "Community management", "Copywriting", "Social media analytics"],
+    },
+  ),
 ];
 
 export function getResumeExample(slug: string) {

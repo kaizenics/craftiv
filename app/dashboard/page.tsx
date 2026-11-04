@@ -95,7 +95,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <ActionPlan resumeCount={resumes.length} resumesLoading={isLoading} />
+      <ActionPlan
+        resumeCount={resumes.length}
+        sharedCount={resumes.filter((resume) => resume.shareEnabled).length}
+        resumesLoading={isLoading}
+      />
 
       {/* Quick Actions */}
       <div data-tour="quick-actions">
@@ -106,7 +110,7 @@ export default function Dashboard() {
       <TipsCard />
 
       {/* Recent Resumes Section */}
-      <div className="space-y-4">
+      <div id="documents" className="scroll-mt-24 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-foreground">
             {showRecentDocuments
